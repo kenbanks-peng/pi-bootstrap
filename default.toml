@@ -1,15 +1,5 @@
-version = 2
-
-[mechanisms.preamble]
-kind = "preamble"
-
-[mechanisms.system_sections]
+[system_prompt]
 kind = "tagged_sections"
-
-[mechanisms.prime]
-kind = "tagged_message"
-role = "user"
-tag = "prime_session"
 
 [system_prompt.preamble]
 
@@ -33,4 +23,8 @@ If the skill file is not available, report this and proceed without it.
 
 [system_prompt.sections.cwd]
 
-[bootstrap.prime_session]
+[message]
+kind = "tagged_messages"
+role = "user"
+
+[message.prime_session]

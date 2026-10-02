@@ -15,9 +15,7 @@ interface Binding extends Source {
   start: number;
   end: number;
 }
-type Mechanism =
-  | { kind: "preamble" | "tagged_sections" }
-  | { kind: "tagged_message"; role: "user"; tag: string };
+interface Configuration { system: boolean; messageRole?: "user" }
 const safeName = /^[a-z][a-z0-9_-]*$/;
 const unsafe = new Set(["__proto__", "prototype", "constructor"]);
 const object = (value: unknown): value is Table =>
@@ -58,42 +56,58 @@ export function taggedRegions(text: string): Region[] {
   return regions;
 }
 
-function definitions(data: Table): Mechanism[] {
-  if (data.version !== 2) throw new Error("Use version = 2 and the context mechanisms in default.toml; old path mechanisms are not supported");
-  if (!object(data.mechanisms)) throw new Error("Define [mechanisms] in config.toml");
-  const result: Mechanism[] = [];
-  const seen = new Set<string>();
-  for (const [name, value] of Object.entries(data.mechanisms)) {
-    if (!object(value)) throw new Error("mechanisms." + name + ": use a table");
-    const kind = value.kind;
-    const fields = kind === "tagged_message" ? ["kind", "role", "tag"] : ["kind"];
-    if (Object.keys(value).some(key => !fields.includes(key)))
-      throw new Error("mechanisms." + name + ": unsupported parameter");
-    if (kind === "tagged_message") {
-      if (value.role !== "user" || typeof value.tag !== "string" || !safeName.test(value.tag) || unsafe.has(value.tag))
-        throw new Error("mechanisms." + name + ": use role = user and a safe tag name");
-      result.push({ kind, role: "user", tag: value.tag });
-    } else if (kind === "preamble" || kind === "tagged_sections") result.push({ kind });
-    else throw new Error("mechanisms." + name + ": unknown kind");
-    const key = kind + ":" + (value.tag ?? "");
-    if (seen.has(key)) throw new Error("Duplicate context mechanism: " + key);
-    seen.add(key);
+function configuration(data: Table): Configuration {
+  const fields = (table: Table, allowed: string[], location: string) => {
+    for (const key of Object.keys(table))
+      if (!allowed.includes(key)) throw new Error(location + key + ": unsupported field");
+  };
+  const entry = (value: unknown, location: string) => {
+    if (!object(value)) throw new Error(location + ": use a table");
+    fields(value, ["replacement"], location + ".");
+    if (value.replacement !== undefined &&
+      (typeof value.replacement !== "string" || !value.replacement.trim()))
+      throw new Error(location + ": replacement must be a nonempty string");
+  };
+  const entries = (table: Table, location: string, reserved: string[] = []) => {
+    for (const [tag, value] of Object.entries(table)) {
+      if (reserved.includes(tag)) continue;
+      if (!safeName.test(tag) || unsafe.has(tag)) throw new Error(location + tag + ": unsafe tag name");
+      entry(value, location + tag);
+    }
+  };
+  fields(data, ["system_prompt", "message"], "");
+  const system = data.system_prompt;
+  if (system !== undefined) {
+    if (!object(system)) throw new Error("system_prompt: use a table");
+    fields(system, ["kind", "preamble", "sections"], "system_prompt.");
+    if (system.kind !== "tagged_sections") throw new Error('system_prompt: use kind = "tagged_sections"');
+    if (system.preamble !== undefined) entry(system.preamble, "system_prompt.preamble");
+    if (system.sections !== undefined) {
+      if (!object(system.sections)) throw new Error("system_prompt.sections: use a table");
+      entries(system.sections, "system_prompt.sections.");
+    }
   }
-  return result;
+  const message = data.message;
+  if (message !== undefined) {
+    if (!object(message)) throw new Error("message: use a table");
+    if (message.kind !== "tagged_messages") throw new Error('message: use kind = "tagged_messages"');
+    if (message.role !== "user") throw new Error('message: use role = "user"');
+    entries(message, "message.", ["kind", "role"]);
+  }
+  return { system: system !== undefined, messageRole: message === undefined ? undefined : "user" };
 }
 
 /** Discover and replace existing context text only. No resource or tool metadata is changed. */
 export class Mechanisms {
-  private readonly definitions: Mechanism[];
+  private readonly configuration: Configuration;
   private bindings: Binding[] = [];
   unidentified: Unidentified[] = [];
-  constructor(data: Table) { this.definitions = definitions(data); }
+  constructor(data: Table) { this.configuration = configuration(data); }
 
   discover(messages: TranscriptMessage[]): Source[] {
     this.bindings = [];
     this.unidentified = [];
-    const preamble = this.definitions.some(m => m.kind === "preamble");
-    const sections = this.definitions.some(m => m.kind === "tagged_sections");
+    const system = this.configuration.system;
     const unknown = (location: string, text: string) => {
       if (text.trim()) this.unidentified.push({ location, text });
     };
@@ -106,14 +120,15 @@ export class Mechanisms {
       const field = section === undefined ? "content" : "sections";
       const location = "messages." + index + "." + field + (section === undefined ? "" : "." + section);
       if (section === "preamble") {
-        if (preamble) bind(index, field, section, ["system_prompt", "preamble"], text, 0, text.length);
+        if (system) bind(index, field, section, ["system_prompt", "preamble"], text, 0, text.length);
         else unknown(location, text);
         return;
       }
+      if (!system) { unknown(location, text); return; }
       const regions = taggedRegions(text);
       const prefixEnd = regions[0]?.start ?? text.length;
       const prefix = text.slice(0, prefixEnd);
-      if (section === undefined && preamble) {
+      if (section === undefined) {
         const end = prefix.trimEnd().length;
         bind(index, field, section, ["system_prompt", "preamble"], text, 0, end);
       } else unknown(location, prefix);
@@ -121,9 +136,8 @@ export class Mechanisms {
       for (const region of regions) {
         unknown(location + " at offset " + at, text.slice(at, region.start));
         if (unsafe.has(region.tag)) throw new Error("Unsafe context tag: " + region.tag);
-        if (sections) bind(index, field, section, ["system_prompt", "sections", region.tag],
+        bind(index, field, section, ["system_prompt", "sections", region.tag],
           text, region.bodyStart, region.bodyEnd);
-        else unknown(location + " tag " + region.tag, text.slice(region.start, region.end));
         at = region.end;
       }
       unknown(location + " at offset " + at, text.slice(at));
@@ -137,7 +151,7 @@ export class Mechanisms {
         return;
       }
       if (typeof message.content !== "string") {
-        // Prime may arrive as text blocks alongside images. Bind each text block separately below.
+        // Tagged messages may arrive as text blocks alongside images.
         if (Array.isArray(message.content)) message.content.forEach((block, blockIndex) => {
           if (object(block) && block.type === "text" && typeof block.text === "string")
             this.scanMessage(block.text, message.role, index, bind, blockIndex);
@@ -150,17 +164,17 @@ export class Mechanisms {
   private scanMessage(text: string, role: string, index: number,
     bind: (index: number, field: Binding["field"], section: string | undefined, path: string[], text: string, start: number, end: number) => void,
     blockIndex?: number) {
-    for (const mechanism of this.definitions) {
-      if (mechanism.kind !== "tagged_message" || mechanism.role !== role) continue;
-      // Do not parse ordinary messages or quoted tag examples as bootstrap context.
-      if (!new RegExp("^\\s*<" + mechanism.tag + "(?:\\s+[^<>]*)?>\\s*(?:\\r?\\n|$)").test(text)) continue;
-      const regions = taggedRegions(text);
-      if (regions.length !== 1 || regions[0].tag !== mechanism.tag || text.slice(regions[0].end).trim()) continue;
-      const region = regions[0];
-      if (!text.slice(region.bodyStart, region.bodyEnd).trim()) continue;
-      bind(index, "content", undefined, ["bootstrap", mechanism.tag], text, region.bodyStart, region.bodyEnd);
-      if (blockIndex !== undefined) this.bindings.at(-1)!.blockIndex = blockIndex;
-    }
+    if (this.configuration.messageRole !== role) return;
+    // Select only a complete envelope, not ordinary prose or quoted tag examples.
+    if (!/^\s*<[a-z][a-z0-9_-]*(?:\s+[^<>]*)?>[^\S\r\n]*(?:\r?\n|$)/.test(text)) return;
+    const regions = taggedRegions(text);
+    if (regions.length !== 1 || text.slice(regions[0].end).trim()) return;
+    const region = regions[0];
+    if (unsafe.has(region.tag) || region.tag === "kind" || region.tag === "role")
+      throw new Error("Unsafe message tag: " + region.tag);
+    if (!text.slice(region.bodyStart, region.bodyEnd).trim()) return;
+    bind(index, "content", undefined, ["message", region.tag], text, region.bodyStart, region.bodyEnd);
+    if (blockIndex !== undefined) this.bindings.at(-1)!.blockIndex = blockIndex;
   }
 
   applyTranscript<T extends TranscriptMessage>(messages: T[], lookup: Lookup): T[] {
@@ -176,7 +190,7 @@ export class Mechanisms {
           (original.content as { text: string }[])[binding.blockIndex].text;
       const text = readText();
       // Section bodies include the line breaks inside their tags.
-      const body = binding.path[0] === "bootstrap" || binding.path[1] === "sections"
+      const body = binding.path[0] === "message" || binding.path[1] === "sections"
         ? (text.slice(binding.start, binding.end).startsWith("\r\n") ? "\r\n" : "\n") + replacement +
           (text.slice(binding.start, binding.end).endsWith("\r\n") ? "\r\n" : "\n")
         : replacement;

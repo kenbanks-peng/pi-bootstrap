@@ -11,7 +11,7 @@ import { Lookup, type Table } from "../src/lookup.ts";
 import { Mechanisms, taggedRegions, type TranscriptMessage } from "../src/prompt.ts";
 
 const defaultTemplate = await readFile(new URL("../default.toml", import.meta.url), "utf8");
-const defaults = defaultTemplate.split("\n[system_prompt.preamble]")[0] + "\n";
+const defaults = '[system_prompt]\nkind = "tagged_sections"\n\n[message]\nkind = "tagged_messages"\nrole = "user"\n';
 const config = () => parse(defaultTemplate) as Table;
 const replacement = (path: string[], text: unknown) =>
   "\n[" + path.map(p => JSON.stringify(p)).join(".") + "]\nreplacement = " + JSON.stringify(text) + "\n";
@@ -48,19 +48,19 @@ const baseline = await readFile(new URL("../docs/pi-baseline.md", import.meta.ur
 const prompt = /<system-prompt>\n\n([\s\S]*?)\n\n<\/system-prompt>/.exec(baseline)![1];
 const prime = /<prime_session version="1">[\s\S]*?<\/prime_session>/.exec(baseline)![0];
 
-test("default config has three context mechanisms with no numbered-message dependency", () => {
-  const data = config();
-  assert.equal(data.version, 2);
-  assert.equal(Object.keys(data.mechanisms as object).length, 3);
-  assert.ok(!defaults.includes("message3"));
-  assert.ok(!defaults.includes("fallback_source"));
+test("default config defines mechanisms directly on their scopes", () => {
+  const data = config() as any;
+  assert.deepEqual(Object.keys(data), ["system_prompt", "message"]);
+  assert.equal(data.system_prompt.kind, "tagged_sections");
+  assert.equal(data.message.kind, "tagged_messages");
+  assert.equal(data.message.role, "user");
 });
 test("default template has all baseline tables and only active tools and skills examples", async () => {
   const data = config() as any;
   assert.ok(!/^\s*#/m.test(defaultTemplate));
   assert.deepEqual(Object.keys(data.system_prompt.sections), ["tools", "rules", "docs", "skills", "cwd"]);
   assert.deepEqual(Object.keys(data.system_prompt.preamble), []);
-  assert.deepEqual(Object.keys(data.bootstrap.prime_session), []);
+  assert.deepEqual(Object.keys(data.message.prime_session), []);
   for (const tag of ["rules", "docs", "cwd"]) assert.deepEqual(Object.keys(data.system_prompt.sections[tag]), []);
   const f = await fixture(defaultTemplate);
   try {
@@ -99,7 +99,7 @@ test("baseline discovery follows top-level tags and finds prime by envelope", ()
   assert.deepEqual(sources.map(s => s.path.join(".")), [
     "system_prompt.preamble", "system_prompt.sections.tools", "system_prompt.sections.rules",
     "system_prompt.sections.docs", "system_prompt.sections.skills", "system_prompt.sections.cwd",
-    "bootstrap.prime_session",
+    "message.prime_session",
   ]);
   assert.deepEqual(engine.unidentified, []);
   assert.ok(sources.find(s => s.path.at(-1) === "skills")!.original.includes("<available_skills>"));
@@ -109,7 +109,7 @@ test("baseline replacements keep tag wrappers, tools, ordinary messages, and ori
   const f = await fixture(defaults +
     replacement(["system_prompt", "preamble"], "Short identity.") +
     replacement(["system_prompt", "sections", "docs"], "Short docs.") +
-    replacement(["bootstrap", "prime_session"], "Short preferences."));
+    replacement(["message", "prime_session"], "Short preferences."));
   try {
     const tools = [{ name: "codemode", description: "Actual tool declaration", parameters: {} }];
     const messages = [
@@ -178,7 +178,7 @@ test("tag parser respects nesting, attributes, code fences, and closing-tag erro
     assert.throws(() => taggedRegions(broken), /context tag/);
 });
 test("ordinary tag examples, other roles, and additional text are never selected as prime", async () => {
-  const f = await fixture(defaults + replacement(["bootstrap", "prime_session"], "New"));
+  const f = await fixture(defaults + replacement(["message", "prime_session"], "New"));
   try {
     const messages = [
       { role: "system", content: "" },
@@ -192,7 +192,7 @@ test("ordinary tag examples, other roles, and additional text are never selected
   } finally { await f.cleanup(); }
 });
 test("prime text blocks can be rewritten without changing image blocks", async () => {
-  const f = await fixture(defaults + replacement(["bootstrap", "prime_session"], "New"));
+  const f = await fixture(defaults + replacement(["message", "prime_session"], "New"));
   try {
     const image = { type: "image", data: "abc", mimeType: "image/png" };
     const text = { type: "text", text: prime };
@@ -237,8 +237,8 @@ test("invalid configuration or malformed context leaves the full request unchang
     assert.ok((await f.show()).includes("Unclosed context tag"));
   } finally { await f.cleanup(); }
 });
-test("disabled mechanisms leave context unchanged and report unselected system text", async () => {
-  const f = await fixture('version = 2\n[mechanisms]\n');
+test("absent scopes leave context unchanged and report unselected system text", async () => {
+  const f = await fixture("");
   try {
     const messages = [{ role: "system", content: "Preamble\n<rules>\nRules\n</rules>\nTrailing text" }];
     assert.equal(await f.request(messages), messages);
@@ -247,17 +247,108 @@ test("disabled mechanisms leave context unchanged and report unselected system t
     assert.equal(data.system_prompt, undefined);
   } finally { await f.cleanup(); }
 });
-test("mechanisms reject obsolete parameters, duplicate selectors, and unsafe tags", () => {
-  const invalid = [
+test("scopes reject old formats, unsupported parameters, wrong types, and unsafe tags", () => {
+  const invalid: Table[] = [
     { version: 1, mechanisms: {} },
-    { version: 2, mechanisms: { x: { kind: "map" } } },
-    { version: 2, mechanisms: { x: { kind: "preamble", source: ["prompt"] } } },
-    { version: 2, mechanisms: { x: { kind: "preamble" }, y: { kind: "preamble" } } },
-    { version: 2, mechanisms: { x: { kind: "tagged_message", role: "assistant", tag: "prime_session" } } },
-    { version: 2, mechanisms: { x: { kind: "tagged_message", role: "user", tag: "constructor" } } },
+    { version: 2, mechanisms: {} },
+    { mechanisms: {} },
+    { bootstrap: { prime_session: {} } },
+    { ...config(), version: 2 },
+    { ...config(), bootstrap: { prime_session: {} } },
+    { system_prompt: {} },
+    { system_prompt: { kind: "preamble" } },
+    { system_prompt: { kind: "tagged_sections", source: ["prompt"] } },
+    { system_prompt: { kind: "tagged_sections", preamble: "text" } },
+    { system_prompt: { kind: "tagged_sections", preamble: { kind: "preamble" } } },
+    { system_prompt: { kind: "tagged_sections", sections: [] } },
+    { system_prompt: { kind: "tagged_sections", sections: { constructor: {} } } },
+    { message: { kind: "tagged_message", role: "user" } },
+    { message: { kind: "tagged_messages", role: "assistant" } },
+    { message: { kind: "tagged_messages" } },
+    { message: { kind: "tagged_messages", role: "user", tag: "prime_session" } },
+    { message: { kind: "tagged_messages", role: "user", constructor: {} } },
+    { message: { kind: "tagged_messages", role: "user", "bad.tag": {} } },
+    { message: { kind: "tagged_messages", role: "user", example: { replacement: "" } } },
+    { message: { kind: "tagged_messages", role: "user", example: { replacement: 12 } } },
+    { message: { kind: "tagged_messages", role: "user", example: { source: ["content"] } } },
   ];
   for (const data of invalid) assert.throws(() => new Mechanisms(data));
-  assert.throws(() => new Mechanisms(config()).discover([{ role: "system", content: "<constructor>\ntext\n</constructor>" }]), /Unsafe/);
+  for (const role of ["system", "user"])
+    assert.throws(() => new Mechanisms(config()).discover([{ role, content: "<constructor>\ntext\n</constructor>" }]), /Unsafe/);
+});
+test("tagged_messages discovers any standalone user envelope by its tag", async () => {
+  const f = await fixture();
+  try {
+    const text = '<preferences version="1">\r\n<memory>Old</memory>\r\n</preferences>';
+    const messages = [{ role: "user", content: text }];
+    assert.equal(await f.request(messages), messages);
+    const discovered = await readFile(f.path, "utf8");
+    const data = parse(discovered) as any;
+    assert.equal(data.message.kind, "tagged_messages");
+    assert.deepEqual(Object.keys(data.message.preferences), []);
+    assert.ok((await f.show()).includes("message.preferences"));
+    await f.request(messages);
+    assert.equal(await readFile(f.path, "utf8"), discovered);
+    await writeFile(f.path, defaults + replacement(["message", "preferences"], "New"));
+    const result = await f.request(messages);
+    assert.equal(result[0].content, '<preferences version="1">\r\nNew\r\n</preferences>');
+    assert.equal(messages[0].content, text);
+  } finally { await f.cleanup(); }
+});
+test("system and message scopes can be enabled independently", async () => {
+  for (const configText of [
+    '[system_prompt]\nkind = "tagged_sections"\n',
+    '[message]\nkind = "tagged_messages"\nrole = "user"\n',
+  ]) {
+    const f = await fixture(configText);
+    try {
+      const messages = [{ role: "system", content: "Preamble" }, { role: "user", content: prime }];
+      assert.equal(await f.request(messages), messages);
+      const data = parse(await readFile(f.path, "utf8")) as any;
+      if (data.system_prompt) {
+        assert.deepEqual(Object.keys(data.system_prompt.preamble), []);
+        assert.equal(data.message, undefined);
+      } else {
+        assert.deepEqual(Object.keys(data.message.prime_session), []);
+        assert.equal(data.system_prompt, undefined);
+      }
+    } finally { await f.cleanup(); }
+  }
+});
+test("old configuration is rejected without conversion or writes", async () => {
+  for (const text of [
+    'version = 2\n[mechanisms.preamble]\nkind = "preamble"\n' +
+      replacement(["system_prompt", "preamble"], "New"),
+    defaults + replacement(["bootstrap", "prime_session"], "New"),
+  ]) {
+    const f = await fixture(text);
+    try {
+      const messages = [{ role: "system", content: "Preamble" }, { role: "user", content: prime }];
+      assert.equal(await f.request(messages), messages);
+      assert.equal(await readFile(f.path, "utf8"), text);
+      assert.ok((await f.show()).includes("unsupported field"));
+    } finally { await f.cleanup(); }
+  }
+});
+test("invalid unobserved replacements and malformed envelopes stop all replacements", async () => {
+  for (const text of [
+    defaults + replacement(["message", "unobserved"], ""),
+    defaults + replacement(["system_prompt", "sections", "unobserved"], 12),
+  ]) {
+    const f = await fixture(text + replacement(["system_prompt", "preamble"], "New"));
+    try {
+      const messages = [{ role: "system", content: "Preamble" }];
+      assert.equal(await f.request(messages), messages);
+      assert.equal(await readFile(f.path, "utf8"), text + replacement(["system_prompt", "preamble"], "New"));
+      assert.ok((await f.show()).includes("Error:"));
+    } finally { await f.cleanup(); }
+  }
+  const f = await fixture(defaults + replacement(["system_prompt", "preamble"], "New"));
+  try {
+    const messages = [{ role: "system", content: "Preamble" }, { role: "user", content: "<preferences>\nBroken" }];
+    assert.equal(await f.request(messages), messages);
+    assert.ok((await f.show()).includes("Unclosed context tag"));
+  } finally { await f.cleanup(); }
 });
 test("unwrapped structured text is reported and retained, not treated as an identity", () => {
   const engine = new Mechanisms(config());
