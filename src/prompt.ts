@@ -11,13 +11,11 @@ interface Binding extends Source {
   index: number;
   field: "content" | "sections";
   section?: string;
-  blockIndex?: number;
   start: number;
   end: number;
+  tagged: boolean;
 }
-interface Configuration { system: boolean; message: boolean }
-// Context format is an extension rule, not replacement configuration.
-const taggedMessageRole = "user";
+interface Configuration { system: boolean }
 const safeName = /^[a-z][a-z0-9_-]*$/;
 const unsafe = new Set(["__proto__", "prototype", "constructor"]);
 const object = (value: unknown): value is Table =>
@@ -70,30 +68,23 @@ function configuration(data: Table): Configuration {
       (typeof value.replacement !== "string" || !value.replacement.trim()))
       throw new Error(location + ": replacement must be a nonempty string");
   };
-  const entries = (table: Table, location: string, reserved: string[] = []) => {
+  const entries = (table: Table, location: string) => {
     for (const [tag, value] of Object.entries(table)) {
-      if (reserved.includes(tag)) continue;
       if (!safeName.test(tag) || unsafe.has(tag)) throw new Error(location + tag + ": unsafe tag name");
       entry(value, location + tag);
     }
   };
-  fields(data, ["system_prompt", "message"], "");
+  fields(data, ["system_prompt", "tools"], "");
   const system = data.system_prompt;
   if (system !== undefined) {
     if (!object(system)) throw new Error("system_prompt: use a table");
-    fields(system, ["preamble", "sections"], "system_prompt.");
-    if (system.preamble !== undefined) entry(system.preamble, "system_prompt.preamble");
-    if (system.sections !== undefined) {
-      if (!object(system.sections)) throw new Error("system_prompt.sections: use a table");
-      entries(system.sections, "system_prompt.sections.");
-    }
+    entries(system, "system_prompt.");
   }
-  const message = data.message;
-  if (message !== undefined) {
-    if (!object(message)) throw new Error("message: use a table");
-    entries(message, "message.");
+  if (data.tools !== undefined) {
+    if (!object(data.tools)) throw new Error("tools: use a table");
+    fields(data.tools, [], "tools.");
   }
-  return { system: system !== undefined, message: message !== undefined };
+  return { system: system !== undefined };
 }
 
 /** Discover and replace existing context text only. No resource or tool metadata is changed. */
@@ -111,20 +102,19 @@ export class Mechanisms {
       if (text.trim()) this.unidentified.push({ location, text });
     };
     const bind = (index: number, field: Binding["field"], section: string | undefined,
-      path: string[], text: string, start: number, end: number) => {
+      path: string[], text: string, start: number, end: number, tagged = false) => {
       if (!text.slice(start, end).trim()) return;
-      this.bindings.push({ index, field, section, path, original: text.slice(start, end), start, end });
+      this.bindings.push({ index, field, section, path, original: text.slice(start, end), start, end, tagged });
     };
     const scanSystem = (text: string, index: number, section?: string) => {
       const field = section === undefined ? "content" : "sections";
       const location = "messages." + index + "." + field + (section === undefined ? "" : "." + section);
-      if (section === "preamble") {
-        if (system) bind(index, field, section, ["system_prompt", "preamble"], text, 0, text.length);
-        else unknown(location, text);
-        return;
-      }
       if (!system) { unknown(location, text); return; }
       const regions = taggedRegions(text);
+      if (section === "preamble" && !regions.length) {
+        bind(index, field, section, ["system_prompt", "preamble"], text, 0, text.length);
+        return;
+      }
       const prefixEnd = regions[0]?.start ?? text.length;
       const prefix = text.slice(0, prefixEnd);
       if (section === undefined) {
@@ -135,8 +125,8 @@ export class Mechanisms {
       for (const region of regions) {
         unknown(location + " at offset " + at, text.slice(at, region.start));
         if (unsafe.has(region.tag)) throw new Error("Unsafe context tag: " + region.tag);
-        bind(index, field, section, ["system_prompt", "sections", region.tag],
-          text, region.bodyStart, region.bodyEnd);
+        bind(index, field, section, ["system_prompt", region.tag],
+          text, region.bodyStart, region.bodyEnd, true);
         at = region.end;
       }
       unknown(location + " at offset " + at, text.slice(at));
@@ -147,33 +137,9 @@ export class Mechanisms {
         else if (message.content) unknown("messages." + index + ".content", JSON.stringify(message.content));
         for (const [name, text] of Object.entries(message.sections ?? {}))
           if (text !== null) scanSystem(text, index, name);
-        return;
       }
-      if (typeof message.content !== "string") {
-        // Tagged messages may arrive as text blocks alongside images.
-        if (Array.isArray(message.content)) message.content.forEach((block, blockIndex) => {
-          if (object(block) && block.type === "text" && typeof block.text === "string")
-            this.scanMessage(block.text, message.role, index, bind, blockIndex);
-        });
-      } else this.scanMessage(message.content, message.role, index, bind);
     });
     return [...new Map(this.bindings.map(({ path, original }) => [JSON.stringify(path), { path, original }])).values()];
-  }
-
-  private scanMessage(text: string, role: string, index: number,
-    bind: (index: number, field: Binding["field"], section: string | undefined, path: string[], text: string, start: number, end: number) => void,
-    blockIndex?: number) {
-    if (!this.configuration.message || role !== taggedMessageRole) return;
-    // Select only a complete envelope, not ordinary prose or quoted tag examples.
-    if (!/^\s*<[a-z][a-z0-9_-]*(?:\s+[^<>]*)?>[^\S\r\n]*(?:\r?\n|$)/.test(text)) return;
-    const regions = taggedRegions(text);
-    if (regions.length !== 1 || text.slice(regions[0].end).trim()) return;
-    const region = regions[0];
-    if (unsafe.has(region.tag))
-      throw new Error("Unsafe message tag: " + region.tag);
-    if (!text.slice(region.bodyStart, region.bodyEnd).trim()) return;
-    bind(index, "content", undefined, ["message", region.tag], text, region.bodyStart, region.bodyEnd);
-    if (blockIndex !== undefined) this.bindings.at(-1)!.blockIndex = blockIndex;
   }
 
   applyTranscript<T extends TranscriptMessage>(messages: T[], lookup: Lookup): T[] {
@@ -184,23 +150,16 @@ export class Mechanisms {
       const replacement = lookup.replacement(binding.path);
       if (replacement === undefined) continue;
       const original = result[binding.index];
-      const readText = () => binding.field === "sections" ? original.sections![binding.section!]! :
-        binding.blockIndex === undefined ? original.content as string :
-          (original.content as { text: string }[])[binding.blockIndex].text;
-      const text = readText();
+      const text = binding.field === "sections" ? original.sections![binding.section!]! : original.content as string;
       // Section bodies include the line breaks inside their tags.
-      const body = binding.path[0] === "message" || binding.path[1] === "sections"
+      const body = binding.tagged
         ? (text.slice(binding.start, binding.end).startsWith("\r\n") ? "\r\n" : "\n") + replacement +
           (text.slice(binding.start, binding.end).endsWith("\r\n") ? "\r\n" : "\n")
         : replacement;
       const changed = text.slice(0, binding.start) + body + text.slice(binding.end);
       if (changed === text) continue;
       if (binding.field === "sections") result[binding.index] = { ...original, sections: { ...original.sections, [binding.section!]: changed } };
-      else if (binding.blockIndex !== undefined) {
-        const content = [...original.content as object[]];
-        content[binding.blockIndex] = { ...content[binding.blockIndex], text: changed };
-        result[binding.index] = { ...original, content };
-      } else result[binding.index] = { ...original, content: changed };
+      else result[binding.index] = { ...original, content: changed };
     }
     return result.every((message, i) => message === messages[i]) ? messages : result;
   }

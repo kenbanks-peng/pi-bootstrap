@@ -8,12 +8,12 @@ import bootstrap, { getConfigPath, registerBootstrap } from "../index.ts";
 import { Lookup, addFields, type Source } from "../src/lookup.ts";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-const source: Source = { path: ["system_prompt", "sections", "docs"], original: "Long documentation." };
+const source: Source = { path: ["system_prompt", "docs"], original: "Long documentation." };
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "pi-bootstrap-"));
   return { lookup: new Lookup(join(dir, "config.toml")), cleanup: () => rm(dir, { recursive: true, force: true }) };
 }
-const entry = (replacement: unknown) => '[system_prompt.sections.docs]\nreplacement = ' + JSON.stringify(replacement) + '\n';
+const entry = (replacement: unknown) => '[system_prompt.docs]\nreplacement = ' + JSON.stringify(replacement) + '\n';
 
 test("discovery retains comments and creates empty stable tables only once", async () => {
   const { lookup, cleanup } = await fixture();
@@ -25,11 +25,11 @@ test("discovery retains comments and creates empty stable tables only once", asy
     assert.ok(text.startsWith("# User comment\n\n"));
     assert.ok(!text.includes("original"));
     assert.ok(!text.includes("replacement"));
-    assert.ok(text.includes('["system_prompt"."sections"."docs"]'));
+    assert.ok(text.includes('["system_prompt"."docs"]'));
     const mtime = (await stat(lookup.path)).mtimeMs;
     await lookup.refresh([source]);
     assert.equal((await stat(lookup.path)).mtimeMs, mtime);
-    assert.deepEqual(lookup.report.missing, ["system_prompt.sections.docs"]);
+    assert.deepEqual(lookup.report.missing, ["system_prompt.docs"]);
   } finally { await cleanup(); }
 });
 test("replacement-only tables remain active when source prose changes", async () => {
@@ -75,11 +75,11 @@ test("an existing lock prevents writes and is not removed", async () => {
   } finally { await cleanup(); }
 });
 test("fields enter existing tables without changing comments or multiline strings", () => {
-  const text = "# Header\n[system_prompt.sections.docs] # My table\n# Notes\n\n[unrelated]\ntext = '''\n[system_prompt.sections.docs]\n'''\n";
+  const text = "# Header\n[system_prompt.docs] # My table\n# Notes\n\n[unrelated]\ntext = '''\n[system_prompt.docs]\n'''\n";
   const next = addFields(text, source.path, 'replacement = "Docs"\n', true);
-  assert.ok(next.includes('[system_prompt.sections.docs] # My table\nreplacement = "Docs"\n\n# Notes'));
-  assert.ok(next.endsWith("[unrelated]\ntext = '''\n[system_prompt.sections.docs]\n'''\n"));
-  assert.equal((parse(next) as any).system_prompt.sections.docs.replacement, "Docs");
+  assert.ok(next.includes('[system_prompt.docs] # My table\nreplacement = "Docs"\n\n# Notes'));
+  assert.ok(next.endsWith("[unrelated]\ntext = '''\n[system_prompt.docs]\n'''\n"));
+  assert.equal((parse(next) as any).system_prompt.docs.replacement, "Docs");
 });
 test("the extension creates config in the global Pi extension directory", async () => {
   const previous = process.env.PI_CODING_AGENT_DIR;
@@ -97,8 +97,8 @@ test("the extension creates config in the global Pi extension directory", async 
     const text = await readFile(config, "utf8");
     const data = parse(text) as any;
     assert.equal(data.system_prompt.kind, undefined);
-    assert.equal(data.message.kind, undefined);
-    assert.equal(data.message.role, undefined);
+    assert.equal(data.message, undefined);
+    assert.deepEqual(Object.keys(data.tools), []);
     assert.equal(data.version, undefined);
     assert.equal(data.mechanisms, undefined);
     assert.equal(data.bootstrap, undefined);

@@ -1,18 +1,16 @@
-[system_prompt]
-
 [system_prompt.preamble]
 
-[system_prompt.sections.tools]
+[system_prompt.tools]
 replacement = "TOOLS REPLACEMENT TEXT"
 
-[system_prompt.sections.rules]
+[system_prompt.rules]
 
-[system_prompt.sections.docs]
+[system_prompt.docs]
 
-[system_prompt.sections.skills]
+[system_prompt.skills]
 
-[system_prompt.sections.cwd]
+[system_prompt.cwd]
 
-[message]
+[system_prompt.prime]
 
-[message.prime_session]
+[tools]

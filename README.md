@@ -6,12 +6,12 @@ Reprocess the current Pi bootstrap context with tag-based TOML replacements. No 
 
 Add the absolute path to `index.ts` to the `extensions` array in your Pi settings. Run `/reload`, or start a new session.
 
-On the next model request, the extension copies [default.toml](default.toml) to `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. The default contains tables for the system preamble, `tools`, `rules`, `docs`, `skills`, `cwd`, and the `prime_session` tag inside a user message. Discovery adds empty tables for other context it finds.
+On the next model request, the extension copies [default.toml](default.toml) to `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. The default contains direct system tables for `preamble`, `tools`, `rules`, `docs`, `skills`, `cwd`, and `prime`, plus a separate empty `[tools]` table. Discovery adds empty tables for other system tags it finds.
 
 Add a nonempty string `replacement` to a discovered table:
 
 ```toml
-[system_prompt.sections.docs]
+[system_prompt.docs]
 replacement = "Use the installed Pi documentation."
 ```
 
@@ -19,11 +19,11 @@ An absent replacement keeps the original text. Save changes between requests. Ru
 
 ## Scope
 
-The reference capture is [docs/pi-baseline.md](docs/pi-baseline.md). Section tags and message envelopes identify context; message numbers do not. New tagged system sections are discovered automatically. Nested tags stay inside their parent section.
+System section tags identify context. New tagged system sections are discovered automatically. Nested tags stay inside their parent section. `prime` is a system section. The capture in [docs/pi-baseline.md](docs/pi-baseline.md) records the older layout.
 
-Changes apply to the outgoing request only. Tool declarations, tool access, skill files, and stored session history remain unchanged. Ordinary conversation messages are not selected. The default enables only the tools text replacement. Remove its `replacement` value to keep that section unchanged. Existing config files are not overwritten.
+Changes apply to the outgoing request only. Tool declarations, tool access, skill files, and stored session history remain unchanged. Conversation messages are not scanned or changed, including tagged user messages. The separate `[tools]` table is reserved and must remain empty; it does not control the system `<tools>` text. The default enables only the tools text replacement. Remove its `replacement` value to keep that section unchanged. Existing config files are not overwritten.
 
-Context format rules stay inside the extension: system sections are tagged, the preamble is text before the first section, and message tags identify content inside user messages. Configuration contains replacement tables only; it does not declare `kind` or `role`. Older configurations with those fields are rejected without changes. See [docs/MECHANISMS.md](docs/MECHANISMS.md) for the replacement contract and conversion steps.
+System sections, including `<preamble>` and `<prime>`, use direct `system_prompt.<tag>` replacement tables. Untagged opening text and Pi’s untagged structured preamble also use `system_prompt.preamble`. Configuration does not declare `kind` or `role`. Older `system_prompt.sections` and `message` configurations are rejected without changes. See [docs/MECHANISMS.md](docs/MECHANISMS.md) for the replacement contract and conversion steps.
 
 ## Development
 
