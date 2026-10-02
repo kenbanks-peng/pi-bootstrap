@@ -4,22 +4,13 @@ kind = "tagged_sections"
 [system_prompt.preamble]
 
 [system_prompt.sections.tools]
-replacement = """
-Use codemode to call tools. Use read to inspect files and edit to change files.
-Use write to create files. Use bash to run shell commands.
-"""
+replacement = "TOOLS REPLACEMENT TEXT"
 
 [system_prompt.sections.rules]
 
 [system_prompt.sections.docs]
 
 [system_prompt.sections.skills]
-replacement = """
-Use a skill when its description matches the task.
-Read its SKILL.md file before you follow its instructions.
-Resolve relative paths against the directory that contains SKILL.md.
-If the skill file is not available, report this and proceed without it.
-"""
 
 [system_prompt.sections.cwd]
 
