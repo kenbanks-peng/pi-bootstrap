@@ -1,363 +1,232 @@
 import assert from "node:assert/strict";
 import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { parse } from "smol-toml";
-import type { ExtensionAPI, BeforeAgentStartEvent } from "@earendil-works/pi-coding-agent";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { registerBootstrap } from "../index.ts";
 import { Lookup, type Table } from "../src/lookup.ts";
-import { Mechanisms } from "../src/prompt.ts";
+import { Mechanisms, taggedRegions, type TranscriptMessage } from "../src/prompt.ts";
 
 const defaults = await readFile(new URL("../default.toml", import.meta.url), "utf8");
 const config = () => parse(defaults) as Table;
-const simple = (patch: Table = {}) => ({
-  kind: "value", event: "before_agent_start", source: ["options", "newText"],
-  path: ["custom", "newText"], target: ["options", "newText"], value_type: "string", ...patch,
-});
+const replacement = (path: string[], text: unknown) =>
+  "\n[" + path.map(p => JSON.stringify(p)).join(".") + "]\nreplacement = " + JSON.stringify(text) + "\n";
 async function fixture(text?: string) {
-  const dir = await mkdtemp(join(tmpdir(), "pi-mechanisms-"));
+  const dir = await mkdtemp(join(tmpdir(), "pi-context-"));
   const path = join(dir, "config.toml");
   if (text !== undefined) await writeFile(path, text);
-  const handlers = new Map<string, (event: any, ctx: any) => Promise<any>>();
+  const handlers = new Map<string, Function>();
   let command: any;
-  const notifications: { text: string; level: string }[] = [];
-  const statuses: (string | undefined)[] = [];
-  let report = "";
+  const notifications: string[] = [];
   const ctx = { hasUI: true, ui: {
-    notify: (text: string, level: string) => notifications.push({ text, level }),
-    setStatus: (_key: string, value: string | undefined) => statuses.push(value),
-    select: async (text: string) => { report = text; },
+    notify: (text: string) => notifications.push(text),
+    setStatus: () => {},
+    select: async (text: string) => text,
   } };
   registerBootstrap({
-    on: (name: string, handler: any) => handlers.set(name, handler),
+    on: (name: string, handler: Function) => handlers.set(name, handler),
     registerCommand: (_name: string, value: any) => { command = value; },
-    getAllTools: () => [],
   } as unknown as ExtensionAPI, path);
-  const options = () => ({
-    selectedTools: [], toolSnippets: {}, toolGuidelines: {}, promptGuidelines: [],
-    sections: {}, appendSystemPrompt: "", cwd: "/project", contextFiles: [], skills: [],
-  });
   return {
-    path, notifications, statuses, ctx,
-    submit: (prompt: string, extra = {}) => {
-      const event = { type: "before_agent_start", prompt: "Hello", systemPrompt: prompt, systemPromptOptions: { ...options(), ...extra } } as BeforeAgentStartEvent;
-      return handlers.get("before_agent_start")!(event, ctx).then(() => event);
+    path, notifications,
+    request: async <T extends TranscriptMessage>(messages: T[]): Promise<T[]> =>
+      (await handlers.get("context_with_system")!({ messages }, ctx)).messages,
+    show: async () => {
+      let report = "";
+      ctx.ui.select = async (text: string) => { report = text; return text; };
+      await command.handler("", ctx);
+      return report;
     },
-    transcript: (messages: object[]) => handlers.get("context_with_system")!({ messages }, ctx),
-    show: async () => { await command.handler("", ctx); return report; },
     cleanup: () => rm(dir, { recursive: true, force: true }),
   };
 }
+const baseline = await readFile(new URL("../docs/pi-baseline.md", import.meta.url), "utf8");
+const prompt = /<system-prompt>\n\n([\s\S]*?)\n\n<\/system-prompt>/.exec(baseline)![1];
+const prime = /<prime_session version="1">[\s\S]*?<\/prime_session>/.exec(baseline)![0];
 
-test("default TOML names all shipped selectors, targets, and precedence", async () => {
-  const f = await fixture();
-  try {
-    await f.submit("Preamble\n\n<rules>\nRules\n</rules>");
-    const data = parse(await readFile(f.path, "utf8")) as any;
-    assert.equal(data.version, 1);
-    assert.deepEqual(data.mechanisms.rules_section.source, ["prompt"]);
-    assert.equal(data.mechanisms.rules_section.start, "<rules>\n");
-    assert.deepEqual(data.mechanisms.rules_section.target, ["options", "sections", "rules"]);
-    assert.equal(Object.keys(data.mechanisms).length, 11);
-    assert.ok(data.message3.rules);
-    assert.deepEqual(f.statuses, [undefined]);
-  } finally { await f.cleanup(); }
+test("default config has three context mechanisms with no numbered-message dependency", () => {
+  const data = config();
+  assert.equal(data.version, 2);
+  assert.equal(Object.keys(data.mechanisms as object).length, 3);
+  assert.ok(!defaults.includes("message3"));
+  assert.ok(!defaults.includes("fallback_source"));
 });
-
-test("unknown tagged section is highlighted, preserved, and not added as a replacement", async () => {
-  const f = await fixture();
-  try {
-    const prompt = "Preamble\n\n<rules>\nRules\n</rules>\n\n<policy>\nNew safety text.\n</policy>";
-    const event = await f.submit(prompt);
-    assert.deepEqual(event.systemPromptOptions.sections, {});
-    assert.ok(f.notifications.some(n => n.level === "warning" && n.text.includes("policy") && n.text.includes("New safety text.")));
-    assert.ok(f.statuses.at(-1)?.includes("unidentified"));
-    const data = parse(await readFile(f.path, "utf8")) as any;
-    assert.equal(data.message3.policy, undefined);
-    const report = await f.show();
-    assert.ok(report.includes("<policy>\nNew safety text.\n</policy>"));
-    assert.ok(report.includes(f.path));
-    const messages = [{ role: "system", content: "", sections: { policy: "<policy>\nNew safety text.\n</policy>" } }];
-    const result = await f.transcript(messages);
-    assert.equal(result.messages[0], messages[0]);
-    assert.ok((await f.show()).includes("messages.0.sections.policy"));
-  } finally { await f.cleanup(); }
-});
-
-test("adding a mechanism in TOML identifies a new section and applies its replacement on next submission", async () => {
-  const f = await fixture();
-  try {
-    const prompt = "Preamble\n\n<policy>\nNew safety text.\n</policy>";
-    await f.submit(prompt);
-    const current = await readFile(f.path, "utf8");
-    const mechanism = `
-[mechanisms.policy]
-kind = "delimited"
-event = "before_agent_start"
-source = ["prompt"]
-start = "<policy>\\n"
-end = "\\n</policy>"
-path = ["startup", "policy"]
-target = ["options", "sections", "policy"]
-value_type = "string"
-
-[startup.policy]
-replacement = "Short policy."
-`;
-    await writeFile(f.path, current + mechanism);
-    const next = await f.submit(prompt);
-    assert.equal(next.systemPromptOptions.sections.policy, "Short policy.");
-    assert.equal(f.statuses.at(-1), undefined);
-    assert.ok((await f.show()).includes("UNIDENTIFIED — unchanged; add mechanisms to config.toml:\n(none)"));
-    const result = await f.transcript([{ role: "system", sections: { policy: "<policy>\nShort policy.\n</policy>", preamble: "Preamble" } }]);
-    assert.equal(result.messages[0].sections.policy, "<policy>\nShort policy.\n</policy>");
-    assert.equal(f.statuses.at(-1), undefined);
-  } finally { await f.cleanup(); }
-});
-
-test("changing or removing a selector has effect without code changes or hidden fallback", () => {
-  const data = config() as any;
-  delete data.mechanisms.rules_section;
-  const engine = new Mechanisms(data);
-  const sources = engine.discover("before_agent_start", { prompt: "Preamble\n\n<rules>\nRules\n</rules>", options: { toolSnippets: {}, toolGuidelines: {}, promptGuidelines: [], skills: [] }, tools: [] });
-  assert.ok(!sources.some(s => s.path.join(".") === "message3.rules"));
-  assert.ok(engine.unidentified.some(u => u.location === "prompt section rules"));
-
-  const custom = new Mechanisms({ version: 1, mechanisms: { renamed: simple({
-    kind: "delimited", source: ["prompt"], start: "BEGIN\n", end: "\nEND",
-    path: ["arbitrary", "snippet"], target: ["options", "newText"],
-  }) } });
-  assert.deepEqual(custom.discover("before_agent_start", { prompt: "BEGIN\nCaptured\nEND" }),
-    [{ path: ["arbitrary", "snippet"], original: "Captured" }]);
-  assert.deepEqual(custom.unidentified, []);
-});
-
-test("maps and record fields are selected by user parameters, not tool or skill names", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "pi-custom-map-"));
-  try {
-    const options: { snippets: Record<string, string>; items: { id: string; text: string }[] } = { snippets: { "new.tool/name": "Long snippet" }, items: [{ id: "record", text: "Long record" }] };
-    const data = { version: 1, mechanisms: {
-      snippets: simple({ kind: "map", source: ["options", "snippets"], path: ["custom", "{key}"], target: ["options", "snippets", "{key}"] }),
-      records: simple({ kind: "records", source: ["options", "items"], key_field: "id", value_field: "text",
-        path: ["records", "{key}"], target: ["options", "items", "{index}", "text"] }),
-    } };
-    const engine = new Mechanisms(data);
-    const sources = engine.discover("before_agent_start", { options });
-    assert.deepEqual(sources.map(s => s.path), [["custom", "new.tool/name"], ["records", "record"]]);
-    const lookup = new Lookup(join(dir, "config.toml"));
-    await writeFile(lookup.path, '[custom."new.tool/name"]\nreplacement = "Short snippet"\n[records.record]\nreplacement = "Short record"\n');
-    await lookup.refresh(sources);
-    engine.applyOptions(options, lookup);
-    assert.deepEqual(options, { snippets: { "new.tool/name": "Short snippet" }, items: [{ id: "record", text: "Short record" }] });
-    Object.assign(options.snippets, { next: "New snippet" });
-    assert.ok(engine.discover("before_agent_start", { options }).some(s => s.path.at(-1) === "next"));
-  } finally { await rm(dir, { recursive: true, force: true }); }
-});
-
-test("fallback metadata and map overrides are controlled by TOML", () => {
+test("baseline discovery follows top-level tags and finds prime by envelope", () => {
   const engine = new Mechanisms(config());
-  const sources = engine.discover("before_agent_start", {
-    options: { toolSnippets: { read: "Override" }, toolGuidelines: {}, promptGuidelines: [], skills: [] },
-    tools: [{ name: "read", description: "Original", promptGuidelines: ["Guide"] }, { name: "new.tool", description: "New" }],
-  });
-  assert.equal(sources.find(s => s.path.includes("read") && s.path.at(-1) === "snippet")?.original, "Override");
-  assert.deepEqual(sources.find(s => s.path.includes("new.tool") && s.path.at(-1) === "guidelines")?.original, []);
+  const sources = engine.discover([
+    { role: "system", content: prompt },
+    { role: "user", content: "hi" },
+    { role: "user", content: prime },
+    { role: "user", content: 'context-mode active.\n<session_state source="compaction">\n<session_mode>implement</session_mode>\n</session_state>' },
+  ]);
+  assert.deepEqual(sources.map(s => s.path.join(".")), [
+    "system_prompt.preamble", "system_prompt.sections.tools", "system_prompt.sections.rules",
+    "system_prompt.sections.docs", "system_prompt.sections.skills", "system_prompt.sections.cwd",
+    "bootstrap.prime_session",
+  ]);
+  assert.deepEqual(engine.unidentified, []);
+  assert.ok(sources.find(s => s.path.at(-1) === "skills")!.original.includes("<available_skills>"));
+  assert.ok(sources.find(s => s.path.at(-1) === "prime_session")!.original.includes("<memory>"));
 });
-
-test("wildcard value selectors identify new transcript sections without fixed message indexes", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "pi-transcript-map-"));
+test("baseline replacements keep tag wrappers, tools, ordinary messages, and originals", async () => {
+  const f = await fixture(defaults +
+    replacement(["system_prompt", "preamble"], "Short identity.") +
+    replacement(["system_prompt", "sections", "docs"], "Short docs.") +
+    replacement(["bootstrap", "prime_session"], "Short preferences."));
   try {
-    const engine = new Mechanisms({ version: 1, mechanisms: { dynamic: simple({
-      event: "context_with_system", source: ["messages", "*", "sections", "policy"],
-      path: ["policies", "{index}"], target: ["messages", "{index}", "sections", "policy"],
-    }) } });
+    const tools = [{ name: "codemode", description: "Actual tool declaration", parameters: {} }];
     const messages = [
-      { role: "user", sections: { policy: "User policy" } },
-      { role: "system", sections: { policy: "System policy" } },
+      { role: "system", content: prompt, toolsAdded: tools },
+      { role: "user", content: prime },
+      { role: "user", content: "hi" },
+      { role: "user", content: "context-mode active." },
     ];
-    const sources = engine.discover("context_with_system", { messages });
-    assert.deepEqual(sources, [{ path: ["policies", "1"], original: "System policy" }]);
-    const lookup = new Lookup(join(dir, "config.toml"));
-    await writeFile(lookup.path, '[policies."1"]\nreplacement = "Short policy"\n');
-    await lookup.refresh(sources);
-    const result = engine.applyTranscript(messages, lookup);
-    assert.equal(result[0], messages[0]);
-    assert.equal(result[1].sections.policy, "Short policy");
-    assert.equal(messages[1].sections.policy, "System policy");
-    assert.deepEqual(engine.unidentified, []);
-  } finally { await rm(dir, { recursive: true, force: true }); }
-});
-
-test("unknown system content and untagged prompt remainder are reported", () => {
-  const engine = new Mechanisms({ version: 1, mechanisms: { prefix: simple({
-    kind: "prefix", source: ["prompt"], boundary: "STOP",
-  }) } });
-  engine.discover("before_agent_start", { prompt: "Known opening\nSTOP\nNew text" });
-  assert.ok(engine.unidentified.some(u => u.text.includes("New text")));
-  engine.discover("context_with_system", { messages: [
-    { role: "user", content: "Prime unchanged" },
-    { role: "system", content: "Unidentified system text" },
-  ] });
-  assert.ok(engine.unidentified.some(u => u.location === "messages.1.content"));
-  assert.ok(!engine.unidentified.some(u => u.text.includes("Prime")));
-});
-
-test("nested tags are reported as one unknown outer section, not individual skills", () => {
-  const engine = new Mechanisms({ version: 1, mechanisms: {} });
-  engine.discover("before_agent_start", { prompt: "<new>\n<inner>\nText\n</inner>\n</new>" });
-  assert.deepEqual(engine.unidentified, [{ location: "prompt section new", text: "<new>\n<inner>\nText\n</inner>\n</new>" }]);
-});
-
-test("invalid mechanisms fail before any file discovery or input change", async () => {
-  const invalid = defaults.replace('kind = "prefix"', 'kind = "unknown"');
-  const f = await fixture(invalid);
-  try {
-    const e = await f.submit("Preamble\n<rules>\nRules\n</rules>");
-    assert.deepEqual(e.systemPromptOptions.sections, {});
-    assert.equal(await readFile(f.path, "utf8"), invalid);
-    assert.ok(f.notifications[0].text.includes("unknown kind"));
-    assert.equal(f.notifications[0].level, "warning");
+    const snapshot = structuredClone(messages);
+    const result = await f.request(messages);
+    assert.ok((result[0].content as string).startsWith("Short identity.\n\n<tools>"));
+    assert.ok((result[0].content as string).includes("<docs>\nShort docs.\n</docs>"));
+    assert.equal(result[1].content, '<prime_session version="1">\nShort preferences.\n</prime_session>');
+    assert.equal(result[0].toolsAdded, tools);
+    assert.equal(result[2], messages[2]);
+    assert.equal(result[3], messages[3]);
+    assert.deepEqual(messages, snapshot);
+    const report = await f.show();
+    assert.ok(report.includes("bytes"));
+    assert.ok(report.includes("Context hook:"));
   } finally { await f.cleanup(); }
 });
-
-test("missing mechanism configuration is rejected instead of silently using fixed defaults", async () => {
-  const text = '[message3.rules]\nreplacement = "Legacy text"\n';
-  const f = await fixture(text);
+test("real Pi structured sections and deltas use the same keys as flat tagged text", async () => {
+  const host = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
+  const { buildSystemPromptSections } = await import(pathToFileURL(join(dirname(host), "core/system-prompt.js")).href);
+  const sections = buildSystemPromptSections({ cwd: "/project", selectedTools: [] });
+  const f = await fixture(defaults +
+    replacement(["system_prompt", "preamble"], "Short preamble.") +
+    replacement(["system_prompt", "sections", "rules"], "Short rules."));
   try {
-    const e = await f.submit("<rules>\nRules\n</rules>");
-    assert.deepEqual(e.systemPromptOptions.sections, {});
-    assert.equal(await readFile(f.path, "utf8"), text);
-    assert.ok(f.notifications[0].text.includes("define [mechanisms]"));
+    const messages = [
+      { role: "system", content: "", sections },
+      { role: "system", content: "", sections: { rules: "<rules>\nUpdated rules.\n</rules>", docs: null } },
+    ];
+    const result = await f.request(messages);
+    assert.equal(result[0].sections!.preamble, "Short preamble.");
+    assert.equal(result[0].sections!.rules, "<rules>\nShort rules.\n</rules>");
+    assert.equal(result[1].sections!.rules, "<rules>\nShort rules.\n</rules>");
+    assert.equal(result[1].sections!.docs, null);
+    assert.equal(sections.preamble.startsWith("You are"), true);
   } finally { await f.cleanup(); }
 });
-
-test("bad mechanism parameters, unsafe paths, duplicate sources, and wrong value types fail closed", () => {
-  for (const patch of [
-    { kind: "not-a-kind" }, { phase: "bad" }, { value_type: "bad" }, { source: ["bad"] },
-    { target: ["messages", "*", "toolsAdded"] }, { target: ["options", "__proto__", "x"] },
-    { typo: "x" }, { kind: "prefix", boundary: "[" }, { path: ["mechanisms", "bad"] },
-  ]) assert.throws(() => new Mechanisms({ version: 1, mechanisms: { bad: simple(patch) } }));
-  assert.throws(() => new Mechanisms({ version: 1, mechanisms: { bad: simple() }, custom: { newText: { replacement: [] } } }), /wrong type/);
-  assert.throws(() => new Mechanisms({ version: 1, mechanisms: { one: simple(), two: simple() } })
-    .discover("before_agent_start", { options: { newText: "Text" } }), /Multiple mechanisms/);
-  assert.throws(() => new Mechanisms({ version: 1, mechanisms: { one: simple() } })
-    .discover("before_agent_start", { options: { newText: ["Text"] } }), /wrong type/);
-});
-
-test("configured transcript replacements are validated before structured replacements", async () => {
-  const f = await fixture(defaults + '\n[message3.rules]\nreplacement = "Short rules"\n[system_prompt]\nreplacement = []\n');
-  try {
-    const e = await f.submit("Preamble\n<rules>\nRules\n</rules>");
-    assert.deepEqual(e.systemPromptOptions.sections, {});
-    assert.ok(f.notifications[0].text.includes("wrong type"));
-  } finally { await f.cleanup(); }
-});
-
-test("a configured transcript section selector does not produce a false unknown prompt warning", async () => {
-  const f = await fixture(defaults + `
-[mechanisms.policy]
-kind = "value"
-event = "context_with_system"
-source = ["messages", "*", "sections", "policy"]
-path = ["policy"]
-target = ["messages", "*", "sections", "policy"]
-value_type = "string"
-
-[policy]
-replacement = "Short policy"
-`);
-  try {
-    await f.submit("Opening\n<policy>\nPolicy\n</policy>");
-    assert.ok(!f.notifications.some(n => n.level === "warning"));
-    const result = await f.transcript([
-      { role: "system", sections: { preamble: "Opening", policy: "<policy>\nPolicy\n</policy>" } },
-      { role: "system", sections: { policy: "<policy>\nUpdated policy\n</policy>" } },
-    ]);
-    assert.equal(result.messages[0].sections.policy, "Short policy");
-    assert.equal(result.messages[1].sections.policy, "Short policy");
-    assert.equal(f.statuses.at(-1), undefined);
-    assert.ok((await f.show()).includes("UNIDENTIFIED — unchanged; add mechanisms to config.toml:\n(none)"));
-  } finally { await f.cleanup(); }
-});
-
-test("repeated transcript scans refresh unknown entries instead of accumulating them", () => {
-  const engine = new Mechanisms({ version: 1, mechanisms: {} });
-  const inputs = { messages: [{ role: "system", content: "  Unknown  " }] };
-  engine.discover("context_with_system", inputs);
-  engine.discover("context_with_system", inputs);
-  assert.equal(engine.unidentified.length, 1);
-  engine.discover("context_with_system", { messages: [] });
-  assert.equal(engine.unidentified.length, 0);
-});
-
-test("a new map of section fields identifies its prompt blocks through TOML selectors", () => {
-  const engine = new Mechanisms({ version: 1, mechanisms: { sections: simple({
-    kind: "map", source: ["options", "sections"], path: ["custom", "{key}"],
-    target: ["options", "sections", "{key}"],
-  }) } });
-  engine.discover("before_agent_start", { prompt: "<new>\nNew text\n</new>", options: { sections: { new: "New text" } } });
-  assert.deepEqual(engine.unidentified, []);
-  engine.discover("context_with_system", { messages: [{ role: "system", sections: { new: "<new>\nNew text\n</new>" } }] });
-  assert.deepEqual(engine.unidentified, []);
-});
-
-test("precedence is defined in TOML and can be removed without a code change", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "pi-precedence-"));
-  try {
-    const lookup = new Lookup(join(dir, "config.toml"));
-    await writeFile(lookup.path, '[whole]\nreplacement = "Whole text"\n[part]\nreplacement = "Part text"\n');
-    for (const blocked of [true, false]) {
-      const options = { whole: "Original whole", part: "Original part" };
-      const engine = new Mechanisms({ version: 1, mechanisms: {
-        whole: simple({ source: ["options", "whole"], path: ["whole"], target: ["options", "whole"] }),
-        part: simple({ source: ["options", "part"], path: ["part"], target: ["options", "part"],
-          blocked_by: blocked ? [["whole"]] : [] }),
-      } });
-      await lookup.refresh(engine.discover("before_agent_start", { options }));
-      engine.applyOptions(options, lookup);
-      assert.equal(options.whole, "Whole text");
-      assert.equal(options.part, blocked ? "Original part" : "Part text");
-    }
-  } finally { await rm(dir, { recursive: true, force: true }); }
-});
-
-test("conflicting active targets fail before changing live options", async () => {
-  const dir = await mkdtemp(join(tmpdir(), "pi-conflict-"));
-  try {
-    const options = { first: "First", second: "Second" };
-    const engine = new Mechanisms({ version: 1, mechanisms: {
-      one: simple({ source: ["options", "first"], path: ["first"], target: ["options", "first"] }),
-      two: simple({ source: ["options", "second"], path: ["second"], target: ["options", "first"] }),
-    } });
-    const lookup = new Lookup(join(dir, "config.toml"));
-    await writeFile(lookup.path, '[first]\nreplacement = "One"\n[second]\nreplacement = "Two"\n');
-    await lookup.refresh(engine.discover("before_agent_start", { options }));
-    assert.throws(() => engine.applyOptions(options, lookup), /Conflicting/);
-    assert.deepEqual(options, { first: "First", second: "Second" });
-  } finally { await rm(dir, { recursive: true, force: true }); }
-});
-
-test("UI reports escape terminal controls in unidentified text", async () => {
+test("new system tags are discovered automatically, including project context and addenda", async () => {
   const f = await fixture();
   try {
-    await f.submit("Opening\n<new>\nEscape \u001b[31m text\n</new>");
-    const warning = f.notifications.find(n => n.level === "warning")!.text;
-    assert.ok(warning.includes("\\u001b"));
-    assert.ok(!warning.includes("\u001b"));
-    assert.ok((await f.show()).includes("\\u001b"));
+    const text = 'Preamble\r\n\r\n<project_context>\r\n<project_instructions path="/repo/AGENTS.md">\r\nInstructions\r\n</project_instructions>\r\n</project_context>\r\n\r\n<addendum>\r\nExtra\r\n</addendum>';
+    const messages = [{ role: "system", content: text }];
+    assert.equal(await f.request(messages), messages);
+    const data = parse(await readFile(f.path, "utf8")) as any;
+    assert.ok(data.system_prompt.sections.project_context);
+    assert.ok(data.system_prompt.sections.addendum);
+    assert.ok(!data.system_prompt.sections.project_instructions);
+    assert.ok((await f.show()).includes("(none)"));
+    await writeFile(f.path, defaults + replacement(["system_prompt", "sections", "addendum"], "New"));
+    const result = await f.request(messages);
+    assert.ok(result[0].content.includes("<addendum>\r\nNew\r\n</addendum>"));
+    assert.ok(result[0].content.includes('<project_instructions path="/repo/AGENTS.md">'));
   } finally { await f.cleanup(); }
 });
-
-test("no UI and duplicate warning reports do not block submissions", async () => {
+test("tag parser respects nesting, attributes, code fences, and closing-tag errors", () => {
+  const text = '<skills>\n<available_skills>\n<skill>\n<name>x</name>\n</skill>\n</available_skills>\n```xml\n</skills>\n<fake>\n```\n</skills>';
+  const regions = taggedRegions(text);
+  assert.deepEqual(regions.map(r => r.tag), ["skills"]);
+  assert.equal(text.slice(regions[0].start, regions[0].end), text);
+  for (const broken of ["<rules>\nText", "<rules>\n</docs>", "</rules>"])
+    assert.throws(() => taggedRegions(broken), /context tag/);
+});
+test("ordinary tag examples, other roles, and additional text are never selected as prime", async () => {
+  const f = await fixture(defaults + replacement(["bootstrap", "prime_session"], "New"));
+  try {
+    const messages = [
+      { role: "system", content: "" },
+      { role: "user", content: "Example:\n" + prime },
+      { role: "assistant", content: prime },
+      { role: "user", content: prime + "\nThis is my task." },
+      { role: "user", content: "<prime_session>inline</prime_session>" },
+      { role: "user", content: "```xml\n" + prime + "\n```" },
+    ];
+    assert.equal(await f.request(messages), messages);
+  } finally { await f.cleanup(); }
+});
+test("prime text blocks can be rewritten without changing image blocks", async () => {
+  const f = await fixture(defaults + replacement(["bootstrap", "prime_session"], "New"));
+  try {
+    const image = { type: "image", data: "abc", mimeType: "image/png" };
+    const text = { type: "text", text: prime };
+    const messages = [{ role: "system", content: "" }, { role: "user", content: [image, text] }];
+    const result = await f.request(messages);
+    const content = result[1].content as typeof messages[1]["content"];
+    assert.equal(content![0], image);
+    assert.equal((content![1] as typeof text).text, '<prime_session version="1">\nNew\n</prime_session>');
+    assert.equal(text.text, prime);
+  } finally { await f.cleanup(); }
+});
+test("config reloads each request and repeated processing does not add duplicate tables or wrappers", async () => {
   const f = await fixture();
   try {
-    const prompt = "Preamble\n<new>\nUnknown\n</new>";
-    await f.submit(prompt);
-    await f.submit(prompt);
+    const messages = [{ role: "system", content: "Preamble\n\n<docs>\nOld docs\n</docs>" }];
+    assert.equal(await f.request(messages), messages);
+    const discovered = await readFile(f.path, "utf8");
+    await f.request(messages);
+    assert.equal(await readFile(f.path, "utf8"), discovered);
     assert.equal(f.notifications.length, 1);
-    f.ctx.hasUI = false;
-    await f.submit(prompt + "changed");
-    assert.equal(f.notifications.length, 1);
+    await writeFile(f.path, defaults + replacement(["system_prompt", "sections", "docs"], "New docs"));
+    const result = await f.request(messages);
+    assert.ok(result[0].content.includes("<docs>\nNew docs\n</docs>"));
+    assert.deepEqual(await f.request(result), result);
+    await writeFile(f.path, defaults);
+    assert.equal(await f.request(messages), messages);
   } finally { await f.cleanup(); }
+});
+test("invalid configuration or malformed context leaves the full request unchanged", async () => {
+  for (const configText of ["[broken", 'version = 1\n[mechanisms]\n', defaults + replacement(["system_prompt", "preamble"], ["Wrong type"])]) {
+    const f = await fixture(configText);
+    try {
+      const messages = [{ role: "system", content: "Preamble" }];
+      assert.equal(await f.request(messages), messages);
+      assert.ok((await f.show()).includes("Error:"));
+    } finally { await f.cleanup(); }
+  }
+  const f = await fixture(defaults + replacement(["system_prompt", "preamble"], "New"));
+  try {
+    const messages = [{ role: "system", content: "Preamble\n<rules>\nBroken" }];
+    assert.equal(await f.request(messages), messages);
+    assert.ok((await f.show()).includes("Unclosed context tag"));
+  } finally { await f.cleanup(); }
+});
+test("disabled mechanisms leave context unchanged and report unselected system text", async () => {
+  const f = await fixture('version = 2\n[mechanisms]\n');
+  try {
+    const messages = [{ role: "system", content: "Preamble\n<rules>\nRules\n</rules>\nTrailing text" }];
+    assert.equal(await f.request(messages), messages);
+    assert.ok((await f.show()).includes("Trailing text"));
+    const data = parse(await readFile(f.path, "utf8")) as any;
+    assert.equal(data.system_prompt, undefined);
+  } finally { await f.cleanup(); }
+});
+test("mechanisms reject obsolete parameters, duplicate selectors, and unsafe tags", () => {
+  const invalid = [
+    { version: 1, mechanisms: {} },
+    { version: 2, mechanisms: { x: { kind: "map" } } },
+    { version: 2, mechanisms: { x: { kind: "preamble", source: ["prompt"] } } },
+    { version: 2, mechanisms: { x: { kind: "preamble" }, y: { kind: "preamble" } } },
+    { version: 2, mechanisms: { x: { kind: "tagged_message", role: "assistant", tag: "prime_session" } } },
+    { version: 2, mechanisms: { x: { kind: "tagged_message", role: "user", tag: "constructor" } } },
+  ];
+  for (const data of invalid) assert.throws(() => new Mechanisms(data));
+  assert.throws(() => new Mechanisms(config()).discover([{ role: "system", content: "<constructor>\ntext\n</constructor>" }]), /Unsafe/);
+});
+test("unwrapped structured text is reported and retained, not treated as an identity", () => {
+  const engine = new Mechanisms(config());
+  assert.deepEqual(engine.discover([{ role: "system", sections: { custom: "Opaque text" } }]), []);
+  assert.ok(engine.unidentified.some(u => u.text === "Opaque text"));
 });

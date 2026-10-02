@@ -1,121 +1,22 @@
-# Named discovery and replacement mechanisms. See docs/MECHANISMS.md.
-# This file is copied only when the user config does not exist.
-# No source selectors or replacement paths are supplied by hidden defaults.
-version = 1
+# Process the live Pi transcript, not the logger's numbered messages.
+# See docs/MECHANISMS.md. No replacements are enabled by default.
+version = 2
 
 [mechanisms.preamble]
-kind = "prefix"
-event = "before_agent_start"
-source = ["prompt"]
-boundary = '^<[a-z][a-z0-9_-]*>\r?$'
-path = ["message3", "preamble"]
-target = ["messages", "*", "sections", "preamble"]
-value_type = "string"
+kind = "preamble"
 
-[mechanisms.tools_section]
-kind = "delimited"
-event = "before_agent_start"
-source = ["prompt"]
-start = "<tools>\n"
-end = "\n</tools>"
-path = ["message3", "tools"]
-target = ["options", "sections", "tools"]
-value_type = "string"
+[mechanisms.system_sections]
+kind = "tagged_sections"
 
-[mechanisms.rules_section]
-kind = "delimited"
-event = "before_agent_start"
-source = ["prompt"]
-start = "<rules>\n"
-end = "\n</rules>"
-path = ["message3", "rules"]
-target = ["options", "sections", "rules"]
-value_type = "string"
+[mechanisms.prime]
+kind = "tagged_message"
+role = "user"
+tag = "prime_session"
 
-[mechanisms.docs_section]
-kind = "delimited"
-event = "before_agent_start"
-source = ["prompt"]
-start = "<docs>\n"
-end = "\n</docs>"
-path = ["message3", "docs"]
-target = ["options", "sections", "docs"]
-value_type = "string"
-
-[mechanisms.skills_section]
-kind = "delimited"
-event = "before_agent_start"
-source = ["prompt"]
-start = "<skills>\n"
-end = "\n</skills>"
-path = ["message3", "skills"]
-target = ["options", "sections", "skills"]
-value_type = "string"
-
-[mechanisms.cwd_section]
-kind = "delimited"
-event = "before_agent_start"
-source = ["prompt"]
-start = "<cwd>\n"
-end = "\n</cwd>"
-path = ["message3", "cwd"]
-target = ["options", "sections", "cwd"]
-value_type = "string"
-
-[mechanisms.tool_snippets]
-kind = "map"
-event = "before_agent_start"
-source = ["options", "toolSnippets"]
-fallback_source = ["tools"]
-fallback_key = "name"
-fallback_value = "description"
-path = ["message3", "tools", "entries", "{key}", "snippet"]
-target = ["options", "toolSnippets", "{key}"]
-value_type = "string"
-blocked_by = [["message3", "tools"]]
-
-[mechanisms.tool_guidelines]
-kind = "map"
-event = "before_agent_start"
-source = ["options", "toolGuidelines"]
-fallback_source = ["tools"]
-fallback_key = "name"
-fallback_value = "promptGuidelines"
-fallback_default = []
-path = ["message3", "tools", "entries", "{key}", "guidelines"]
-target = ["options", "toolGuidelines", "{key}"]
-value_type = "strings"
-blocked_by = [["message3", "tools"], ["message3", "rules"]]
-
-[mechanisms.prompt_guidelines]
-kind = "value"
-event = "before_agent_start"
-source = ["options", "promptGuidelines"]
-path = ["message3", "rules", "prompt_guidelines"]
-target = ["options", "promptGuidelines"]
-value_type = "strings"
-blocked_by = [["message3", "rules"]]
-
-[mechanisms.skill_descriptions]
-kind = "records"
-event = "before_agent_start"
-source = ["options", "skills"]
-key_field = "name"
-value_field = "description"
-path = ["message3", "skills", "entries", "{key}"]
-target = ["options", "skills", "{index}", "description"]
-value_type = "string"
-blocked_by = [["message3", "skills"]]
-
-[mechanisms.identity]
-kind = "value"
-event = "context_with_system"
-source = ["messages", "0", "content"]
-path = ["system_prompt"]
-target = ["messages", "0", "content"]
-value_type = "string"
-
-# Discovery appends empty replacement tables below.
-# Example:
-# [message3.docs]
+# Discovery appends empty tables using stable context names:
+# [system_prompt.preamble]
+# replacement = "You are a coding assistant."
+# [system_prompt.sections.docs]
 # replacement = "Use the installed Pi documentation."
+# [bootstrap.prime_session]
+# replacement = "Keep the session preferences."

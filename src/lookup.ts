@@ -3,8 +3,7 @@ import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { parse } from "smol-toml";
 
-export type Prose = string | string[];
-export interface Source { path: string[]; original: Prose }
+export interface Source { path: string[]; original: string }
 export type Table = Record<string, unknown>;
 
 function tableAt(root: Table, path: string[]): Table | undefined {
@@ -14,9 +13,6 @@ function tableAt(root: Table, path: string[]): Table | undefined {
     value = (value as Table)[key];
   }
   return value && typeof value === "object" && !Array.isArray(value) ? value as Table : undefined;
-}
-export function isProse(value: unknown): value is Prose {
-  return typeof value === "string" || Array.isArray(value) && value.every(v => typeof v === "string");
 }
 const header = (path: string[]) => "[" + path.map(p => JSON.stringify(p)).join(".") + "]";
 
@@ -75,15 +71,10 @@ export class Lookup {
           next = addFields(next, source.path, "", false);
           data = parse(next) as Table;
         } else {
-          if (entry.replacement !== undefined && (!isProse(entry.replacement) ||
-              Array.isArray(entry.replacement) !== Array.isArray(source.original))) {
-            throw new Error(source.path.join(".") + ": replacement has the wrong type");
-          }
-          if (entry.replacement !== undefined &&
-              (typeof entry.replacement === "string" ? !entry.replacement.trim() :
-                !entry.replacement.length || entry.replacement.some(v => !v.trim()))) {
+          if (entry.replacement !== undefined && typeof entry.replacement !== "string")
+            throw new Error(source.path.join(".") + ": replacement must be a string");
+          if (typeof entry.replacement === "string" && !entry.replacement.trim())
             throw new Error(source.path.join(".") + ": empty replacements are not supported");
-          }
         }
       }
       if (next !== snapshot) {
@@ -129,12 +120,8 @@ export class Lookup {
   }
 
   /** Select by stable path only. Source prose is not an identifier. */
-  replacement<T extends Prose = string>(path: string[]): T | undefined {
+  replacement(path: string[]): string | undefined {
     if (!this.valid) return;
-    return tableAt(this.data, path)?.replacement as T | undefined;
-  }
-  /** Mechanisms use this to evaluate their configured precedence paths. */
-  configured(path: string[]): boolean {
-    return this.valid && tableAt(this.data, path)?.replacement !== undefined;
+    return tableAt(this.data, path)?.replacement as string | undefined;
   }
 }
