@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from "node:crypto";
+import { randomUUID } from "node:crypto";
 import { mkdir, open, readFile, rename, unlink } from "node:fs/promises";
 import { dirname } from "node:path";
 import { parse } from "smol-toml";
@@ -6,8 +6,6 @@ import { parse } from "smol-toml";
 export type Prose = string | string[];
 export interface Source { path: string[]; original: Prose }
 type Table = Record<string, unknown>;
-export const hash = (text: Prose): string =>
-  createHash("sha256").update(JSON.stringify(text)).digest("hex");
 
 function tableAt(root: Table, path: string[]): Table | undefined {
   let value: unknown = root;
@@ -21,10 +19,8 @@ function isProse(value: unknown): value is Prose {
   return typeof value === "string" || Array.isArray(value) && value.every(v => typeof v === "string");
 }
 const header = (path: string[]) => "[" + path.map(p => JSON.stringify(p)).join(".") + "]";
-const fields = (original: Prose) =>
-  "original = " + JSON.stringify(original) + "\nsource_hash = " + JSON.stringify(hash(original)) + "\n";
 
-/** Insert only new fields/tables. Existing bytes, including comments, are retained. */
+/** Insert only new tables. Existing bytes, including comments, are retained. */
 export function addFields(text: string, path: string[], body: string, exists: boolean): string {
   if (exists) {
     const marker = "__bootstrap_" + randomUUID().replaceAll("-", "");
@@ -45,17 +41,17 @@ export function addFields(text: string, path: string[], body: string, exists: bo
   return result;
 }
 
-export interface Report { missing: string[]; stale: string[]; error?: string }
+export interface Report { missing: string[]; error?: string }
 export class Lookup {
   private data: Table = {};
-  report: Report = { missing: [], stale: [] };
+  report: Report = { missing: [] };
   valid = false;
   constructor(readonly path: string) {}
 
   /** Read every submission; no watcher and no model calls. */
   async refresh(sources: Source[]): Promise<void> {
     this.valid = false;
-    this.report = { missing: [], stale: [] };
+    this.report = { missing: [] };
     let lock: Awaited<ReturnType<typeof open>> | undefined;
     let temp: string | undefined;
     let lockOwned = false;
@@ -74,30 +70,18 @@ export class Lookup {
       let data = parse(next) as Table;
       for (const source of sources) {
         const entry = tableAt(data, source.path);
-        if (!entry || entry.original === undefined && entry.source_hash === undefined) {
-          next = addFields(next, source.path, fields(source.original) +
-            "# replacement = " + JSON.stringify(source.original) + "\n", !!entry);
+        if (!entry) {
+          next = addFields(next, source.path, "", false);
           data = parse(next) as Table;
         } else {
-          if (!isProse(entry.original) || typeof entry.source_hash !== "string" ||
-              hash(entry.original) !== entry.source_hash) {
-            throw new Error(source.path.join(".") + ": original and source_hash do not match");
-          }
           if (entry.replacement !== undefined && (!isProse(entry.replacement) ||
-              Array.isArray(entry.replacement) !== Array.isArray(source.original))) {
+              Array.isArray(entry.replacement) && !Array.isArray(source.original))) {
             throw new Error(source.path.join(".") + ": replacement has the wrong type");
           }
           if (entry.replacement !== undefined &&
               (typeof entry.replacement === "string" ? !entry.replacement.trim() :
                 !entry.replacement.length || entry.replacement.some(v => !v.trim()))) {
             throw new Error(source.path.join(".") + ": empty replacements are not supported");
-          }
-          if (entry.source_hash !== hash(source.original)) {
-            const observationPath = [...source.path, "sources", hash(source.original)];
-            if (!tableAt(data, observationPath)) {
-              next = addFields(next, observationPath, fields(source.original), false);
-              data = parse(next) as Table;
-            }
           }
         }
       }
@@ -123,8 +107,7 @@ export class Lookup {
       for (const source of sources) {
         const entry = tableAt(data, source.path)!;
         const label = source.path.join(".");
-        if (entry.source_hash !== hash(source.original)) this.report.stale.push(label);
-        else if (entry.replacement === undefined) this.report.missing.push(label);
+        if (entry.replacement === undefined) this.report.missing.push(label);
       }
     } catch (error) {
       this.data = {};
@@ -138,12 +121,12 @@ export class Lookup {
     }
   }
 
-  replacement<T extends Prose>(path: string[], original: T): T | undefined {
+  /** Select by stable path only. Source prose is not an identifier. */
+  replacement<T extends Prose = string>(path: string[]): T | undefined {
     if (!this.valid) return;
-    const entry = tableAt(this.data, path);
-    if (entry?.source_hash === hash(original) && entry.replacement !== undefined) return entry.replacement as T;
+    return tableAt(this.data, path)?.replacement as T | undefined;
   }
-  /** A whole-section setting takes precedence even while it needs review. */
+  /** A whole-section setting takes precedence over granular entries. */
   configured(path: string[]): boolean {
     return this.valid && tableAt(this.data, path)?.replacement !== undefined;
   }

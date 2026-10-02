@@ -39,28 +39,28 @@ export function applyStructured(event: BeforeAgentStartEvent, lookup: Lookup): v
     if (name === "preamble") continue; // customPrompt would disable generated tools/rules/docs.
     const original = sectionText(event.systemPrompt, name);
     if (original === undefined) continue;
-    const replacement = lookup.replacement(sectionPath(name), original);
+    const replacement = lookup.replacement(sectionPath(name));
     if (replacement !== undefined) options.sections[name] = replacement;
   }
   if (!lookup.configured(sectionPath("tools"))) {
-    for (const [name, snippet] of Object.entries(options.toolSnippets)) {
-      const replacement = lookup.replacement(toolPath(name, "snippet"), snippet);
+    for (const name of Object.keys(options.toolSnippets)) {
+      const replacement = lookup.replacement(toolPath(name, "snippet"));
       if (replacement !== undefined) options.toolSnippets[name] = replacement;
     }
   }
   if (!lookup.configured(sectionPath("rules")) && !lookup.configured(sectionPath("tools"))) {
-    for (const [name, rules] of Object.entries(options.toolGuidelines)) {
-      const replacement = lookup.replacement(toolPath(name, "guidelines"), rules);
+    for (const name of Object.keys(options.toolGuidelines)) {
+      const replacement = lookup.replacement<string[]>(toolPath(name, "guidelines"));
       if (replacement !== undefined) options.toolGuidelines[name] = replacement;
     }
   }
   if (!lookup.configured(sectionPath("rules"))) {
-    const replacement = lookup.replacement(["message3", "rules", "prompt_guidelines"], options.promptGuidelines);
+    const replacement = lookup.replacement<string[]>(["message3", "rules", "prompt_guidelines"]);
     if (replacement !== undefined) options.promptGuidelines = replacement;
   }
   if (!lookup.configured(sectionPath("skills"))) {
     options.skills = options.skills.map(skill => ({
-      ...skill, description: lookup.replacement(skillPath(skill.name), skill.description) ?? skill.description,
+      ...skill, description: lookup.replacement(skillPath(skill.name)) ?? skill.description,
     }));
   }
 }
@@ -77,11 +77,11 @@ export function applyTranscript<T extends TranscriptMessage>(messages: T[], look
     if (message.role !== "system") return message;
     let copy = message;
     if (index === 0 && typeof message.content === "string" && message.content) {
-      const replacement = lookup.replacement(["system_prompt"], message.content);
+      const replacement = lookup.replacement(["system_prompt"]);
       if (replacement !== undefined) copy = { ...copy, content: replacement };
     }
     if (message.sections?.preamble != null) {
-      const replacement = lookup.replacement(sectionPath("preamble"), message.sections.preamble);
+      const replacement = lookup.replacement(sectionPath("preamble"));
       if (replacement !== undefined) copy = { ...copy, sections: { ...message.sections, preamble: replacement } };
     }
     return copy;

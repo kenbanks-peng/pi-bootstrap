@@ -28,9 +28,8 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
     if (!ctx.hasUI) return;
     notification = key;
     if (report.error) ctx.ui.notify("pi-bootstrap: " + report.error + ". Generated text is unchanged.", "warning");
-    else if (report.missing.length || report.stale.length)
-      ctx.ui.notify("pi-bootstrap: " + report.missing.length + " entries have no replacement; " +
-        report.stale.length + " need review. Use /bootstrap.", "info");
+    else if (report.missing.length)
+      ctx.ui.notify("pi-bootstrap: " + report.missing.length + " entries have no replacement. Use /bootstrap.", "info");
   };
   pi.on("before_agent_start", async (event, ctx) => {
     const started = performance.now();
@@ -49,8 +48,7 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
       const leading = event.messages[0];
       // An external application identity is not necessarily present in Pi's transcript.
       if (leading?.role === "system" && typeof leading.content === "string" && leading.content) {
-        sources = [...sources, { path: ["system_prompt"], original: leading.content }];
-        await lookup.refresh(sources);
+        await lookup.refresh([...sources, { path: ["system_prompt"], original: leading.content }]);
         notify(ctx);
       }
     }
@@ -69,14 +67,13 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
     return { messages };
   });
   pi.registerCommand("bootstrap", {
-    description: "Show lookup location, review status, and measured prompt sizes",
+    description: "Show lookup location, replacement status, and measured prompt sizes",
     handler: async (_args, ctx) => {
       const report = lookup.report;
       const status = [
         lookup.path,
         report.error ? "Error: " + report.error : "",
         "No replacement:\n" + (report.missing.join("\n") || "(none)"),
-        "Needs review:\n" + (report.stale.join("\n") || "(none)"),
         metrics,
         "Identity is editable only when present as leading system content.",
       ].filter(Boolean).join("\n\n");

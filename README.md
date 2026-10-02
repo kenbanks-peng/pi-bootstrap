@@ -6,17 +6,22 @@ Use a local TOML lookup to change Pi startup text. No model calls are made.
 
 Add the absolute path to `index.ts` to the `extensions` array in your Pi global settings. Run `/reload`, or start a new session.
 
-On the next submission, the extension creates `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. Use `/bootstrap` to see its location, entries that need review, prompt sizes in bytes, and hook times.
+On the next submission, the extension creates `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. Use `/bootstrap` to see its location, entries without replacements, prompt sizes in bytes, and hook times.
 
 To change text, remove the comment marker from an entry's `replacement` line and edit the value. Save the file. The change applies on the next submission. An absent replacement keeps the generated text. Empty strings and empty replacement arrays are rejected.
 
 Whole-section replacements take precedence over granular entries. Tool snippets, tool guidelines, extra prompt guidelines, and skill descriptions can also be changed separately. Skill files and tool declarations are not changed. A cwd replacement changes only prompt text, not the actual working directory.
 
-## Review source changes
+## Stable replacement keys
 
-The extension retains your reviewed `original`, `source_hash`, and `replacement`. New source text is stored under the entry's `sources."<hash>"` table. A stale entry uses the current generated text, not your old replacement.
+Replacements use section names, tool names, and skill names. They remain active when generated text changes. No hashes or source approval are required.
 
-Compare the new source with the reviewed source. To approve it, copy both `original` and `source_hash` from the new source table to the parent entry, and check your `replacement`. Do not change only the hash.
+```toml
+[message3.docs]
+replacement = "Use the installed Pi documentation."
+```
+
+Only `replacement` is required. Discovery adds empty tables for active paths. It does not add generated prompt text. Existing entries and comments are retained.
 
 Invalid TOML or invalid active entries leave generated text unchanged. Automatic discovery retains existing comments and formatting. Writes use a lock, a temporary file, and a source comparison before commit. An editor does not use the Pi lock: save edits between submissions to avoid the small check-to-rename race. Remove a leftover `config.toml.lock` only after all Pi processes that use this extension have stopped.
 

@@ -2,106 +2,75 @@
 
 ## Goal
 
-Reduce and reword Pi startup context using a user-editable TOML lookup, without LLM calls. Cover the separate system prompt and Message3's sections. Leave Message1 (prime output) and Message2 (additional tools) unchanged.
+Change Pi startup text through a user-editable TOML file, without model calls. Use stable names to select replacements. Do not use source text or hashes as identifiers.
 
-Treat message numbers as labels from `BREAKDOWN.md`, not stable transcript indexes. The generated context changes as Pi, tools, skills, and configuration change.
+Leave prime output, additional tool messages, tool declarations, skill files, and the actual working directory unchanged.
 
-## TOML layout
+## Configuration
 
-Keep replacement text outside extension source code in a standalone TOML file. Its location is to be decided.
+The extension uses `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default.
 
 ```toml
 [system_prompt]
-original = """Current assistant identity text."""
-# replacement = """Your revised identity text."""
-source_hash = "..."
+replacement = "Your assistant identity."
 
 [message3.preamble]
-original = """Current preamble."""
-# replacement = """Your revised preamble."""
-source_hash = "..."
-
-[message3.tools]
-original = """Current tools section."""
-# replacement = """Your revised tools section."""
-source_hash = "..."
-
-[message3.rules]
-original = """Current rules section."""
-# replacement = """Your revised rules section."""
-source_hash = "..."
+replacement = "Your preamble."
 
 [message3.docs]
-original = """Current Pi documentation guidance."""
-# replacement = """Your revised documentation guidance."""
-source_hash = "..."
+replacement = "Use the installed Pi documentation."
 
-[message3.skills]
-# Individual skill description replacements live below.
-
-[message3.skills.entries.archify]
-original = """Current skill description."""
-# replacement = """Your revised skill description."""
-source_hash = "..."
-
-[message3.cwd]
-original = "/actual/session/working/directory"
-# Leave unchanged by default.
-```
-
-Also support granular tool replacements so installing a tool does not require rewriting the whole tools or rules section:
-
-```toml
 [message3.tools.entries.read.snippet]
-original = "Read the contents of a file."
-# replacement = "Read files."
-source_hash = "..."
+replacement = "Read files."
 
 [message3.tools.entries.read.guidelines]
-original = [
-  "Use read to examine files instead of cat or sed."
-]
-# replacement = ["Read files with read, not shell commands."]
-source_hash = "..."
+replacement = ["Use read for files."]
+
+[message3.rules.prompt_guidelines]
+replacement = ["Be brief."]
+
+[message3.skills.entries.archify]
+replacement = "Draw system diagrams."
 ```
 
-- The extension populates original text and hashes; the user supplies replacements.
-- An absent replacement preserves generated content. Empty replacements need explicit validation because Pi ignores empty custom sections rather than suppressing defaults.
-- Prefer granular replacements for dynamic tools and skills. An explicit whole-section replacement takes precedence over granular entries for that section and should be flagged when its source changes.
-- Skill replacements change advertised descriptions, not installed `SKILL.md` files.
-- Working-directory text remains accurate by default; editing it does not change the execution directory.
+- Whole sections use `message3.<section>`: preamble, tools, rules, docs, skills, or cwd.
+- Tools and skills use their registered names, including quoted names when necessary.
+- Only `replacement` is required. Discovery does not add generated prompt text to the file.
+- Replacements stay active when the source text changes. There is no hash approval or source-history table.
+- An absent replacement keeps generated text. Empty strings, empty arrays, blank array items, and wrong replacement types are rejected.
+- Whole-section replacements take precedence over granular entries. The tools section also takes precedence over tool guidelines.
+- A cwd replacement changes only advertised text. It does not change the execution directory.
 
-## Discovery and review workflow
+Message numbers are labels from `BREAKDOWN.md`, not fixed transcript indexes.
 
-1. Inspect the current prompt inputs and tool inventory; do not assume a known installation.
-2. Add newly discovered entries with their original text and no active replacement.
-3. Notify the user in Pi's UI when entries are missing replacements or need review. Deduplicate notifications; do not add model-facing messages for reminders.
-4. Reload the TOML when it changes and apply approved replacements on the next submission.
-5. Detect upstream changes using source hashes. Preserve the user's replacement and its reviewed source; record the changed source separately for comparison. Use current original text until the stale replacement is reviewed.
-6. On invalid TOML, report the problem in the UI and leave generated content unchanged.
+## Discovery and application
 
-Use comment-preserving TOML edits and safe writes for automatic additions. Never overwrite user edits or formatting. Repeated runs with unchanged inventory should not rewrite the file.
+1. Read current prompt inputs and the installed tool inventory.
+2. Read the TOML on each submission.
+3. Add empty tables for new stable paths. Retain existing entries, comments, and formatting. Do not add generated text.
+4. Apply active replacements by path, regardless of changes to source prose.
+5. Report entries without replacements in the UI. Deduplicate notifications.
+6. If the TOML or an active entry is invalid, report the error and keep generated text unchanged.
 
-An optional slash command could show the file location and pending/stale entries. No command exists yet; `/bootstrap` was only a proposed name, not a Pi built-in.
+Use a lock, a temporary file, and a source comparison before writes. Do not rewrite unchanged files. Retain settings for removed tools and skills; apply them if the same name returns.
 
-## Extension integration
+## Pi integration
 
-- **`before_agent_start`:** Main application point. Transform the current `systemPromptOptions` on each user submission, not each internal model/tool turn. Applying cached replacements is inexpensive local work.
-- **`skills`:** Substitute descriptions while retaining current names, locations, and other metadata.
-- **`toolSnippets` / `toolGuidelines` / `promptGuidelines`:** Apply granular prose replacements without changing tool availability.
-- **`sections`:** Apply explicit section replacements for tools, rules, and docs. Cannot replace `preamble`; empty section values do not suppress defaults.
-- **`pi.getAllTools()` / `getActiveTools()`:** Inspect current tool metadata and availability. Do not alter active tools merely to shorten prose.
-- **`context_with_system`:** Potential fallback for the separate identity text and Message3's preamble. First verify how these are represented and whether they are extension-editable in the actual transcript. Preserve Message1/2 and a system message at index zero. Do not assume this can alter application-level trusted instructions.
-- **`before_provider_request`:** Inspect the final request to verify replacements, detect other extension contributions, and measure savings. Avoid provider-specific rewriting unless structured mechanisms prove insufficient.
+- `before_agent_start` discovers sources and changes structured prompt options.
+- `sections` replaces generated sections except preamble.
+- `toolSnippets`, `toolGuidelines`, `promptGuidelines`, and `skills` support granular changes.
+- `context_with_system` changes request-local preamble text and leading identity text when present.
+- Do not set `customPrompt` to change only the preamble: it disables generated tools, rules, and docs.
+- `/bootstrap` shows the file location, entries without replacements, section sizes, and hook times.
 
-Avoid full prompt replacement as the default: it transfers responsibility for Pi's evolving generated instructions to this extension. Ordinary `context` cannot remove Pi's system instructions.
+Identity text is editable only if Pi exposes it as leading system content. Trusted instructions outside Pi's transcript are not editable.
 
 ## Validation
 
-- Verify Messages1/2 are unchanged in the final request.
-- Verify missing, stale, and invalid replacements preserve current generated text.
-- Exercise installation, removal, and description changes for tools and skills.
-- Verify repeated submissions and TOML edits behave correctly without restarting Pi.
-- Verify section precedence, comment preservation, and concurrent-edit safety.
-- Check that tool declarations and execution availability are unchanged.
-- Report before/after section sizes; measure hook latency rather than assuming a performance result.
+- Source-text changes must not disable configured replacements.
+- Replacement-only tables must work without original text or hashes.
+- Test tool and skill installation, removal, and description changes.
+- Test whole-section precedence, type validation, comment preservation, and lock safety.
+- Preserve prime messages, tool declarations, tool selection, skill locations, and context files.
+- Test repeated submissions and configuration edits with the real Pi prompt builder.
+- Run `npm test` and `npm run typecheck`.

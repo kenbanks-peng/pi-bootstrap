@@ -8,7 +8,7 @@ import bootstrap, { getConfigPath, registerBootstrap } from "../index.ts";
 import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
-import { Lookup, hash, addFields, type Source } from "../src/lookup.ts";
+import { Lookup, addFields, type Source } from "../src/lookup.ts";
 import { applyStructured, applyTranscript, inventory } from "../src/prompt.ts";
 import type { BeforeAgentStartEvent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
@@ -20,8 +20,7 @@ async function fixture() {
 }
 function entry(s: Source, replacement?: string | string[]) {
   return "[" + s.path.map(p => JSON.stringify(p)).join(".") + "]\noriginal = " +
-    JSON.stringify(s.original) + "\nsource_hash = " + JSON.stringify(hash(s.original)) +
-    "\n" + (replacement === undefined ? "" : "replacement = " + JSON.stringify(replacement) + "\n");
+    JSON.stringify(s.original) + "\n" + (replacement === undefined ? "" : "replacement = " + JSON.stringify(replacement) + "\n");
 }
 function event(): BeforeAgentStartEvent {
   return {
@@ -35,50 +34,91 @@ function event(): BeforeAgentStartEvent {
     },
   };
 }
-test("discovery is comment preserving, stable, and replacements are opt-in", async () => {
+test("discovery is comment preserving and creates empty stable tables", async () => {
   const { lookup, cleanup } = await fixture();
   try {
     await writeFile(lookup.path, "# User comment\n\n");
     await lookup.refresh([source]);
     assert.equal(lookup.valid, true);
-    assert.equal(lookup.replacement(source.path, source.original), undefined);
+    assert.equal(lookup.replacement(source.path), undefined);
     const text = await readFile(lookup.path, "utf8");
     assert.ok(text.startsWith("# User comment\n\n"));
+    assert.ok(!text.includes("original"));
+    assert.ok(!text.includes("replacement"));
+    assert.ok(text.includes("[\"message3\".\"docs\"]"));
     const mtime = (await stat(lookup.path)).mtimeMs;
     await lookup.refresh([source]);
     assert.equal((await stat(lookup.path)).mtimeMs, mtime);
     assert.deepEqual(lookup.report.missing, ["message3.docs"]);
   } finally { await cleanup(); }
 });
-test("TOML edits reload, upstream changes retain reviewed text and replacement", async () => {
+test("TOML edits reload and source changes keep path-based replacements active", async () => {
   const { lookup, cleanup } = await fixture();
   try {
     const original = "# Keep this\n" + entry(source, "Short docs.");
     await writeFile(lookup.path, original);
     await lookup.refresh([source]);
-    assert.equal(lookup.replacement(source.path, source.original), "Short docs.");
+    assert.equal(lookup.replacement(source.path), "Short docs.");
     const changed = { ...source, original: "New upstream docs." };
     await lookup.refresh([changed]);
-    assert.equal(lookup.replacement(changed.path, changed.original), undefined);
-    assert.deepEqual(lookup.report.stale, ["message3.docs"]);
-    const text = await readFile(lookup.path, "utf8");
-    assert.ok(text.startsWith(original));
-    const parsed = parse(text) as any;
-    assert.equal(parsed.message3.docs.sources[hash(changed.original)].original, changed.original);
-    await writeFile(lookup.path, entry(changed, "Approved new docs."));
+    assert.equal(lookup.replacement(changed.path), "Short docs.");
+    assert.deepEqual(lookup.report.missing, []);
+    assert.equal(await readFile(lookup.path, "utf8"), original);
+    await writeFile(lookup.path, entry(changed, "Updated replacement."));
     await lookup.refresh([changed]);
-    assert.equal(lookup.replacement(changed.path, changed.original), "Approved new docs.");
+    assert.equal(lookup.replacement(changed.path), "Updated replacement.");
   } finally { await cleanup(); }
 });
-test("invalid TOML, wrong types, empty replacements, and bad hashes fail closed", async () => {
+test("a replacement-only table needs no generated source text or hash", async () => {
   const { lookup, cleanup } = await fixture();
   try {
-    for (const text of ["[broken", entry(source, ""), entry(source, []), entry(source).replace(hash(source.original), "bad")]) {
+    const config = '# User setting\n[message3.docs]\nreplacement = "Short docs."\n';
+    await writeFile(lookup.path, config);
+    for (const original of ["First source.", "Different source.", ""]) {
+      await lookup.refresh([{ ...source, original }]);
+      assert.equal(lookup.valid, true);
+      assert.equal(lookup.replacement(source.path), "Short docs.");
+      assert.deepEqual(lookup.report.missing, []);
+      assert.equal(await readFile(lookup.path, "utf8"), config);
+    }
+  } finally { await cleanup(); }
+});
+test("granular and transcript replacements survive changed source prose", async () => {
+  const { lookup, cleanup } = await fixture();
+  try {
+    const e = event();
+    const granular = inventory(e, []).filter(s => s.path.includes("entries") || s.path.includes("prompt_guidelines"));
+    const identity: Source = { path: ["system_prompt"], original: "Old identity" };
+    const preamble: Source = { path: ["message3", "preamble"], original: "Old preamble" };
+    await writeFile(lookup.path, [...granular, identity, preamble]
+      .map(s => entry(s, Array.isArray(s.original) ? ["Short rule."] : "Short prose.")).join("\n"));
+    e.systemPromptOptions.toolSnippets.read = "Changed tool description.";
+    e.systemPromptOptions.toolGuidelines.read = ["Changed tool rule."];
+    e.systemPromptOptions.promptGuidelines = ["Changed prompt rule."];
+    e.systemPromptOptions.skills[0].description = "Changed skill description.";
+    await lookup.refresh([...inventory(e, []), { ...identity, original: "Changed identity" }]);
+    applyStructured(e, lookup);
+    assert.equal(e.systemPromptOptions.toolSnippets.read, "Short prose.");
+    assert.deepEqual(e.systemPromptOptions.toolGuidelines.read, ["Short rule."]);
+    assert.deepEqual(e.systemPromptOptions.promptGuidelines, ["Short rule."]);
+    assert.equal(e.systemPromptOptions.skills[0].description, "Short prose.");
+    const result = applyTranscript([
+      { role: "system", content: "Changed identity" },
+      { role: "system", sections: { preamble: "Changed preamble" } },
+    ], lookup);
+    assert.equal(result[0].content, "Short prose.");
+    assert.equal(result[1].sections?.preamble, "Short prose.");
+  } finally { await cleanup(); }
+});
+test("invalid TOML, wrong types, and empty replacements fail closed", async () => {
+  const { lookup, cleanup } = await fixture();
+  try {
+    for (const text of ["[broken", entry(source, ""), entry(source, []), entry(source, ["wrong type"]), entry(source, "   ")]) {
       await writeFile(lookup.path, text);
       await lookup.refresh([source]);
       assert.equal(lookup.valid, false);
       assert.ok(lookup.report.error);
-      assert.equal(lookup.replacement(source.path, source.original), undefined);
+      assert.equal(lookup.replacement(source.path), undefined);
       assert.equal(await readFile(lookup.path, "utf8"), text);
     }
   } finally { await cleanup(); }
@@ -98,10 +138,10 @@ test("an editor or another Pi session holding the lock prevents writes", async (
 });
 test("new fields can enter existing tables without changing comments or multiline strings", () => {
   const text = "# Header\n[message3.docs] # My table\n# Keep notes\n\n[unrelated]\ntext = '''\n[message3.docs]\n'''\n";
-  const next = addFields(text, source.path, "original = \"Docs\"\n", true);
-  assert.ok(next.includes("[message3.docs] # My table\noriginal = \"Docs\"\n\n# Keep notes"));
+  const next = addFields(text, source.path, "replacement = \"Docs\"\n", true);
+  assert.ok(next.includes("[message3.docs] # My table\nreplacement = \"Docs\"\n\n# Keep notes"));
   assert.ok(next.endsWith("[unrelated]\ntext = '''\n[message3.docs]\n'''\n"));
-  assert.equal((parse(next) as any).message3.docs.original, "Docs");
+  assert.equal((parse(next) as any).message3.docs.replacement, "Docs");
 });
 test("quoted tool names, arrays, Unicode, and source text round-trip", async () => {
   const { lookup, cleanup } = await fixture();
@@ -113,7 +153,7 @@ test("quoted tool names, arrays, Unicode, and source text round-trip", async () 
     await lookup.refresh(sources);
     assert.equal(lookup.valid, true);
     const data = parse(await readFile(lookup.path, "utf8")) as any;
-    assert.deepEqual(data.message3.tools.entries["mcp.server/read"].guidelines.original, ["One", "Two"]);
+    assert.ok(data.message3.tools.entries["mcp.server/read"].guidelines);
   } finally { await cleanup(); }
 });
 test("granular changes preserve tool selection, context files, and skill locations", async () => {
@@ -136,7 +176,7 @@ test("granular changes preserve tool selection, context files, and skill locatio
     assert.equal(e.systemPromptOptions.contextFiles, files);
   } finally { await cleanup(); }
 });
-test("whole-section replacement takes precedence; stale whole sections block granular entries", async () => {
+test("whole-section replacement takes precedence regardless of source text", async () => {
   const { lookup, cleanup } = await fixture();
   try {
     for (const original of ["Tools", "Old tools"]) {
@@ -146,7 +186,7 @@ test("whole-section replacement takes precedence; stale whole sections block gra
       await lookup.refresh(inventory(e, []));
       applyStructured(e, lookup);
       assert.equal(e.systemPromptOptions.toolSnippets.read, "Read files.");
-      assert.equal(e.systemPromptOptions.sections.tools, original === "Tools" ? "Whole tools" : undefined);
+      assert.equal(e.systemPromptOptions.sections.tools, "Whole tools");
     }
   } finally { await cleanup(); }
 });
@@ -164,7 +204,7 @@ test("installation/removal and description changes need no fixed tool or skill l
     assert.ok(!lookup.report.missing.includes("message3.skills.entries.archify"));
     e.systemPromptOptions.toolSnippets.read = "Updated read.";
     await lookup.refresh(inventory(e, []));
-    assert.ok(lookup.report.stale.includes("message3.tools.entries.read.snippet"));
+    assert.ok(lookup.report.missing.includes("message3.tools.entries.read.snippet"));
     delete e.systemPromptOptions.toolSnippets.extra;
     await lookup.refresh(inventory(e, []));
     assert.ok(!lookup.report.missing.includes("message3.tools.entries.extra.snippet"));
@@ -238,8 +278,7 @@ test("real Pi prompt builder and hooks preserve prime/tools and measure repeated
     await handlers.get("before_agent_start")!(makeEvent(), ctx);
     assert.equal(notifications.length, 1);
     const config = await readFile(lookup.path, "utf8");
-    const preamble = buildSystemPromptSections(first.systemPromptOptions).preamble;
-    const enabled = config.replace("# replacement = " + JSON.stringify(preamble), "replacement = " + JSON.stringify("Short preamble."));
+    const enabled = config.replace("[\"message3\".\"preamble\"]", "[message3.preamble]\nreplacement = \"Short preamble.\"");
     await writeFile(lookup.path, enabled);
     const next = makeEvent();
     await handlers.get("before_agent_start")!(next, ctx);
@@ -270,7 +309,8 @@ test("the extension creates config.toml in the global Pi extension directory", a
       getAllTools: () => [],
     } as unknown as ExtensionAPI);
     await handlers.get("before_agent_start")!(event(), { hasUI: false, ui: { notify: () => {} } });
-    assert.ok((await readFile(config, "utf8")).includes("source_hash"));
+    assert.ok(!(await readFile(config, "utf8")).includes("original"));
+    assert.ok(!(await readFile(config, "utf8")).includes("source_hash"));
     delete process.env.PI_CODING_AGENT_DIR;
     assert.equal(getConfigPath(), join(homedir(), ".pi", "agent", "extensions", "pi-bootstrap", "config.toml"));
   } finally {
