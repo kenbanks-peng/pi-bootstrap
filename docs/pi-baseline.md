@@ -1,6 +1,6 @@
 <meta>
 
-- **timestamp**: 2026-10-02T14:49:27.253Z
+- **timestamp**: 2026-10-02T23:12:46.723Z
 - **agent**: Pi
 - **wire format**: openai
 - **model**: gpt-6.1-sol
@@ -21,13 +21,13 @@ user-agent: pi (darwin 25.6.0; arm64)
 openai-beta: responses=experimental
 accept: text/event-stream
 content-type: application/json
-session-id: 01a0fd17-5fc4-7260-8965-8e9840c3478d
-x-client-request-id: 01a0fd17-5fc4-7260-8965-8e9840c3478d
+session-id: 01a0fee4-3410-7772-b47f-e5c78421a17f
+x-client-request-id: 01a0fee4-3410-7772-b47f-e5c78421a17f
 content-encoding: zstd
 accept-language: *
 sec-fetch-mode: cors
 accept-encoding: gzip, deflate
-content-length: 9764
+content-length: 9125
 ```
 
 </headers>
@@ -92,9 +92,9 @@ In addition to the tools above, you may have access to other custom tools depend
 
 <docs>
 Pi documentation (read only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI):
-- Main documentation: /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/a553-18da965c07460748-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/README.md
-- Additional docs: /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/a553-18da965c07460748-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/docs
-- Examples: /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/a553-18da965c07460748-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)
+- Main documentation: /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/9cf8-18da8527dc445530-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/README.md
+- Additional docs: /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/9cf8-18da8527dc445530-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/docs
+- Examples: /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/9cf8-18da8527dc445530-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/examples (extensions, custom tools, SDK)
 - When reading pi docs or examples, resolve docs/... under Additional docs and examples/... under Examples, not the current working directory
 - When asked about: extensions (docs/extensions.md, examples/extensions/), themes (docs/themes.md), skills (docs/skills.md), prompt templates (docs/prompt-templates.md), TUI components (docs/tui.md), keybindings (docs/keybindings.md), SDK integrations (docs/sdk.md), custom providers (docs/custom-provider.md), adding models (docs/models.md), pi packages (docs/packages.md), environment variables (docs/environment-variables.md), MCP servers (docs/mcp.md), codemode scripts and non-LLM models such as classifiers and image models (docs/codemode.md)
 - When working on pi topics, read the docs and examples, and follow .md cross-references before implementing
@@ -111,11 +111,6 @@ When a skill file references a relative path, resolve it against the skill direc
     <name>agents</name>
     <description>Run parallel or dependent coding tasks with Aven and Workmux. Track ownership, verify merges, and resume interrupted work.</description>
     <location>/Users/kenbanks/.config/pi/agent/skills/agents/SKILL.md</location>
-  </skill>
-  <skill>
-    <name>archify</name>
-    <description>Create polished, validated architecture, workflow, sequence, data-flow, and lifecycle/state diagrams as explorable standalone HTML with inline SVG, dark/light themes, optional trace motion, and PNG/JPEG/WebP/SVG/WebM export. Accept plain-language requirements or pasted Mermaid flowchart, sequenceDiagram, and stateDiagram input; inspect repository evidence when the diagram must reflect real code. Use when the user asks to visualize system architecture, infrastructure, cloud/security/network topology, technical workflows, API call sequences, request lifecycles, data pipelines, ETL/ELT, data lineage, state machines, or to convert/beautify Mermaid.</description>
-    <location>/Users/kenbanks/.config/pi/agent/skills/archify/SKILL.md</location>
   </skill>
   <skill>
     <name>aven</name>
@@ -178,19 +173,14 @@ When a skill file references a relative path, resolve it against the skill direc
     <location>/Users/kenbanks/.config/pi/agent/skills/writing-for-agents/SKILL.md</location>
   </skill>
   <skill>
-    <name>deep-research</name>
-    <description>Use when the user needs multi-source research with citation tracking, evidence persistence, and structured report generation. Triggers on &quot;deep research&quot;, &quot;comprehensive analysis&quot;, &quot;research report&quot;, &quot;compare X vs Y&quot;, &quot;analyze trends&quot;, or &quot;state of the art&quot;. Not for simple lookups, debugging, or questions answerable with 1-2 searches.</description>
-    <location>/Users/kenbanks/.agents/skills/deep-research/SKILL.md</location>
+    <name>prototype</name>
+    <description>Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like.</description>
+    <location>/Users/kenbanks/.agents/skills/prototype/SKILL.md</location>
   </skill>
   <skill>
-    <name>ui-ux-pro-max</name>
-    <description>UI/UX design intelligence with searchable database</description>
-    <location>/Users/kenbanks/.agents/skills/ui-ux-pro-max/SKILL.md</location>
-  </skill>
-  <skill>
-    <name>wizard</name>
-    <description>Generate an interactive bash wizard that walks a human through steps only they can perform. Use when provisioning infrastructure, setting up credentials or CI secrets, walking an unfamiliar third-party dashboard, or running a one-off migration or cutover. Don&apos;t invoke this for steps the agent can perform itself.</description>
-    <location>/Users/kenbanks/.agents/skills/wizard/SKILL.md</location>
+    <name>understand-chat</name>
+    <description>Use when you need to ask questions about a codebase or understand code using a knowledge graph</description>
+    <location>/Users/kenbanks/.agents/skills/understand-chat/SKILL.md</location>
   </skill>
   <skill>
     <name>context7-docs</name>
@@ -289,65 +279,14 @@ Trigger: /context-mode:ctx-upgrade
 /Users/kenbanks/Software/DevBox/tools/ai/agent-logger/logs
 </cwd>
 
-</system-prompt>
-
-<tools>
-
-### codemode
-
-Run JavaScript that calls other tools. The input is raw JavaScript (not JSON, no code fence), run as an async function body in a QuickJS sandbox: top-level `await` and `return` work. No Node, file system, network, or timers.
-- `await tools.<name>({ ...args })` resolves to a string, or an object if the tool's declaration says so, and rejects with an Error on failure. Calls still running when the script ends are cancelled.
-- Optional first line: `// @options: {"max_output_tokens": 10000, "timeout_ms": 60000}`
-
-Globals:
-- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script.
-- `store(key, value)` and `load(key)` keep JSON values across codemode calls.
-- `ALL_TOOLS`, `searchTools(query, { limit?, namespace? })`, `describeTool(name)`, `describeNamespace(name)`: find unlisted tools, such as MCP tools.
-- `models`: classifiers and image generation. Read /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/a553-18da965c07460748-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/docs/codemode.md first.
-
-Nested tools:
-
-
-### tool_search
-
-# Tool discovery
-
-Searches over deferred tool metadata with BM25 and exposes matching tools for the next model call.
-
-Some of the tools, such as tools of MCP servers, may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.
-
-```json
-{
-  "type": "object",
-  "required": [
-    "query"
-  ],
-  "properties": {
-    "query": {
-      "type": "string",
-      "description": "Search query for deferred tools."
-    },
-    "limit": {
-      "type": "number",
-      "description": "Maximum number of tools to return. Defaults to 8."
-    }
-  }
-}
-```
-
-</tools>
-
-<messages>
-
-<message index="1" role="user">
-
-<prime_session version="1">
+<prime>
   <memory>Never consider backwards compatibility as a hard requirement unless the user indicates otherwise.</memory>
-  <memory>Do not use README.md for a dumping ground to describe every small change. If the README.md does describe usage, then keep the updates high level.</memory>
-  <memory>Only use subagents when instructed by the user to use subagents.</memory>
   <memory>always use ASD-STE100 Simplified Technical English when you talk to me</memory>
-  <memory>If the user is simply inquiring about how to do something, then provide him the procedure without any change action. But if the user has engaged you as an agent to perform activity on his behalf, unless there is a technical reason not to do so, perform the tasks yourself. Generally speaking, you should not be asking the user to perform tasks when you can do them yourself.</memory>
-  <memory>These CLI tools are available on this machine:
+  <memory>If the user is simply inquiring about how to do something, then provide him the procedure without any change action.
+  </memory>
+  <memory>Prefer Pi&apos;s `ffgrep` and `fffind` tools for repository content and file searches. Use `ripgrep` (`rg`) and `fd` only when FFF is unavailable or cannot express the query.
+  
+  These CLI tools are available on this machine:
   
   - ast-grep: Structural code search and rewrite
   - bat: View files with syntax highlighting
@@ -399,17 +338,65 @@ Some of the tools, such as tools of MCP servers, may not have been provided to y
     <output>.gitkeep
     </output>
   </command>
-</prime_session>
+</prime>
 
-</message>
+</system-prompt>
 
-<message index="2" role="user">
+<tools>
+
+### codemode
+
+Run JavaScript that calls other tools. The input is raw JavaScript (not JSON, no code fence), run as an async function body in a QuickJS sandbox: top-level `await` and `return` work. No Node, file system, network, or timers.
+- `await tools.<name>({ ...args })` resolves to a string, or an object if the tool's declaration says so, and rejects with an Error on failure. Calls still running when the script ends are cancelled.
+- Optional first line: `// @options: {"max_output_tokens": 10000, "timeout_ms": 60000}`
+
+Globals:
+- `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script.
+- `store(key, value)` and `load(key)` keep JSON values across codemode calls.
+- `ALL_TOOLS`, `searchTools(query, { limit?, namespace? })`, `describeTool(name)`, `describeNamespace(name)`: find unlisted tools, such as MCP tools.
+- `models`: classifiers and image generation. Read /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/9cf8-18da8527dc445530-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/docs/codemode.md first.
+
+Nested tools:
+
+
+### tool_search
+
+# Tool discovery
+
+Searches over deferred tool metadata with BM25 and exposes matching tools for the next model call.
+
+Some of the tools, such as tools of MCP servers, may not have been provided to you upfront, and you should use this tool (`tool_search`) to search for the required tools. For MCP tool discovery, always use `tool_search`.
+
+```json
+{
+  "type": "object",
+  "required": [
+    "query"
+  ],
+  "properties": {
+    "query": {
+      "type": "string",
+      "description": "Search query for deferred tools."
+    },
+    "limit": {
+      "type": "number",
+      "description": "Maximum number of tools to return. Defaults to 8."
+    }
+  }
+}
+```
+
+</tools>
+
+<messages>
+
+<message index="1" role="user">
 
 hi
 
 </message>
 
-<message index="3" role="user">
+<message index="2" role="user">
 
 context-mode active. Hierarchy: ctx_batch_execute > ctx_execute > ctx_execute_file > ctx_search. Read/edit files → ctx_execute_file. Multi-command research → ctx_batch_execute. Web pages → ctx_fetch_and_index then ctx_search. Index docs → ctx_index. Stats → ctx_stats. Doctor → ctx_doctor. Upgrade → ctx_upgrade. Purge → ctx_purge.
 
@@ -429,13 +416,13 @@ context-mode active. Hierarchy: ctx_batch_execute > ctx_execute > ctx_execute_fi
 
 - **status**: completed
 
-- **usage**: {"attribution":{"items":{"msg_0927ba9709c909f0016abfc477c6bc87d1b6626e06eec1be5f":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":696,"output_tokens":0}],"input_tokens":696,"output_tokens":0},"msg_0927ba9709c909f0016abfc477c6d087d1b4a90df10d382f40":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":5,"output_tokens":0}],"input_tokens":5,"output_tokens":0},"msg_0927ba9709c909f0016abfc477c6f087d180eea7a16ebc5438":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":102,"output_tokens":0}],"input_tokens":102,"output_tokens":0},"msg_0927ba9709c909f0016abfc4792fd087d188ea0cc25aeac240":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":2,"output_tokens":12}],"input_tokens":2,"output_tokens":12}},"request_fields":{"tools":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":585,"output_tokens":0},"instructions":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":4868,"output_tokens":0}}},"input_tokens":6258,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":12,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":6270}
+- **usage**: {"attribution":{"items":{"msg_0906f1ee258e1115016ac03a70515487d1b8f5e04e2b22633c":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":5,"output_tokens":0}],"input_tokens":5,"output_tokens":0},"msg_0906f1ee258e1115016ac03a70516887d186269e3bba3552dd":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":102,"output_tokens":0}],"input_tokens":102,"output_tokens":0},"msg_0906f1ee258e1115016ac03a71c04c87d1ad592e5b79bfd816":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":2,"output_tokens":13}],"input_tokens":2,"output_tokens":13}},"request_fields":{"tools":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":587,"output_tokens":0},"instructions":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":5175,"output_tokens":0}}},"input_tokens":5871,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":13,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":5884}
 
 
 
 <assistant-text>
 
-Hi. How can I help you?
+Hi. What can I help you with?
 
 </assistant-text>
 
