@@ -10,8 +10,9 @@ import { registerBootstrap } from "../index.ts";
 import { Lookup, type Table } from "../src/lookup.ts";
 import { Mechanisms, taggedRegions, type TranscriptMessage } from "../src/prompt.ts";
 
-const defaults = await readFile(new URL("../default.toml", import.meta.url), "utf8");
-const config = () => parse(defaults) as Table;
+const defaultTemplate = await readFile(new URL("../default.toml", import.meta.url), "utf8");
+const defaults = defaultTemplate.split("\n[system_prompt.preamble]")[0] + "\n";
+const config = () => parse(defaultTemplate) as Table;
 const replacement = (path: string[], text: unknown) =>
   "\n[" + path.map(p => JSON.stringify(p)).join(".") + "]\nreplacement = " + JSON.stringify(text) + "\n";
 async function fixture(text?: string) {
@@ -53,6 +54,39 @@ test("default config has three context mechanisms with no numbered-message depen
   assert.equal(Object.keys(data.mechanisms as object).length, 3);
   assert.ok(!defaults.includes("message3"));
   assert.ok(!defaults.includes("fallback_source"));
+});
+test("default template has all baseline tables and only active tools and skills examples", async () => {
+  const data = config() as any;
+  assert.ok(!/^\s*#/m.test(defaultTemplate));
+  assert.deepEqual(Object.keys(data.system_prompt.sections), ["tools", "rules", "docs", "skills", "cwd"]);
+  assert.deepEqual(Object.keys(data.system_prompt.preamble), []);
+  assert.deepEqual(Object.keys(data.bootstrap.prime_session), []);
+  for (const tag of ["rules", "docs", "cwd"]) assert.deepEqual(Object.keys(data.system_prompt.sections[tag]), []);
+  const f = await fixture(defaultTemplate);
+  try {
+    const tools = [{ name: "read", parameters: {} }];
+    const messages = [{ role: "system", content: prompt, toolsAdded: tools }, { role: "user", content: prime }];
+    const result = await f.request(messages);
+    const bodies = (text: string) => Object.fromEntries(taggedRegions(text).map(region =>
+      [region.tag, text.slice(region.bodyStart, region.bodyEnd).trim()]));
+    const original = bodies(prompt);
+    const changed = bodies(result[0].content);
+    for (const tag of ["tools", "skills"]) {
+      assert.equal(changed[tag], data.system_prompt.sections[tag].replacement.trim());
+      assert.notEqual(changed[tag], original[tag]);
+    }
+    for (const tag of ["rules", "docs", "cwd"]) assert.equal(changed[tag], original[tag]);
+    assert.equal(result[0].toolsAdded, tools);
+    assert.equal(result[1], messages[1]);
+    assert.equal(messages[0].content, prompt);
+    assert.equal(await readFile(f.path, "utf8"), defaultTemplate);
+    const structured = await f.request([{ role: "system", content: "", sections: {
+      tools: "<tools>\nOld tools\n</tools>", skills: "<skills>\nOld skills\n</skills>", docs: null,
+    } }]);
+    assert.equal(structured[0].sections!.tools, "<tools>\n" + data.system_prompt.sections.tools.replacement + "\n</tools>");
+    assert.equal(structured[0].sections!.skills, "<skills>\n" + data.system_prompt.sections.skills.replacement + "\n</skills>");
+    assert.equal(structured[0].sections!.docs, null);
+  } finally { await f.cleanup(); }
 });
 test("baseline discovery follows top-level tags and finds prime by envelope", () => {
   const engine = new Mechanisms(config());

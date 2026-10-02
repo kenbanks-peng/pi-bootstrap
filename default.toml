@@ -1,5 +1,3 @@
-# Process the live Pi transcript, not the logger's numbered messages.
-# See docs/MECHANISMS.md. No replacements are enabled by default.
 version = 2
 
 [mechanisms.preamble]
@@ -13,10 +11,26 @@ kind = "tagged_message"
 role = "user"
 tag = "prime_session"
 
-# Discovery appends empty tables using stable context names:
-# [system_prompt.preamble]
-# replacement = "You are a coding assistant."
-# [system_prompt.sections.docs]
-# replacement = "Use the installed Pi documentation."
-# [bootstrap.prime_session]
-# replacement = "Keep the session preferences."
+[system_prompt.preamble]
+
+[system_prompt.sections.tools]
+replacement = """
+Use codemode to call tools. Use read to inspect files and edit to change files.
+Use write to create files. Use bash to run shell commands.
+"""
+
+[system_prompt.sections.rules]
+
+[system_prompt.sections.docs]
+
+[system_prompt.sections.skills]
+replacement = """
+Use a skill when its description matches the task.
+Read its SKILL.md file before you follow its instructions.
+Resolve relative paths against the directory that contains SKILL.md.
+If the skill file is not available, report this and proceed without it.
+"""
+
+[system_prompt.sections.cwd]
+
+[bootstrap.prime_session]

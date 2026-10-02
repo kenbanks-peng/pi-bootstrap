@@ -10,7 +10,7 @@ One request-local hook is sufficient. There is no `before_agent_start` rewrite o
 
 ## Configuration
 
-Set `version = 2`. Define named tables under `mechanisms`. Names are for the user; `kind` selects the behavior. An empty `[mechanisms]` table disables discovery. Unsupported fields, duplicate selectors, and unsafe tag names are errors.
+Set `version = 2`. Define named tables under `mechanisms`. Names are for the user; `kind` selects the behavior. These definitions enable discovery and set its parameters. Discovery assigns each match a fixed replacement path; replacement tables do not enable mechanisms or select a different kind. An empty `[mechanisms]` table disables discovery. Unsupported fields, duplicate selectors, and unsafe tag names are errors.
 
 ### Preamble
 
@@ -31,6 +31,8 @@ kind = "tagged_sections"
 ```
 
 Selects each outer tagged section in system text. Stable keys are `system_prompt.sections.<tag>`. The baseline has `tools`, `rules`, `docs`, `skills`, and `cwd`. Other tags, such as `project_context` and `addendum`, need no new mechanism.
+
+The default contains active tools and skills replacements and empty tables for the other baseline sections and `bootstrap.prime_session`. The skills example replaces the entire skills body with new instructions; it removes the original skill list from the outgoing text. There is no partial edit, append, or merge operation. Remove a `replacement` value to retain the original section. Existing configs are not overwritten.
 
 Nested content belongs to its outer section. For example, `available_skills`, repeated `skill` entries, and their fields are all inside `skills`. They are not separate replacement keys.
 
