@@ -1,5 +1,4 @@
 [system_prompt]
-kind = "tagged_sections"
 
 [system_prompt.preamble]
 
@@ -15,7 +14,5 @@ replacement = "TOOLS REPLACEMENT TEXT"
 [system_prompt.sections.cwd]
 
 [message]
-kind = "tagged_messages"
-role = "user"
 
 [message.prime_session]

@@ -96,9 +96,9 @@ test("the extension creates config in the global Pi extension directory", async 
     await handlers.get("context_with_system")!({ messages: [{ role: "system", content: "Preamble" }] }, { hasUI: false });
     const text = await readFile(config, "utf8");
     const data = parse(text) as any;
-    assert.equal(data.system_prompt.kind, "tagged_sections");
-    assert.equal(data.message.kind, "tagged_messages");
-    assert.equal(data.message.role, "user");
+    assert.equal(data.system_prompt.kind, undefined);
+    assert.equal(data.message.kind, undefined);
+    assert.equal(data.message.role, undefined);
     assert.equal(data.version, undefined);
     assert.equal(data.mechanisms, undefined);
     assert.equal(data.bootstrap, undefined);

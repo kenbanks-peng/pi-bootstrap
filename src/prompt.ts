@@ -15,7 +15,9 @@ interface Binding extends Source {
   start: number;
   end: number;
 }
-interface Configuration { system: boolean; messageRole?: "user" }
+interface Configuration { system: boolean; message: boolean }
+// Context format is an extension rule, not replacement configuration.
+const taggedMessageRole = "user";
 const safeName = /^[a-z][a-z0-9_-]*$/;
 const unsafe = new Set(["__proto__", "prototype", "constructor"]);
 const object = (value: unknown): value is Table =>
@@ -79,8 +81,7 @@ function configuration(data: Table): Configuration {
   const system = data.system_prompt;
   if (system !== undefined) {
     if (!object(system)) throw new Error("system_prompt: use a table");
-    fields(system, ["kind", "preamble", "sections"], "system_prompt.");
-    if (system.kind !== "tagged_sections") throw new Error('system_prompt: use kind = "tagged_sections"');
+    fields(system, ["preamble", "sections"], "system_prompt.");
     if (system.preamble !== undefined) entry(system.preamble, "system_prompt.preamble");
     if (system.sections !== undefined) {
       if (!object(system.sections)) throw new Error("system_prompt.sections: use a table");
@@ -90,11 +91,9 @@ function configuration(data: Table): Configuration {
   const message = data.message;
   if (message !== undefined) {
     if (!object(message)) throw new Error("message: use a table");
-    if (message.kind !== "tagged_messages") throw new Error('message: use kind = "tagged_messages"');
-    if (message.role !== "user") throw new Error('message: use role = "user"');
-    entries(message, "message.", ["kind", "role"]);
+    entries(message, "message.");
   }
-  return { system: system !== undefined, messageRole: message === undefined ? undefined : "user" };
+  return { system: system !== undefined, message: message !== undefined };
 }
 
 /** Discover and replace existing context text only. No resource or tool metadata is changed. */
@@ -164,13 +163,13 @@ export class Mechanisms {
   private scanMessage(text: string, role: string, index: number,
     bind: (index: number, field: Binding["field"], section: string | undefined, path: string[], text: string, start: number, end: number) => void,
     blockIndex?: number) {
-    if (this.configuration.messageRole !== role) return;
+    if (!this.configuration.message || role !== taggedMessageRole) return;
     // Select only a complete envelope, not ordinary prose or quoted tag examples.
     if (!/^\s*<[a-z][a-z0-9_-]*(?:\s+[^<>]*)?>[^\S\r\n]*(?:\r?\n|$)/.test(text)) return;
     const regions = taggedRegions(text);
     if (regions.length !== 1 || text.slice(regions[0].end).trim()) return;
     const region = regions[0];
-    if (unsafe.has(region.tag) || region.tag === "kind" || region.tag === "role")
+    if (unsafe.has(region.tag))
       throw new Error("Unsafe message tag: " + region.tag);
     if (!text.slice(region.bodyStart, region.bodyEnd).trim()) return;
     bind(index, "content", undefined, ["message", region.tag], text, region.bodyStart, region.bodyEnd);

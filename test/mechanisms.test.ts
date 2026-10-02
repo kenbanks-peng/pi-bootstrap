@@ -11,7 +11,7 @@ import { Lookup, type Table } from "../src/lookup.ts";
 import { Mechanisms, taggedRegions, type TranscriptMessage } from "../src/prompt.ts";
 
 const defaultTemplate = await readFile(new URL("../default.toml", import.meta.url), "utf8");
-const defaults = '[system_prompt]\nkind = "tagged_sections"\n\n[message]\nkind = "tagged_messages"\nrole = "user"\n';
+const defaults = '[system_prompt]\n\n[message]\n';
 const config = () => parse(defaultTemplate) as Table;
 const replacement = (path: string[], text: unknown) =>
   "\n[" + path.map(p => JSON.stringify(p)).join(".") + "]\nreplacement = " + JSON.stringify(text) + "\n";
@@ -48,20 +48,19 @@ const baseline = await readFile(new URL("../docs/pi-baseline.md", import.meta.ur
 const prompt = /<system-prompt>\n\n([\s\S]*?)\n\n<\/system-prompt>/.exec(baseline)![1];
 const prime = /<prime_session version="1">[\s\S]*?<\/prime_session>/.exec(baseline)![0];
 
-test("default config defines mechanisms directly on their scopes", () => {
+test("default config contains replacement scopes without format metadata", () => {
   const data = config() as any;
   assert.deepEqual(Object.keys(data), ["system_prompt", "message"]);
-  assert.equal(data.system_prompt.kind, "tagged_sections");
-  assert.equal(data.message.kind, "tagged_messages");
-  assert.equal(data.message.role, "user");
+  assert.deepEqual(Object.keys(data.system_prompt), ["preamble", "sections"]);
+  assert.deepEqual(Object.keys(data.message), ["prime_session"]);
 });
-test("default template has all baseline tables and only active tools and skills examples", async () => {
+test("default template has all baseline tables and only an active tools example", async () => {
   const data = config() as any;
   assert.ok(!/^\s*#/m.test(defaultTemplate));
   assert.deepEqual(Object.keys(data.system_prompt.sections), ["tools", "rules", "docs", "skills", "cwd"]);
   assert.deepEqual(Object.keys(data.system_prompt.preamble), []);
   assert.deepEqual(Object.keys(data.message.prime_session), []);
-  for (const tag of ["rules", "docs", "cwd"]) assert.deepEqual(Object.keys(data.system_prompt.sections[tag]), []);
+  for (const tag of ["rules", "docs", "skills", "cwd"]) assert.deepEqual(Object.keys(data.system_prompt.sections[tag]), []);
   const f = await fixture(defaultTemplate);
   try {
     const tools = [{ name: "read", parameters: {} }];
@@ -71,11 +70,11 @@ test("default template has all baseline tables and only active tools and skills 
       [region.tag, text.slice(region.bodyStart, region.bodyEnd).trim()]));
     const original = bodies(prompt);
     const changed = bodies(result[0].content);
-    for (const tag of ["tools", "skills"]) {
+    for (const tag of ["tools"]) {
       assert.equal(changed[tag], data.system_prompt.sections[tag].replacement.trim());
       assert.notEqual(changed[tag], original[tag]);
     }
-    for (const tag of ["rules", "docs", "cwd"]) assert.equal(changed[tag], original[tag]);
+    for (const tag of ["rules", "docs", "skills", "cwd"]) assert.equal(changed[tag], original[tag]);
     assert.equal(result[0].toolsAdded, tools);
     assert.equal(result[1], messages[1]);
     assert.equal(messages[0].content, prompt);
@@ -84,7 +83,7 @@ test("default template has all baseline tables and only active tools and skills 
       tools: "<tools>\nOld tools\n</tools>", skills: "<skills>\nOld skills\n</skills>", docs: null,
     } }]);
     assert.equal(structured[0].sections!.tools, "<tools>\n" + data.system_prompt.sections.tools.replacement + "\n</tools>");
-    assert.equal(structured[0].sections!.skills, "<skills>\n" + data.system_prompt.sections.skills.replacement + "\n</skills>");
+    assert.equal(structured[0].sections!.skills, "<skills>\nOld skills\n</skills>");
     assert.equal(structured[0].sections!.docs, null);
   } finally { await f.cleanup(); }
 });
@@ -255,28 +254,28 @@ test("scopes reject old formats, unsupported parameters, wrong types, and unsafe
     { bootstrap: { prime_session: {} } },
     { ...config(), version: 2 },
     { ...config(), bootstrap: { prime_session: {} } },
-    { system_prompt: {} },
-    { system_prompt: { kind: "preamble" } },
-    { system_prompt: { kind: "tagged_sections", source: ["prompt"] } },
-    { system_prompt: { kind: "tagged_sections", preamble: "text" } },
-    { system_prompt: { kind: "tagged_sections", preamble: { kind: "preamble" } } },
-    { system_prompt: { kind: "tagged_sections", sections: [] } },
-    { system_prompt: { kind: "tagged_sections", sections: { constructor: {} } } },
-    { message: { kind: "tagged_message", role: "user" } },
-    { message: { kind: "tagged_messages", role: "assistant" } },
+    { system_prompt: "text" },
+    { system_prompt: { kind: "tagged_sections" } },
+    { system_prompt: { source: ["prompt"] } },
+    { system_prompt: { preamble: "text" } },
+    { system_prompt: { preamble: { kind: "preamble" } } },
+    { system_prompt: { sections: [] } },
+    { system_prompt: { sections: { constructor: {} } } },
+    { message: "text" },
     { message: { kind: "tagged_messages" } },
-    { message: { kind: "tagged_messages", role: "user", tag: "prime_session" } },
-    { message: { kind: "tagged_messages", role: "user", constructor: {} } },
-    { message: { kind: "tagged_messages", role: "user", "bad.tag": {} } },
-    { message: { kind: "tagged_messages", role: "user", example: { replacement: "" } } },
-    { message: { kind: "tagged_messages", role: "user", example: { replacement: 12 } } },
-    { message: { kind: "tagged_messages", role: "user", example: { source: ["content"] } } },
+    { message: { role: "user" } },
+    { message: { tag: "prime_session" } },
+    { message: { constructor: {} } },
+    { message: { "bad.tag": {} } },
+    { message: { example: { replacement: "" } } },
+    { message: { example: { replacement: 12 } } },
+    { message: { example: { source: ["content"] } } },
   ];
   for (const data of invalid) assert.throws(() => new Mechanisms(data));
   for (const role of ["system", "user"])
     assert.throws(() => new Mechanisms(config()).discover([{ role, content: "<constructor>\ntext\n</constructor>" }]), /Unsafe/);
 });
-test("tagged_messages discovers any standalone user envelope by its tag", async () => {
+test("message scope discovers standalone user envelopes by tag without metadata", async () => {
   const f = await fixture();
   try {
     const text = '<preferences version="1">\r\n<memory>Old</memory>\r\n</preferences>';
@@ -284,7 +283,8 @@ test("tagged_messages discovers any standalone user envelope by its tag", async 
     assert.equal(await f.request(messages), messages);
     const discovered = await readFile(f.path, "utf8");
     const data = parse(discovered) as any;
-    assert.equal(data.message.kind, "tagged_messages");
+    assert.equal(data.message.kind, undefined);
+    assert.equal(data.message.role, undefined);
     assert.deepEqual(Object.keys(data.message.preferences), []);
     assert.ok((await f.show()).includes("message.preferences"));
     await f.request(messages);
@@ -297,8 +297,8 @@ test("tagged_messages discovers any standalone user envelope by its tag", async 
 });
 test("system and message scopes can be enabled independently", async () => {
   for (const configText of [
-    '[system_prompt]\nkind = "tagged_sections"\n',
-    '[message]\nkind = "tagged_messages"\nrole = "user"\n',
+    '[system_prompt]\n',
+    '[message]\n',
   ]) {
     const f = await fixture(configText);
     try {
