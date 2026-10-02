@@ -1,27 +1,12 @@
 # Request Breakdown
 
-- Parameters — stream, tool choice, reasoning: approximately 7 lines.
-- System prompt — assistant identity: approximately 5 lines.
-- User preferences: approximately 4 lines.
-- Search-tool preference and available CLI tools list: approximately 49 lines.
-- Initial command and output: approximately 5 lines.
-- `codemode` definition: approximately 15 lines.
-- `tool_search` definition: approximately 21 lines.
-- Preamble: approximately 4 lines.
-- Tool instructions: approximately 9 lines.
-- Operating rules: approximately 38 lines.
-- Documentation instructions: approximately 13 lines.
-- Standard skill entries — 17 entries: approximately 85 lines total.
-- `context7-docs`: approximately 7 lines.
-- `context-mode`: approximately 19 lines.
-- `ctx-doctor`: approximately 8 lines.
-- `ctx-index`: approximately 8 lines.
-- `ctx-insight`: approximately 9 lines.
-- `ctx-purge`: approximately 8 lines.
-- `ctx-search`: approximately 8 lines.
-- `ctx-stats`: approximately 10 lines.
-- `ctx-upgrade`: approximately 8 lines.
-- Working directory: approximately 5 lines.
-- User request (“baseline”): approximately 5 lines.
-- `tool_search` call: approximately 11 lines.
-- Tool result (“No matching tools found”): approximately 9 lines.
+- System prompt — assistant identity: 63 bytes 
+- Message1: prime extension output: 2520 bytes
+- Message2: Additional Tools (codemode, tool_search): 2640 bytes
+- Message3: 
+  - preamble: 250 bytes
+  - tools and rules: 5240 bytes 
+  - pi docs: 1973 bytes 
+  - skills: 11310 bytes
+  - cwd: 109 bytes
+
