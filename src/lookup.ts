@@ -5,7 +5,7 @@ import { parse } from "smol-toml";
 
 export type Prose = string | string[];
 export interface Source { path: string[]; original: Prose }
-type Table = Record<string, unknown>;
+export type Table = Record<string, unknown>;
 
 function tableAt(root: Table, path: string[]): Table | undefined {
   let value: unknown = root;
@@ -15,7 +15,7 @@ function tableAt(root: Table, path: string[]): Table | undefined {
   }
   return value && typeof value === "object" && !Array.isArray(value) ? value as Table : undefined;
 }
-function isProse(value: unknown): value is Prose {
+export function isProse(value: unknown): value is Prose {
   return typeof value === "string" || Array.isArray(value) && value.every(v => typeof v === "string");
 }
 const header = (path: string[]) => "[" + path.map(p => JSON.stringify(p)).join(".") + "]";
@@ -49,7 +49,7 @@ export class Lookup {
   constructor(readonly path: string) {}
 
   /** Read every submission; no watcher and no model calls. */
-  async refresh(sources: Source[]): Promise<void> {
+  async refresh(discover: Source[] | ((data: Table) => Source[]), initialText = ""): Promise<void> {
     this.valid = false;
     this.report = { missing: [] };
     let lock: Awaited<ReturnType<typeof open>> | undefined;
@@ -66,8 +66,9 @@ export class Lookup {
         if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
         existed = false;
       }
-      let next = snapshot;
+      let next = existed ? snapshot : initialText;
       let data = parse(next) as Table;
+      const sources = typeof discover === "function" ? discover(data) : discover;
       for (const source of sources) {
         const entry = tableAt(data, source.path);
         if (!entry) {
@@ -75,7 +76,7 @@ export class Lookup {
           data = parse(next) as Table;
         } else {
           if (entry.replacement !== undefined && (!isProse(entry.replacement) ||
-              Array.isArray(entry.replacement) && !Array.isArray(source.original))) {
+              Array.isArray(entry.replacement) !== Array.isArray(source.original))) {
             throw new Error(source.path.join(".") + ": replacement has the wrong type");
           }
           if (entry.replacement !== undefined &&
@@ -121,12 +122,18 @@ export class Lookup {
     }
   }
 
+  invalidate(error: unknown): void {
+    this.valid = false;
+    this.data = {};
+    this.report.error = error instanceof Error ? error.message : String(error);
+  }
+
   /** Select by stable path only. Source prose is not an identifier. */
   replacement<T extends Prose = string>(path: string[]): T | undefined {
     if (!this.valid) return;
     return tableAt(this.data, path)?.replacement as T | undefined;
   }
-  /** A whole-section setting takes precedence over granular entries. */
+  /** Mechanisms use this to evaluate their configured precedence paths. */
   configured(path: string[]): boolean {
     return this.valid && tableAt(this.data, path)?.replacement !== undefined;
   }

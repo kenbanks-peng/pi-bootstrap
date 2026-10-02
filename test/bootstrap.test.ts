@@ -9,10 +9,28 @@ import { homedir } from "node:os";
 import { dirname } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { Lookup, addFields, type Source } from "../src/lookup.ts";
-import { applyStructured, applyTranscript, inventory } from "../src/prompt.ts";
+import { Mechanisms, type TranscriptMessage } from "../src/prompt.ts";
 import type { BeforeAgentStartEvent, ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
+const defaults = await readFile(new URL("../default.toml", import.meta.url), "utf8");
 const source: Source = { path: ["message3", "docs"], original: "Long documentation." };
+// Low-level storage tests supply sources directly. These helpers exercise the shipped mechanisms.
+function runtime(e = event(), tools: object[] = []) {
+  const engine = new Mechanisms(parse(defaults));
+  engine.discover("before_agent_start", { prompt: e.systemPrompt, options: e.systemPromptOptions, tools });
+  return engine;
+}
+function inventory(e: BeforeAgentStartEvent, tools: object[]) {
+  return runtime(e, tools).discover("before_agent_start", { prompt: e.systemPrompt, options: e.systemPromptOptions, tools });
+}
+function applyStructured(e: BeforeAgentStartEvent, lookup: Lookup) {
+  runtime(e).applyOptions(e.systemPromptOptions, lookup);
+}
+function applyTranscript<T extends TranscriptMessage>(messages: T[], lookup: Lookup) {
+  const engine = runtime();
+  engine.discover("context_with_system", { messages });
+  return engine.applyTranscript(messages, lookup);
+}
 async function fixture() {
   const dir = await mkdtemp(join(tmpdir(), "pi-bootstrap-"));
   const lookup = new Lookup(join(dir, "bootstrap.toml"));
