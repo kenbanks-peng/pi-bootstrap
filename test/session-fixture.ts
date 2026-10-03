@@ -1,8 +1,10 @@
-import { mkdtemp, mkdir, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, mkdir, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import type { TestContext } from "node:test";
 import { BootstrapRepository } from "../src/bootstrap-repository.ts";
+import type { Action } from "../src/replace.ts";
+import { stringify } from "smol-toml";
 
 export async function fixture(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), "pi-bootstrap-session-"));
@@ -20,6 +22,21 @@ export async function fixture(t: TestContext) {
     global: repository.directories.globalDirectory,
     project: repository.directories.projectDirectory,
   };
+}
+
+/** Replace only this fixture's request actions, leaving executable sources intact. */
+export async function actions(root: string, values: Record<string, Action>) {
+  const directory = join(root, "commands");
+  await mkdir(directory, { recursive: true });
+  for (const file of await readdir(directory)) {
+    if (/^request-\d+\.toml$/.test(file)) await rm(join(directory, file));
+  }
+  for (const [index, [target, action]] of Object.entries(values).entries()) {
+    await command(root, `request-${index}.toml`, stringify({
+      description: "Request action", target,
+      ...(typeof action === "string" ? { replacement: action } : action),
+    }));
+  }
 }
 
 export const memoryProtocol = '[[rule]]\nglob = "*.md"\naction = "memory"\n';

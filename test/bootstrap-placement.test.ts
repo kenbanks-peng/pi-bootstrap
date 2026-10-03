@@ -1,16 +1,12 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import { registerBootstrap } from "../index.ts";
 import { fixture } from "./session-fixture.ts";
 
 test("bootstrap follows current sections and later system text while tool deltas stay in place", async t => {
   const f = await fixture(t);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, "");
   let handler: any;
-  registerBootstrap({ on: (_name: string, fn: any) => { handler = fn; } } as never, config,
+  registerBootstrap({ on: (_name: string, fn: any) => { handler = fn; } } as never, () => f.repository,
     () => '<bootstrap>\n  <command>First command\none</command>\n  <command>Second command\ntwo</command>\n</bootstrap>');
   const toolsAdded = [{ name: "read" }];
   const toolsRemoved = [{ name: "bash" }];
@@ -20,7 +16,7 @@ test("bootstrap follows current sections and later system text while tool deltas
     { role: "system", content: "Later instructions", sections: { rules: "Current rules", obsolete: null, skills: "New skills" }, toolsRemoved, timestamp: 2 },
   ];
   const before = structuredClone(messages);
-  const result = await handler({ messages });
+  const result = await handler({ messages }, { cwd: f.projectRoot });
   assert.equal(result.messages[0].content,
     'Base\n\nLater instructions\n\nCurrent rules\n\nWorkspace\n\nNew skills\n\n<bootstrap>\n  <command>First command\none</command>\n  <command>Second command\ntwo</command>\n</bootstrap>');
   assert.equal(result.messages[0].sections, undefined);
@@ -31,19 +27,17 @@ test("bootstrap follows current sections and later system text while tool deltas
   assert.equal(result.messages[2].sections, undefined);
   assert.equal(result.messages[2].timestamp, 2);
   assert.deepEqual(messages, before);
-  assert.deepEqual(await handler({ messages }), result);
+  assert.deepEqual(await handler({ messages }, { cwd: f.projectRoot }), result);
 });
 
 test("an empty bootstrap does not fold system sections or patches", async t => {
   const f = await fixture(t);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, "");
   let handler: any;
-  registerBootstrap({ on: (_name: string, fn: any) => { handler = fn; } } as never, config, () => "");
+  registerBootstrap({ on: (_name: string, fn: any) => { handler = fn; } } as never, () => f.repository, () => "");
   const messages = [
     { role: "system", content: "Base", sections: { rules: "Rules" } },
     { role: "user", content: "Question" },
     { role: "system", content: "", sections: { rules: "New rules" } },
   ];
-  assert.deepEqual((await handler({ messages })).messages, messages);
+  assert.deepEqual((await handler({ messages }, { cwd: f.projectRoot })).messages, messages);
 });

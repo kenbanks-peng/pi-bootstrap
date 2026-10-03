@@ -3,11 +3,11 @@ import { test } from "node:test";
 import { mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import bootstrap, { getConfigPath, registerBootstrap } from "../index.ts";
+import bootstrap, { registerBootstrap } from "../index.ts";
 import { getBootstrapDirectory } from "../src/bootstrap-paths.ts";
 import { createBootstrapRepository, registerBootstrapSession } from "../src/bootstrap-session.ts";
 import { runBootstrapCommand, type BootstrapCommandUI } from "../src/bootstrap-command.ts";
-import { fixture, memory, command, executable, protocol } from "./session-fixture.ts";
+import { fixture, memory, command, executable, protocol, actions } from "./session-fixture.ts";
 
 function harness(repositoryFor?: Parameters<typeof registerBootstrapSession>[1]) {
   const handlers = new Map<string, (...args: any[]) => any>();
@@ -43,7 +43,6 @@ function ui(values: Array<string | undefined> = []) {
 test("portable default paths, agent override and renamed project scope", () => {
   assert.equal(getBootstrapDirectory("/home/someone", ""), "/home/someone/.config/pi/agent/extensions/pi-bootstrap");
   assert.equal(getBootstrapDirectory("/home/someone", "/custom/pi"), "/custom/pi/extensions/pi-bootstrap");
-  assert.equal(getConfigPath(), join(getBootstrapDirectory(), "config.toml"));
   assert.equal(getBootstrapDirectory(), join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".config", "pi", "agent"), "extensions", "pi-bootstrap"));
   assert.deepEqual(createBootstrapRepository("/workspace/product", "/home/someone", "").directories, {
     globalDirectory: "/home/someone/.config/pi/agent/extensions/pi-bootstrap",
@@ -70,14 +69,14 @@ test("session snapshots and existing request replacements compose without changi
   try {
     const repository = createBootstrapRepository(f.projectRoot);
     await repository.create("global", "memory", "Session guidance");
-    await writeFile(getConfigPath(), '[system_prompt.tools]\nreplacement = "New tools"\n[system_prompt.preamble]\nreplacement = "New preamble"\n[system_prompt.postamble]\nrefer = "Read $link"\nlink = "prompt.md"\n');
+    await actions(repository.directories.globalDirectory, { "system_prompt.tools": "New tools", "system_prompt.preamble": "New preamble", "system_prompt.postamble": { refer: "Read $link", link: "prompt.md" } });
     const h = harness();
     h.handlers.clear();
     bootstrap(h.pi as never);
     await h.handlers.get("session_start")!({}, { cwd: f.projectRoot, hasUI: false, ui: ui().api });
     const user = { role: "user", content: "Question" };
     const system = { role: "system", content: "", sections: { preamble: "Old preamble", tools: "<tools>Old tools</tools>Tail" }, toolsAdded: [{ name: "read" }] };
-    const result = await h.handlers.get("context_with_system")!({ messages: [system, user] });
+    const result = await h.handlers.get("context_with_system")!({ messages: [system, user] }, { cwd: f.projectRoot });
     assert.match(result.messages[0].content, /<tools>\nNew tools\n<\/tools>Read prompt.md[\s\S]*<bootstrap/);
     assert.equal(result.messages[0].sections, undefined);
     assert.match(result.messages[0].content, /<\/bootstrap>$/);
@@ -104,9 +103,7 @@ test("session start snapshots once and request injection does not mutate history
   assert.equal(compositions, 1);
   assert.deepEqual(h.messages, []);
   assert.match(h.snapshot(), /<bootstrap>/);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, "");
-  registerBootstrap(h.pi as never, config, h.snapshot);
+  registerBootstrap(h.pi as never, () => f.repository, h.snapshot);
   await memory(f.project, "test.md", "Later snapshot");
   const first = h.snapshot();
   const other = { role: "custom", customType: "other", content: "Other" };
@@ -114,7 +111,7 @@ test("session start snapshots once and request injection does not mutate history
   const event = { messages: [{ role: "system", content: "Prompt" }, user, other] };
   const before = structuredClone(event);
   for (let i = 0; i < 2; i++) {
-    const result = await h.handlers.get("context_with_system")!(event);
+    const result = await h.handlers.get("context_with_system")!(event, { cwd: f.projectRoot });
     assert.equal(result.messages[0].content, `Prompt\n\n${first}`);
     assert.deepEqual(result.messages.slice(1), [user, other]);
   }

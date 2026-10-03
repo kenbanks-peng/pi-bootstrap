@@ -9,7 +9,21 @@ export interface BootstrapCommandUI {
 
 const api = "/bootstrap list [global|project] [memory|command]\n/bootstrap add [global|project] [memory|command]\n/bootstrap edit <id> [memory|command]\n/bootstrap delete <id> [memory|command]";
 const usage = "Usage: /bootstrap list [global|project] [memory|command] | add [global|project] [memory|command] | edit <id> [memory|command] | delete <id> [memory|command]";
-const commandTemplate = 'description = "Working tree status"\n' + "# Use exactly one of argv or expression. Remove cwd for expressions.\nargv = [\"git\", \"status\", \"--short\"]\ncwd = \".\"\n# expression = 'ALL_TOOLS.map(t => t.name).join(\"\\n\")'\n";
+const commandTemplate = [
+  'description = "Working tree status"',
+  '# Keep exactly one action: argv, expression, replacement, or refer.',
+  'argv = ["git", "status", "--short"]',
+  'cwd = "."',
+  '# For an expression, remove argv and cwd:',
+  '# expression = \'ALL_TOOLS.map(t => t.name).join("\\n")\'',
+  '# For request actions, remove argv and cwd. Description is not inserted.',
+  '# target = "system_prompt.tools"',
+  '# replacement = "New tool instructions"',
+  '# Or use refer and link instead of replacement:',
+  '# refer = "Read $link"',
+  '# link = "links/tools.md"',
+  "",
+].join("\n");
 
 
 export async function runBootstrapCommand(args: string, bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {

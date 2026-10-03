@@ -1,7 +1,7 @@
 # pi-bootstrap
 
 Bootstrap Pi sessions with user-managed memories and command output. Replace
-tagged request text, or save it to a file and insert a reference, using `config.toml`.
+tagged request text, or save it to a file and insert a reference, using `commands/*.toml`.
 
 ## Session context
 
@@ -9,25 +9,25 @@ Global configuration lives under `~/.config/pi/agent/extensions/pi-bootstrap/`
 (or `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/`):
 
 - `memories/*.md`: user-authored guidance.
-- `commands/*.toml`: external command or JavaScript expression definitions.
-- `protocol.toml`: rules selecting session sources; created if missing.
-- `config.toml`: existing request-time replacement/reference rules.
+- `commands/*.toml`: executable commands, replacements, or references.
+- `protocol.toml`: rules that select sources; created if missing.
 
 Project sources use `.agents/bootstrap/` with the same session layout. Global
 sources precede project sources; a project `protocol.toml` overrides the global
-policy for that project. Session sources are saved on `session_start`, not
-on every request. Skill expressions run once before the first agent run, when Pi supplies skill metadata. Commands execute with your permissions: review them before use.
+policy for that project. Memories and executable command output are saved on `session_start`, not
+on every request. Replacement and reference actions are read on each request. Skill expressions run once before the first agent run, when Pi supplies skill metadata. Commands execute with your permissions: review them before use.
 
 Each outgoing system prompt receives `<bootstrap>…</bootstrap>`
 at the end of its system-prompt body, after all current prompt sections—not a
 separate `<message>`, custom message, or user message. Memory and command items have no item tags and are separated by a blank line. The snapshot is runtime-local: startup, reload, new, resume, and fork
 compose fresh content; empty/failed starts and shutdown clear it. Nothing is
-persisted into conversation history, and commands do not rerun per request.
+persisted into conversation history, and executable commands do not rerun per request.
 
 Request replacements/references run before injection. Explicit
-`[system_prompt.bootstrap]` (or `[bootstrap]`) rules can transform
+`target = "system_prompt.bootstrap"` (or `target = "bootstrap"`) actions can transform
 the request copy; broad system preamble/postamble rules cannot remove bootstrap.
-Management edits affect the next session snapshot, not the current one.
+Memory and executable command edits affect the next session snapshot.
+Replacement and reference edits affect the next request.
 
 Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
 `delete <id>`. Add/list accept optional `global|project` and `memory|command`
@@ -35,8 +35,8 @@ filters; add defaults to `project memory`. Edit/delete accept an optional type.
 No model-callable management tools are registered.
 
 Each command file must contain a non-empty single-line
-`description`, and exactly one of `argv` or `expression`. Add a description to
-existing command files. Each command item contains the description line followed
+`description`, and exactly one of `argv`, `expression`, `replacement`, or `refer`.
+Executable command items contain the description line followed
 by the XML-escaped output, without `<run>` or `<output>` tags. Execution details
 are not included. To list registered
 tools, create `commands/tools.toml` in either scope:
@@ -89,8 +89,8 @@ underscores, or hyphens. `bootstrap` is reserved; omit `section` to use it.
 Commands for the same section are joined with blank lines in source order,
 global before project. The description and output are XML-escaped. Section
 commands replace existing and historical request-copy sections, without changing
-stored history. Replacement and reference rules such as
-`[system_prompt.skills]` run after section injection.
+stored history. Replacement and reference actions such as
+`target = "system_prompt.skills"` run after section injection.
 
 ## Lazy skill discovery
 
@@ -117,7 +117,7 @@ Duplicate names and disabled skills are excluded.
 Pi supplies this metadata before the first agent run. Expressions targeting
 `skills`, or containing `ALL_SKILLS` or `getSkills`, are saved at session start
 and evaluated once before that run. Tool metadata still comes from session start.
-Other commands run at session start. No commands rerun per request.
+Other executable commands run at session start. Neither execution method reruns per request.
 Run `/reload` after changes.
 
 Without a section command, the extension removes Pi's full skill catalog and
@@ -143,119 +143,151 @@ instructions, and there is no separate skill-loading tool.
   so an old full catalog does not remain in the outgoing transcript. Stored
   history, tool declarations, and skill resource files stay unchanged.
 - Skill transformations run before the configured request replacements.
-  A replacement for `[system_prompt.skills]` therefore receives the command output.
+  An action with `target = "system_prompt.skills"` therefore receives the command output.
 
 This reduces prompt size. It does not remove Pi's startup skill scan or skill
 instructions already read into conversation history.
 
-## Configuration
+## Request actions
 
-On the first request, the extension copies [default.toml](default.toml) to
-`~/.config/pi/agent/extensions/pi-bootstrap/config.toml` if that file is missing.
-Existing config files stay unchanged. Edit `config.toml` to set replacements.
-If `PI_CODING_AGENT_DIR` is set, use that directory instead of `~/.config/pi/agent`.
+Put one action in each `commands/*.toml` file, in the global or project scope.
+The command rule in `protocol.toml` must select the file. Use `glob = "*.toml"`
+to select all command files.
+
+Each file requires a non-empty, single-line `description` and exactly one of:
+
+| Field | Purpose | When it runs |
+| --- | --- | --- |
+| `argv` | Execute an external command | Session start |
+| `expression` | Evaluate JavaScript | Session start, or first agent run for skills |
+| `replacement` | Replace selected request text | Every request |
+| `refer` | Save selected text and insert a reference | Every matching request |
+
+Replacement and reference actions also require `target`. They do not accept
+`section`, `cwd`, or execution fields. Their descriptions are management labels,
+not inserted prompt text. Unknown fields in these actions are errors.
+
+### Replace text
+
+For example, `commands/tools.toml`:
 
 ```toml
-[one]
+description = "Tool discovery instructions"
+target = "system_prompt.tools"
+replacement = """
+Use tool discovery to find the required tools.
+Read each tool definition before use.
+"""
+```
+
+The action replaces the body of the system prompt's `<tools>` section.
+It does not change tool declarations. Non-empty whole-body replacements retain
+the outer tag and add a newline before and after the replacement text.
+Replacement text is not XML-escaped or scanned again.
+
+Use an empty replacement to **remove the complete selected tag**:
+
+```toml
+description = "Remove the rules section"
+target = "system_prompt.rules"
+replacement = ""
+```
+
+See [replacement](examples/replacement.toml) and [removal](examples/removal.toml)
+examples.
+
+### Save text and insert a reference
+
+For example, `commands/docs.toml`:
+
+```toml
+description = "Pi documentation reference"
+target = "system_prompt.docs"
+refer = "Pi documentation is at $link. Read it when you work on Pi."
+link = "links/pi-docs.md"
+```
+
+The extension saves the selected original body to the link file, then inserts
+the reference text. The outer tags stay unchanged. Every `$link` becomes the
+exact configured link string. See the [reference example](examples/reference.toml).
+
+- `refer` must be a string. `link` must be a non-blank string.
+- Saved text includes whitespace and child tags, but not outer tags.
+- Relative links use the source scope's bootstrap root, **not** its `commands/`
+  directory. Thus `links/pi-docs.md` goes under that scope's `links/`.
+- `~/` expands to the home directory for file writes only. Absolute links use
+  the specified path. The reference text retains the configured link.
+- Missing directories are created. Existing files are overwritten on each
+  matching request. For several matches that write to the same path, the last
+  match supplies the saved text. No match means no write.
+- Invalid sources cause a handler error before reference writes. Write errors
+  cause a handler error; files already written are not rolled back.
+
+### Targets and precedence
+
+`target` is a dot-separated path of complete, case-sensitive tag ancestry:
+
+```toml
+description = "Nested replacement"
+target = "one.two"
 replacement = "New content"
 ```
 
-Changes `<one>Old content</one>` to `<one>New content</one>`.
+This changes `<one><two>Old</two></one>`, but not a root `<two>`.
+Use an array for literal dots in a tag name: `target = ["one.two"]`.
 
-For a nested tag:
+- `system_prompt` selects Pi's implicit system-prompt container, without
+  adding an outer tag. For example, `system_prompt.one.two` selects a nested
+  system tag. Unprefixed paths can match any message role.
+- Each segment uses its exact name first. If absent under that parent,
+  underscores change to hyphens as a fallback. Exact matches take precedence.
+- A project action overrides a global action with the **same target path**.
+  Duplicate target paths within one scope cause an error. Different filenames
+  do not resolve that conflict. String and array forms of the same path are
+  duplicates.
+- Parent actions take precedence over child actions. System-specific actions
+  take precedence over unprefixed actions. Exact-name paths take precedence
+  over underscore fallbacks.
+- `target = "abc.preamble"` selects text before the first child tag.
+  `target = "abc.postamble"` selects text after the last child tag.
+  These suffixes are reserved at any depth. With no child tags, either suffix
+  selects the complete body. Empty edge regions accept inserted text.
+  An empty replacement removes only the selected edge region.
+- Self-closing tags form edge boundaries, but have no replaceable body.
+  Tags inside Markdown fences and unmatched tags are ignored.
+- Structured system prompts have one preamble and one postamble across all
+  active sections, not one pair per section or text block.
+- Section command output is inserted before these actions. A reference action
+  can therefore save generated section text. A whole-section replacement
+  discards that output; use only the replacement if the output is not needed.
+- Explicit `system_prompt.bootstrap` or `bootstrap` actions transform a copy
+  of the session snapshot. Broad system prompt edge actions cannot remove it.
+- Only outgoing request copies change. Stored history, tool declarations,
+  and the session snapshot stay unchanged.
 
-```toml
-[one.two]
-replacement = "New content"
-```
+### Management and migration
 
-Changes `<one><two>Old content</two></one>` to
-`<one><two>New content</two></one>`.
+Use `/bootstrap add global command` or `/bootstrap add project command`.
+The editor template shows all four action forms. Keep only the fields for the
+selected action. Use `/bootstrap list`, `edit <id> command`, and
+`delete <id> command` to manage these files.
 
-For text at the start or end of any tag body:
+Action and protocol definitions are read on each request. No reload is needed
+for replacement/reference edits. Memory and executable command edits still
+require a new session snapshot, such as `/reload`.
 
-```toml
-[abc.preamble]
-replacement = "New start"
+`config.toml` is no longer read or created. There is no `default.toml`, and
+there are no default replacement actions. To migrate:
 
-[abc.postamble]
-replacement = "New end"
-```
+1. Create one command file for each active table in the old `config.toml`.
+2. Add a description and move the table path to `target`.
+3. Copy its `replacement`, or its `refer` and `link` fields.
+4. Skip empty tables. Check that the protocol selects the new files.
+5. Remove unnecessary section commands that the replacements would overwrite.
+6. Reload the updated extension. Then remove or archive the old config.
 
-For `<abc>Before<def>hi</def>After</abc>`, this produces
-`<abc>New start<def>hi</def>New end</abc>`.
-
-- `preamble` selects text after the opening tag and before the first child tag.
-- `postamble` selects text after the last child tag and before the closing tag.
-- These suffixes are reserved references. They work at any depth, with any parent name.
-- Self-closing tags form boundaries. Tags inside code fences and unmatched tags do not.
-- If there are no child tags, either reference selects the complete body.
-- Empty edge regions accept inserted text. Whitespace is part of the selected text.
-- Whole-body replacements take precedence over these references.
-
-For tools guidance in the system prompt:
-
-```toml
-[system_prompt.tools]
-replacement = "TOOLS REPLACEMENT TEXT"
-```
-
-Pi stores system text without an outer tag. The extension supplies `system-prompt`
-as its parent for matching, without adding it to the outgoing text.
-`system_prompt` selects this parent through the generic underscore fallback.
-The same rule applies to arbitrary nested tags: `[system_prompt.one.two]`.
-`[system_prompt.preamble]` and `[system_prompt.postamble]` select the edges of
-the system text without an outer tag. For structured prompts, the preamble reference
-selects only the `preamble` section, not the start of each section or empty content.
-The postamble reference selects the end of the final active section. Section updates
-do not create new prompt edges. For text blocks, only the first and last text blocks
-receive these references. Nested references still apply within each section.
-Tool declarations stay unchanged.
-
-- Paths match complete, case-sensitive tag ancestry.
-  Each segment uses its exact name first. If that name is absent under the selected
-  parent, `_` is changed to `-` as a fallback. For example, `[abc_def.ghi_jkl]`
-  can select `<abc-def><ghi-jkl>…</ghi-jkl></abc-def>`.
-  If both names exist, only the exact name is selected.
-  System-specific paths take precedence over unprefixed paths such as `[one.two]`.
-- Replacement strings are inserted exactly. An empty string removes the body.
-- Tags, attributes, and text outside the selected body stay unchanged.
-- Repeated matches are replaced. If both parent and child have replacements, the parent wins.
-- Tags inside Markdown code fences are ignored. Self-closing tags have no body.
-- All message text is processed, including system sections and text blocks.
-  Bootstrap is transformed separately. Current system content and section patches
-  are folded into the leading system message, with bootstrap last. Tool deltas
-  keep their transcript positions. Tool declarations, stored history, and the
-  session snapshot stay unchanged.
-- The config is read for each request. A missing config is created from `default.toml`.
-  Invalid config causes a handler error; no partial result is returned.
-  Unmatched tag-like text, such as `Map<string>`, stays unchanged.
-
-## Save text and insert a reference
-
-Use `refer` and `link` instead of `replacement`:
-
-```toml
-[system_prompt.docs]
-refer = "Pi documentation can be found at $link. Read it only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI."
-link = "~/.config/pi/agent/extensions/pi-bootstrap/links/docs.md"
-```
-
-The extension saves the original `<docs>` body to the link file. It then replaces
-the body with the `refer` text. The outer tags stay unchanged. Each `$link` in
-the reference becomes the exact configured link string.
-
-- The saved text includes whitespace and child tags, but not the outer tags.
-- `~/` uses your home directory for file writes. Relative links use the config
-  directory. Absolute links use the specified path.
-- Missing directories are created. Existing files are overwritten on each matching
-  request. If multiple matches use the same file, the last match supplies its text.
-- No match means no file write. Parent actions take precedence over child actions.
-- References use the same path matching and edge selection rules as replacements.
-- `refer` requires a string `link` that is not empty or only whitespace.
-  Do not combine `refer` with `replacement` in the same table.
-- Config and file-write errors cause a handler error; no transformed result is returned.
-  Files already written before an error are not rolled back.
+Relative link destinations remain unchanged for global actions. The extension
+does not migrate user files automatically.
 
 ## Load
 

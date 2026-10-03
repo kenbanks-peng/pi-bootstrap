@@ -1,35 +1,16 @@
-import { parse } from "smol-toml";
-
-type Table = Record<string, unknown>;
-const isTable = (value: unknown): value is Table =>
+const isTable = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
 export interface ReferAction {
   refer: string;
   link: string;
+  /** Absolute write path; link remains unchanged in the inserted reference. */
+  destination?: string;
 }
 
-type Action = string | ReferAction;
+export type Action = string | ReferAction;
 export type SaveReference = (link: string, text: string) => void;
 
-export function parseReplacements(toml: string): Map<string, Action> {
-  const replacements = new Map<string, Action>();
-  const visit = (table: Table, path: string[]) => {
-    const fields = Object.entries(table).filter(([, value]) => !isTable(value));
-    if (fields.length) {
-      if (path.length && fields.length === 1 && typeof table.replacement === "string")
-        replacements.set(JSON.stringify(path), table.replacement);
-      else if (path.length && fields.length === 2 && typeof table.refer === "string" &&
-        typeof table.link === "string" && table.link.trim())
-        replacements.set(JSON.stringify(path), { refer: table.refer, link: table.link });
-      else throw new Error(path.join(".") + ": expected replacement, or refer with a non-empty link");
-    }
-    for (const [name, value] of Object.entries(table))
-      if (isTable(value)) visit(value, [...path, name]);
-  };
-  visit(parse(toml), []);
-  return replacements;
-}
 
 function resolvePaths(replacements: ReadonlyMap<string, Action>, paths: string[][]): Map<string, Action> {
   const available = new Set<string>();
@@ -157,7 +138,7 @@ export function replaceTags(text: string, replacements: ReadonlyMap<string, Acti
     if (typeof value === "string") replacement = value;
     else {
       if (!saveReference) throw new Error("refer action requires a reference writer");
-      saveReference(value.link, text.slice(edit.bodyStart, edit.bodyEnd));
+      saveReference(value.destination ?? value.link, text.slice(edit.bodyStart, edit.bodyEnd));
       replacement = value.refer.replaceAll("$link", () => value.link);
     }
     // Keep replacement and reference text separate from the retained tags.

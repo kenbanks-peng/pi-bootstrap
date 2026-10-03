@@ -1,0 +1,3 @@
+description = "Remove the rules section"
+target = "system_prompt.rules"
+replacement = ""

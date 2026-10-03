@@ -4,7 +4,7 @@
 
 The global root is `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap` when that
 variable is nonempty, otherwise `~/.config/pi/agent/extensions/pi-bootstrap`
-using Node's `homedir()`. It also holds request-time `config.toml`.
+using Node's `homedir()`. Request actions live in its `commands/` directory.
 The project root is the current Pi working directory (`ctx.cwd`), not a Git-root
 search. Project configuration lives in `<cwd>/.agents/bootstrap/`.
 Both scopes use:
@@ -28,7 +28,7 @@ are supported. Existing configuration is never moved or rewritten.
 
 ## Protocol
 
-On session start, the global protocol is installed exclusively if missing:
+On session start or a request, the global protocol is installed exclusively if missing:
 
 ```toml
 
@@ -58,7 +58,7 @@ those basenames are ordinary selectable command files.
 
 Memories are complete strict UTF-8 text, without filenames. Commands are strict
 UTF-8 TOML with a non-empty single-line `description`, and
-exactly one of `argv` or `expression`. Missing, blank, non-string, or multiline
+exactly one of `argv`, `expression`, `replacement`, or `refer`. Missing, blank, non-string, or multiline
 descriptions are errors. Add this field to existing command files:
 
 ```toml
@@ -87,8 +87,8 @@ expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
 ```
 
 The expression is JavaScript and must return a string synchronously. Empty strings
-are valid results. Missing, empty, or non-string expressions, both execution
-fields, neither execution field, and `cwd` on an expression file are errors.
+are valid results. Missing, empty, or non-string expressions, mixed action
+fields, missing action fields, and `cwd` on an expression file are errors.
 
 The extension supplies these read-only values:
 
@@ -133,6 +133,27 @@ also inserted into bootstrap. See `examples/skills.toml` for a skill-list comman
 Without this command, the extension removes full skill catalogs but supplies no
 skill-list text. The `skill_search` tool stays registered.
 
+### Request actions
+
+Replacement and reference files use the same protocol selection and management
+commands. They do not contribute descriptions or output to the session snapshot.
+They require a `target` path and either `replacement`, or `refer` with `link`.
+They cannot contain `argv`, `expression`, `section`, or `cwd`.
+
+The request handler reads selected command definitions again without executing
+commands or expressions. Project actions override global actions with the same
+target. Duplicate targets within one scope cause an error before reference writes.
+Parent, system-specific, and exact-name precedence remains part of tag matching.
+Relative reference links resolve from the source scope's bootstrap root, not
+its `commands/` folder.
+
+Section commands run before request actions. An action can replace or reference
+their generated text. See [request actions](../README.md#request-actions) for the
+schema, target rules, examples, and migration procedure.
+
+`config.toml` is ignored and never created. `default.toml` has been removed.
+No replacement or reference action is installed by default.
+
 ## Snapshot lifecycle
 
 The extension factory only registers handlers and creates empty runtime-local
@@ -162,7 +183,7 @@ historical snapshots. There is no legacy snapshot migration.
 
 The single `context_with_system` request handler:
 
-1. Reads request-time replacement/reference configuration.
+1. Reads selected command files from both scopes and validates request actions.
 2. Transforms Pi's transcript without mutating input messages.
 3. Transforms a copy of the bootstrap snapshot with explicit bootstrap paths.
 4. Writes reference files.
@@ -188,9 +209,9 @@ deltas receive bootstrap at the end of the assembled prompt. Empty snapshots
 leave the original section and content layout unchanged.
 
 Broad system preamble/postamble replacements and references process the original
-prompt, not bootstrap. Explicit `[system_prompt.bootstrap]` or
-`[bootstrap]` rules can replace/reference the request copy. Existing
-matching, escaping, reference-file and reload semantics remain unchanged.
+prompt, not bootstrap. Explicit `target = "system_prompt.bootstrap"` or
+`target = "bootstrap"` actions can replace/reference the request copy. Tag matching and escaping remain unchanged. Request actions refresh on each
+request; session output remains fixed until a new snapshot.
 The original snapshot and conversation history remain immutable. A nonempty
 snapshot requires Pi's leading system message; malformed transcripts are
 reported rather than exposing bootstrap through a user-message fallback.
@@ -204,21 +225,26 @@ reported rather than exposing bootstrap through a user-message fallback.
 - `edit <id> [memory|command]` and `delete <id> [memory|command]`.
 
 Add/edit use the UI editor and reject non-interactive mode. Cancellation changes
-nothing. Command addition supplies a description/argv/cwd template. The template also shows an expression example; remove `argv` and
-`cwd` to use it. Editing an existing command shows its complete TOML. List/delete
+nothing. Command addition supplies a description/argv/cwd template. The template
+also shows expression, replacement, and reference examples; remove `argv` and
+`cwd` to use one of them. Editing an existing command shows its complete TOML. List/delete
 work without interactive UI. Operations catch errors and notify the user.
-There are no model-callable management tools. Edits affect the next session
-snapshot, not the current one.
+There are no model-callable management tools. Memory and executable command
+edits affect the next session snapshot. Replacement and reference edits affect
+the next request.
 
 ## Verification and boundaries
 
-Validated with `npm test` (**93 passed, 0 failed**), `npm run typecheck`, and
+Validated with `npm test` (**98 passed, 0 failed**), `npm run typecheck`, and
 `git diff --check`. API evidence: Pi 1.0.0 extension event declarations,
 `core/messages.js`, pi-ai `utils/text.js`, `utils/transcript.js`, and
 `api/openai-responses-shared.js`; cross-checked against Context7
 `/earendil-works/pi`.
 
-- Original replacement/reference tests remain unchanged.
+- Tag-matching tests retain their existing cases. Request integration tests use
+  command action files instead of the removed config loader.
+- Action tests cover schema validation, references, duplicate targets, project
+  overrides, protocol selection, file edits, deletion, and slash-command management.
 - Protocol tests cover selection, execution order, inheritance, escaping,
   command limits/errors, symlink containment and exact `<bootstrap>` composition.
 - Session tests cover CRUD, slash commands, paths, fresh lifecycle snapshots,

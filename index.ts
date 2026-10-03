@@ -1,50 +1,25 @@
-import { constants } from "node:fs";
-import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
-import { homedir } from "node:os";
-import { dirname, join, resolve } from "node:path";
-import { fileURLToPath } from "node:url";
+import { mkdir, writeFile } from "node:fs/promises";
+import { dirname } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { parseReplacements, replaceMessages, replaceTags } from "./src/replace.ts";
-import { getBootstrapDirectory } from "./src/bootstrap-paths.ts";
-import { registerBootstrapSession } from "./src/bootstrap-session.ts";
+import { replaceMessages, replaceTags } from "./src/replace.ts";
+import { createBootstrapRepository, registerBootstrapSession } from "./src/bootstrap-session.ts";
 import { registerToolGuidance } from "./src/bootstrap-guidance.ts";
 import { registerLazySkills, type SkillPromptTransform } from "./src/bootstrap-skills.ts";
-
-export function getConfigPath(): string {
-  return join(getBootstrapDirectory(), "config.toml");
-}
 
 export default function bootstrap(pi: ExtensionAPI) {
   registerToolGuidance(pi);
   const snapshot = registerBootstrapSession(pi);
   const transformSkills = registerLazySkills(pi);
-  registerBootstrap(pi, getConfigPath(), snapshot, transformSkills, snapshot.sections);
+  registerBootstrap(pi, createBootstrapRepository, snapshot, transformSkills, snapshot.sections);
 }
 
-export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snapshot: () => string = () => "",
+export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootstrapRepository, snapshot: () => string = () => "",
   transformSkills: SkillPromptTransform = messages => messages,
   snapshotSections: () => Record<string, string> = () => ({})) {
-  pi.on("context_with_system", async event => {
-    let config: string;
-    try {
-      config = await readFile(path, "utf8");
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
-      await mkdir(dirname(path), { recursive: true });
-      try {
-        await copyFile(fileURLToPath(new URL("./default.toml", import.meta.url)), path, constants.COPYFILE_EXCL);
-      } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
-      }
-      config = await readFile(path, "utf8");
-    }
+  pi.on("context_with_system", async (event, ctx) => {
+    const replacements = await repositoryFor(ctx.cwd).loadActions();
     const references = new Map<string, string>();
-    const replacements = parseReplacements(config);
-    const saveReference = (link: string, text: string) => {
-      const target = link === "~" ? homedir() : link.startsWith("~/")
-        ? join(homedir(), link.slice(2)) : resolve(dirname(path), link);
-      references.set(target, text);
-    };
+    const saveReference = (target: string, text: string) => { references.set(target, text); };
     const sections = snapshotSections();
     if (Object.keys(sections).length && event.messages[0]?.role !== "system") {
       throw new Error("Section injection requires a leading system message");

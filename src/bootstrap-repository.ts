@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
-import { installDefaultProtocol, loadProtocol, resolveProtocolMemories } from "./bootstrap-protocol.js";
+import { dirname, join, resolve } from "node:path";
+import { homedir } from "node:os";
+import type { Action } from "./replace.js";
+import { installDefaultProtocol, loadProtocol, resolveProtocolActions, resolveProtocolMemories } from "./bootstrap-protocol.js";
 import type { BootstrapExpressionContext, BootstrapSessionEntry } from "./bootstrap-protocol.js";
 
 export interface BootstrapSnapshot {
@@ -86,21 +88,45 @@ export class BootstrapRepository {
     return sources.flat().sort((left, right) => left.id.localeCompare(right.id) || left.type.localeCompare(right.type));
   }
 
+  /** Request actions refresh independently of the session snapshot. Project targets win. */
+  async loadActions(): Promise<Map<string, Action>> {
+    const { globalProtocol, projectProtocol } = await this.protocols();
+    const actions = new Map<string, Action>();
+    for (const [scope, protocol] of [["global", globalProtocol], ["project", projectProtocol]] as const) {
+      const directory = this.directoryFor(scope);
+      const selected = await resolveProtocolActions(directory, scopeLabel(scope), protocol);
+      for (const [key, action] of selected) {
+        if (typeof action === "string") actions.set(key, action);
+        else {
+          const link = action.link;
+          const destination = link === "~" ? homedir() : link.startsWith("~/")
+            ? join(homedir(), link.slice(2)) : resolve(directory, link);
+          actions.set(key, { ...action, destination });
+        }
+      }
+    }
+    return actions;
+  }
+
+  private async protocols() {
+    await installDefaultProtocol(this.directories.globalDirectory);
+    const globalProtocol = await loadProtocol(this.directories.globalDirectory, "Global");
+    if (!globalProtocol) throw new Error("Global Bootstrap protocol could not be installed.");
+    const projectProtocol = await loadProtocol(this.directories.projectDirectory, "Project") ?? globalProtocol;
+    return { globalProtocol, projectProtocol };
+  }
+
   async compose(expressionContext?: BootstrapExpressionContext): Promise<string> {
     return (await this.composeSnapshot(expressionContext)).bootstrap;
   }
 
   async composeSnapshot(expressionContext?: BootstrapExpressionContext): Promise<BootstrapSnapshot> {
     const globalDirectory = this.directoryFor("global");
-    await installDefaultProtocol(globalDirectory);
-    const globalProtocol = await loadProtocol(globalDirectory, "Global");
-    if (!globalProtocol) throw new Error("Global Bootstrap protocol could not be installed.");
-
+    const { globalProtocol, projectProtocol } = await this.protocols();
     const projectDirectory = this.directoryFor("project");
-    const projectProtocol = await loadProtocol(projectDirectory, "Project");
     const projectRoot = dirname(dirname(projectDirectory));
     const global = await resolveProtocolMemories(globalDirectory, "Global", globalProtocol, projectRoot, expressionContext);
-    const project = await resolveProtocolMemories(projectDirectory, "Project", projectProtocol ?? globalProtocol, projectRoot, expressionContext);
+    const project = await resolveProtocolMemories(projectDirectory, "Project", projectProtocol, projectRoot, expressionContext);
     const entries = [...global, ...project];
 
     return formatSnapshot(entries);

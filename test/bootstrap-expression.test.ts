@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { COMMAND_OUTPUT_LIMIT_BYTES, CommandSourceError } from "../src/bootstrap-protocol.ts";
 import { registerBootstrapSession } from "../src/bootstrap-session.ts";
@@ -106,11 +106,9 @@ test("session expressions snapshot tools once, refresh on reload, and clear on e
   await handlers.get("session_start")!({}, ctx);
   assert.match(snapshot(), /Test command\nread\n/);
   names = ["bash"];
-  const config = join(f.root, "config.toml");
-  await writeFile(config, "");
-  registerBootstrap(pi as never, config, snapshot);
+  registerBootstrap(pi as never, () => f.repository, snapshot);
   for (let i = 0; i < 2; i++) {
-    const result = await handlers.get("context_with_system")!({ messages: [{ role: "system", content: "" }] });
+    const result = await handlers.get("context_with_system")!({ messages: [{ role: "system", content: "" }] }, { cwd: f.projectRoot });
     assert.match(result.messages[0].content, /Test command\nread\n/);
   }
   assert.equal(reads, 1);

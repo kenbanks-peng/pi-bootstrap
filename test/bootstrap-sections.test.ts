@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { writeFile, readFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { registerBootstrap } from "../index.ts";
 import { registerBootstrapSession } from "../src/bootstrap-session.ts";
 import { registerLazySkills } from "../src/bootstrap-skills.ts";
-import { fixture, command, memory, executable } from "./session-fixture.ts";
+import { fixture, command, memory, executable, actions } from "./session-fixture.ts";
 
 function harness(repository: any) {
   const handlers = new Map<string, Array<(...args: any[]) => any>>();
@@ -42,9 +42,8 @@ test("section commands replace request sections, combine in source order, and st
   await command(f.project, "a.toml", 'description = "Project"\nsection = "skills"\n' + executable('process.stdout.write("<project>")').split("\n").slice(1).join("\n"));
   await memory(f.project, "memory.md", "Memory");
   const h = harness(f.repository);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, '[system_prompt.skills]\nrefer = "Read $link"\nlink = "skills.md"\n');
-  registerBootstrap(h.pi as never, config, h.snapshot, h.transform, h.snapshot.sections);
+  await actions(f.global, { "system_prompt.skills": { refer: "Read $link", link: "skills.md" } });
+  registerBootstrap(h.pi as never, () => f.repository, h.snapshot, h.transform, h.snapshot.sections);
   await h.run("session_start", {}, { cwd: f.projectRoot, ui: { notify() {} } });
   await h.run("before_agent_start", { systemPromptOptions: { skills, sections: {} } });
   const messages = [
@@ -53,11 +52,11 @@ test("section commands replace request sections, combine in source order, and st
     { role: "user", content: "<skills>User text</skills>" },
   ];
   const original = structuredClone(messages);
-  const result = await h.run("context_with_system", { messages });
+  const result = await h.run("context_with_system", { messages }, { cwd: f.projectRoot });
   assert.match(result.messages[0].content, /<skills>\nRead skills.md\n<\/skills>/);
   assert.match(result.messages[0].content, /<bootstrap>\nMemory\n<\/bootstrap>$/);
   assert.doesNotMatch(result.messages[0].content, /Global|Project|Old catalog|Historical catalog/);
-  assert.equal(await readFile(join(f.root, "skills.md"), "utf8"), "\nGlobal\n&lt;global&gt;\n\nProject\n&lt;project&gt;\n");
+  assert.equal(await readFile(join(f.global, "skills.md"), "utf8"), "\nGlobal\n&lt;global&gt;\n\nProject\n&lt;project&gt;\n");
   assert.equal(result.messages[2].content, messages[2].content);
   assert.deepEqual(messages, original);
 });
@@ -66,9 +65,7 @@ test("skill metadata is filtered and frozen, and skill commands run once from sa
   const f = await fixture(t);
   await command(f.project, "skills.toml", skillCommand);
   const h = harness(f.repository);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, "");
-  registerBootstrap(h.pi as never, config, h.snapshot, h.transform, h.snapshot.sections);
+  registerBootstrap(h.pi as never, () => f.repository, h.snapshot, h.transform, h.snapshot.sections);
   await h.run("session_start", {}, { cwd: f.projectRoot, ui: { notify() {} } });
   assert.deepEqual(h.snapshot.sections(), {});
   await command(f.project, "skills.toml", skillCommand.replace('Names:', 'Changed:'));
@@ -77,7 +74,7 @@ test("skill metadata is filtered and frozen, and skill commands run once from sa
   assert.equal(h.snapshot(), "");
   await h.run("before_agent_start", { systemPromptOptions: { skills: [], sections: {} } });
   assert.match(h.snapshot.sections().skills, /alpha, zebra/);
-  const result = await h.run("context_with_system", { messages: [{ role: "system", content: "", sections: { skills: "<skills>Old</skills>" } }] });
+  const result = await h.run("context_with_system", { messages: [{ role: "system", content: "", sections: { skills: "<skills>Old</skills>" } }] }, { cwd: f.projectRoot });
   assert.equal(result.messages[0].sections.skills, h.snapshot.sections().skills);
   await h.run("session_shutdown", {});
   assert.deepEqual(h.snapshot.sections(), {});

@@ -1,4 +1,5 @@
 import { parse } from "smol-toml";
+import type { Action } from "./replace.js";
 import { mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -48,7 +49,10 @@ export interface BootstrapProtocol {
   rule: BootstrapRule[];
 }
 
+type RequestSource = { description: string; target: string[]; action: Action };
+
 type CommandSource =
+  | RequestSource
   | { description: string; section?: string; argv: [string, ...string[]]; cwd?: string }
   | { description: string; section?: string; expression: string };
 
@@ -87,12 +91,38 @@ export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: st
       if (rule.action === "memory") {
         sessionEntries.push({ type: "memory", content: await readUtf8(sourcePath, `${scopeLabel} source "${filename}"`) });
       } else {
-        sessionEntries.push(await runCommandSource(sourcePath, projectRoot, scopeLabel, expressionContext));
+        const entry = await runCommandSource(sourcePath, projectRoot, scopeLabel, expressionContext);
+        if (entry) sessionEntries.push(entry);
       }
     }
   }
 
   return sessionEntries;
+}
+
+/** Read action definitions without executing argv or expressions. */
+export async function resolveProtocolActions(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocol): Promise<Map<string, Action>> {
+  const files = {
+    memory: await listDirectFiles(join(sourceRoot, "memories"), scopeLabel),
+    command: await listDirectFiles(join(sourceRoot, "commands"), scopeLabel),
+  };
+  const actions = new Map<string, Action>();
+  const owners = new Map<string, string>();
+  for (const { rule, filenames } of selectFiles(protocol, files, scopeLabel)) {
+    if (rule.action !== "command") continue;
+    for (const filename of filenames) {
+      const path = join(sourceRoot, "commands", filename);
+      const source = parseCommandSource(await readUtf8(path, `${scopeLabel} command source "${filename}"`), filename, scopeLabel);
+      if (!("target" in source)) continue;
+      const key = JSON.stringify(source.target);
+      if (actions.has(key)) {
+        throw new Error(`${scopeLabel} conflicting actions for ${source.target.join(".")}: "${owners.get(key)}" and "${filename}".`);
+      }
+      owners.set(key, filename);
+      actions.set(key, source.action);
+    }
+  }
+  return actions;
 }
 
 function parseProtocol(text: string, scopeLabel: string): BootstrapProtocol {
@@ -161,10 +191,11 @@ function matchesGlob(filename: string, glob: string): boolean {
   return new RegExp(expression).test(filename);
 }
 
-async function runCommandSource(sourcePath: string, projectRoot: string, scopeLabel: string, expressionContext?: BootstrapExpressionContext): Promise<Extract<BootstrapSessionEntry, { type: "command" }>> {
+async function runCommandSource(sourcePath: string, projectRoot: string, scopeLabel: string, expressionContext?: BootstrapExpressionContext): Promise<Extract<BootstrapSessionEntry, { type: "command" }> | undefined> {
   const sourceName = basename(sourcePath);
   try {
     const source = parseCommandSource(await readUtf8(sourcePath, `${scopeLabel} command source "${sourceName}"`), sourceName, scopeLabel);
+    if ("target" in source) return undefined;
     if ("expression" in source) {
       if (!expressionContext) throw new Error("Expression commands require a Pi session context.");
       // Skill metadata arrives with before_agent_start. Preserve the source now.
@@ -200,13 +231,34 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (typeof value.description !== "string" || value.description.trim().length === 0 || /[\r\n]/.test(value.description)) {
     throw new Error(`${label} description must be a non-empty single-line string.`);
   }
+  const actions = ["argv", "expression", "replacement", "refer"].filter(key => key in value);
+  if (actions.length !== 1) {
+    throw new Error(`${label} must contain exactly one of argv, expression, replacement, or refer.`);
+  }
+  if ("replacement" in value || "refer" in value) {
+    const target = typeof value.target === "string" ? value.target.split(".") : value.target;
+    if (!Array.isArray(target) || !target.length ||
+      !target.every(part => typeof part === "string" && /^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(part))) {
+      throw new Error(`${label} target must be a tag path or a non-empty array of tag names.`);
+    }
+    const allowed = new Set(["description", "target", actions[0], ...(actions[0] === "refer" ? ["link"] : [])]);
+    for (const key of Object.keys(value)) {
+      if (!allowed.has(key)) throw new Error(`${label} does not support "${key}" with ${actions[0]}.`);
+    }
+    if ("replacement" in value) {
+      if (typeof value.replacement !== "string") throw new Error(`${label} replacement must be a string.`);
+      return { description: value.description, target, action: value.replacement };
+    }
+    if (typeof value.refer !== "string" || typeof value.link !== "string" || !value.link.trim()) {
+      throw new Error(`${label} refer requires a string and a non-empty link.`);
+    }
+    return { description: value.description, target, action: { refer: value.refer, link: value.link } };
+  }
+  if ("target" in value || "link" in value) throw new Error(`${label} target and link require replacement or refer.`);
   if (value.section !== undefined && (typeof value.section !== "string" || !/^[a-z][a-z0-9_-]*$/.test(value.section) || value.section === "bootstrap")) {
     throw new Error(`${label} section must be a lowercase section name other than bootstrap.`);
   }
   const section = value.section === undefined ? {} : { section: value.section as string };
-  if (("argv" in value) === ("expression" in value)) {
-    throw new Error(`${label} must contain exactly one of argv or expression.`);
-  }
   if ("expression" in value) {
     if (typeof value.expression !== "string" || value.expression.trim().length === 0) {
       throw new Error(`${label} expression must be a non-empty string.`);

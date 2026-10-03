@@ -4,10 +4,10 @@ import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
-import { readFile, writeFile } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { registerBootstrap } from "../index.ts";
 import { registerBootstrapSession } from "../src/bootstrap-session.ts";
-import { fixture, memory, command, executable, protocol } from "./session-fixture.ts";
+import { fixture, memory, command, executable, protocol, actions } from "./session-fixture.ts";
 
 // Exercise the installed host's real conversion and provider request builder, not
 // a hand-written approximation of how system sections reach an API.
@@ -50,9 +50,8 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   await command(f.project, "tools.toml", 'description = "Test command"\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
   await command(f.project, "once.toml", executable(`require('node:fs').appendFileSync(${JSON.stringify(marker)}, 'x'); process.stdout.write('Snapshot output')`));
   const h = harness(() => f.repository);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, '[system_prompt.preamble]\nreplacement = "Replaced"\n[system_prompt.rules]\nrefer = "Read $link"\nlink = "rules.md"\n[system_prompt.postamble]\nreplacement = "Tail"\n');
-  registerBootstrap(h.pi as never, config, h.snapshot, messages => messages, h.snapshot.sections);
+  await actions(f.global, { "system_prompt.preamble": "Replaced", "system_prompt.rules": { refer: "Read $link", link: "rules.md" }, "system_prompt.postamble": "Tail" });
+  registerBootstrap(h.pi as never, () => f.repository, h.snapshot, messages => messages, h.snapshot.sections);
   await h.handlers.get("session_start")!({}, context(f.projectRoot));
   await h.handlers.get("before_agent_start")!({ systemPromptOptions: { skills: [{ name: "alpha", description: "Private description", filePath: "/alpha/SKILL.md", baseDir: "/alpha" }] } }, context(f.projectRoot));
   const history = freeze([
@@ -62,7 +61,7 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   ]);
   const before = structuredClone(history);
   for (const supportsMidConvoSystemMessages of [false, true]) {
-    const result = await h.handlers.get("context_with_system")!({ messages: history });
+    const result = await h.handlers.get("context_with_system")!({ messages: history }, { cwd: f.projectRoot });
     let payload: any;
     const response = await stream({
       id: "test", name: "test", api: "openai-responses", provider: "openai", baseUrl: "https://example.invalid/v1",
@@ -95,25 +94,24 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.deepEqual(history, before);
   }
   assert.equal(await readFile(marker, "utf8"), "x");
-  assert.equal(await readFile(join(f.root, "rules.md"), "utf8"), "Updated rules");
-  assert.doesNotMatch(await readFile(join(f.root, "rules.md"), "utf8"), /bootstrap/);
+  assert.equal(await readFile(join(f.global, "rules.md"), "utf8"), "Updated rules");
+  assert.doesNotMatch(await readFile(join(f.global, "rules.md"), "utf8"), /bootstrap/);
 });
 
 test("explicit bootstrap replacements and references are request-local and keep the container", async t => {
   const f = await fixture(t);
   await memory(f.project, "one.md", "Original memory");
   const h = harness(() => f.repository);
-  const config = join(f.root, "config.toml");
-  registerBootstrap(h.pi as never, config, h.snapshot);
+  registerBootstrap(h.pi as never, () => f.repository, h.snapshot);
   await h.handlers.get("session_start")!({}, context(f.projectRoot));
   const stored = h.snapshot();
-  await writeFile(config, '[system_prompt.bootstrap]\nrefer = "See $link"\nlink = "memory.md"\n[system_prompt.preamble]\nreplacement = "New preamble"\n[system_prompt.postamble]\nreplacement = "New postamble"\n');
+  await actions(f.global, { "system_prompt.bootstrap": { refer: "See $link", link: "memory.md" }, "system_prompt.preamble": "New preamble", "system_prompt.postamble": "New postamble" });
   const event = freeze({ messages: [{ role: "system", content: "Prompt", timestamp: 0 }] });
-  const referenced = await h.handlers.get("context_with_system")!(event);
+  const referenced = await h.handlers.get("context_with_system")!(event, { cwd: f.projectRoot });
   assert.match(referenced.messages[0].content, /<bootstrap>\nSee memory.md\n<\/bootstrap>/);
-  assert.equal(await readFile(join(f.root, "memory.md"), "utf8"), "\nOriginal memory\n");
-  await writeFile(config, '[bootstrap]\nreplacement = "Request-only"\n');
-  const replaced = await h.handlers.get("context_with_system")!(event);
+  assert.equal(await readFile(join(f.global, "memory.md"), "utf8"), "\nOriginal memory\n");
+  await actions(f.global, { bootstrap: "Request-only" });
+  const replaced = await h.handlers.get("context_with_system")!(event, { cwd: f.projectRoot });
   assert.match(replaced.messages[0].content, /<bootstrap>\nRequest-only\n<\/bootstrap>/);
   assert.equal(h.snapshot(), stored);
   assert.match(stored, /Original memory/);
@@ -181,13 +179,11 @@ test("late composition cannot repopulate shutdown or superseded session state", 
 
 test("string, empty and section-only system prompts inject without changing conversation order", async t => {
   const f = await fixture(t);
-  const config = join(f.root, "config.toml");
-  await writeFile(config, "");
   const h = harness(() => f.repository);
-  registerBootstrap(h.pi as never, config, () => '<bootstrap>Snapshot</bootstrap>');
+  registerBootstrap(h.pi as never, () => f.repository, () => '<bootstrap>Snapshot</bootstrap>');
   for (const content of ["Plain", "", []]) {
     const messages = freeze([{ role: "system", content, sections: { rules: "<rules>Rules</rules>" }, timestamp: 0 }, { role: "user", content: "User", timestamp: 1 }]);
-    const result = await h.handlers.get("context_with_system")!({ messages });
+    const result = await h.handlers.get("context_with_system")!({ messages }, { cwd: f.projectRoot });
     assert.match(JSON.stringify(result.messages[0]), /Snapshot/);
     assert.deepEqual(result.messages.slice(1), messages.slice(1));
     assert.equal(result.messages[0].sections, undefined);
@@ -195,5 +191,5 @@ test("string, empty and section-only system prompts inject without changing conv
     assert.match(result.messages[0].content, /<\/bootstrap>$/);
     assert.deepEqual(messages[0].sections, { rules: "<rules>Rules</rules>" });
   }
-  await assert.rejects(h.handlers.get("context_with_system")!({ messages: [{ role: "user", content: "User" }] }), /leading system message/);
+  await assert.rejects(h.handlers.get("context_with_system")!({ messages: [{ role: "user", content: "User" }] }, { cwd: f.projectRoot }), /leading system message/);
 });

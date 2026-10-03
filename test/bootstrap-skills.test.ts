@@ -1,11 +1,9 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { writeFile } from "node:fs/promises";
-import { join } from "node:path";
 import type { Skill } from "@earendil-works/pi-coding-agent";
 import { registerLazySkills } from "../src/bootstrap-skills.ts";
 import { registerBootstrap } from "../index.ts";
-import { fixture } from "./session-fixture.ts";
+import { fixture, actions } from "./session-fixture.ts";
 
 function skill(name: string, description = name + " guidance", disabled = false): Skill {
   return {
@@ -160,19 +158,18 @@ test("request transform removes historical full catalogs without changing messag
 
 test("lazy skill sections compose with request replacements and bootstrap, including empty snapshots", async t => {
   const f = await fixture(t);
-  const config = join(f.root, "skills-config.toml");
-  await writeFile(config, '[system_prompt.rules]\nreplacement = "New rules"\n');
+  await actions(f.global, { "system_prompt.rules": "New rules" });
   for (const snapshot of ["", '<bootstrap>Memory</bootstrap>']) {
     const h = harness();
     const options = h.start([skill("alpha", "Long description")]);
-    registerBootstrap(h.pi as never, config, () => snapshot, h.transform, () => ({ skills: "<skills>Available skill names: alpha</skills>" }));
+    registerBootstrap(h.pi as never, () => f.repository, () => snapshot, h.transform, () => ({ skills: "<skills>Available skill names: alpha</skills>" }));
     const messages = [
       { role: "system", content: "", sections: { rules: "<rules>Old rules</rules>", skills: "<skills>Long description /skills/alpha/SKILL.md</skills>" }, toolsAdded: [{ name: "read" }] },
       { role: "system", content: "", sections: { skills: "<skills>\n" + (options.sections as Record<string, string>).skills + "\n</skills>" } },
       { role: "user", content: "Request" },
     ];
     const before = structuredClone(messages);
-    const result = await h.handlers.get("context_with_system")!({ messages });
+    const result = await h.handlers.get("context_with_system")!({ messages }, { cwd: f.projectRoot });
     const text = JSON.stringify(result.messages);
     assert.match(text, /Available skill names: alpha/);
     assert.match(text, /New rules/);
