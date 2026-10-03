@@ -10,7 +10,7 @@ test("default protocol is installed exclusively, inherited, overridden and resto
   const f = await fixture(t);
   await memory(f.global, "global.md", "Global");
   await memory(f.project, "project.md", "Project");
-  assert.equal(await f.repository.compose(), '<bootstrap_session version="1">\n  <memory>Global</memory>\n  <memory>Project</memory>\n</bootstrap_session>');
+  assert.equal(await f.repository.compose(), '<bootstrap version="1">\n  <memory>Global</memory>\n  <memory>Project</memory>\n</bootstrap>');
   assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), DEFAULT_PROTOCOL);
   assert.match(DEFAULT_PROTOCOL, /glob = "\*\.toml"/);
   await protocol(f.project, 'version = 1\n[[rule]]\nglob = "only-*.md"\naction = "memory"\n');
@@ -41,7 +41,7 @@ test("only direct regular files in action-specific folders are selected, sorted 
   await symlink(join(f.project, "memories", "a.md"), join(f.project, "memories", "linked.md"));
   await mkdir(join(f.project, "memories", "folder.md"));
   await writeFile(join(f.project, "memories", "folder.md", "hidden.md"), "Hidden");
-  assert.equal(await f.repository.compose(), '<bootstrap_session version="1">\n  <memory>&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;</memory>\n  <memory>Z\n  last</memory>\n</bootstrap_session>');
+  assert.equal(await f.repository.compose(), '<bootstrap version="1">\n  <memory>&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;</memory>\n  <memory>Z\n  last</memory>\n</bootstrap>');
   await memory(f.project, "later.md", "Added directly");
   assert.match(await f.repository.compose(), /Added directly/);
 });

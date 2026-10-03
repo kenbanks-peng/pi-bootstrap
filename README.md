@@ -18,6 +18,17 @@ sources precede project sources; a project `protocol.toml` overrides the global
 policy for that project. Session sources are snapshotted on `session_start`, not
 on every request. Commands execute with your permissions: review them before use.
 
+Each outgoing system prompt receives `<bootstrap version="1">…</bootstrap>`
+inside its system-prompt body—not a separate `<message>`, custom message, or user
+message. The snapshot is runtime-local: startup, reload, new, resume, and fork
+compose fresh content; empty/failed starts and shutdown clear it. Nothing is
+persisted into conversation history, and commands do not rerun per request.
+
+Request replacements/references run before injection. Explicit
+`[system_prompt.bootstrap.memory]` (or `[bootstrap.memory]`) rules can transform
+the request copy; broad system preamble/postamble rules cannot remove bootstrap.
+Management edits affect the next session snapshot, not the current one.
+
 Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
 `delete <id>`. Add/list accept optional `global|project` and `memory|command`
 filters; add defaults to `project memory`. Edit/delete accept an optional type.
@@ -101,7 +112,8 @@ Tool declarations stay unchanged.
 - Repeated matches are replaced. If both parent and child have replacements, the parent wins.
 - Tags inside Markdown code fences are ignored. Self-closing tags have no body.
 - All message text is processed, including system sections and text blocks.
-  Other data and stored history stay unchanged.
+  Bootstrap is transformed separately, then inserted into the leading system
+  message. Tool declarations, stored history, and the session snapshot stay unchanged.
 - The config is read for each request. A missing config is created from `default.toml`.
   Invalid config causes a handler error; no partial result is returned.
   Unmatched tag-like text, such as `Map<string>`, stays unchanged.

@@ -1,16 +1,13 @@
-# Session configuration and capability parity
+# Session configuration and capabilities
 
 ## Configuration layout
 
-The portable global root is `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap` when
-that environment variable is nonempty, otherwise
-`~/.config/pi/agent/extensions/pi-bootstrap` using Node's `homedir()`.
-This root also holds the existing request-time `config.toml`.
-
+The global root is `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap` when that
+variable is nonempty, otherwise `~/.config/pi/agent/extensions/pi-bootstrap`
+using Node's `homedir()`. It also holds request-time `config.toml`.
 The project root is the current Pi working directory (`ctx.cwd`), not a Git-root
-search. Project session configuration lives in `<cwd>/.agents/bootstrap/`.
-This preserves the source extension's project-scope convention with renamed
-branding. Both scopes use:
+search. Project configuration lives in `<cwd>/.agents/bootstrap/`.
+Both scopes use:
 
 ```text
 protocol.toml
@@ -20,16 +17,14 @@ commands/
   command-0123abcd.toml
 ```
 
-Management IDs are the filename stem. New IDs use `memory-` or `command-` plus
-eight UUID hex characters. Existing user-chosen alphanumeric/hyphen/underscore
-stems are valid. IDs may collide across types/scopes; edit/delete require an
+Management IDs are filename stems. New IDs use `memory-` or `command-` plus
+eight UUID hex characters. User-chosen alphanumeric/hyphen/underscore stems
+are valid. IDs may collide across scopes/types; edit/delete require an
 unambiguous match. A type disambiguates a memory/command collision, but not two
-memories in different scopes. List shows scope, type, complete content and ID.
+memories in different scopes. List shows scope, type, full content and ID.
 
-No legacy path, filename, slash command, custom message type, or XML tag alias
-is provided. Replacement `config.toml` content and semantics are unchanged;
-its default root changes to the requested layout, while the agent-dir override
-continues working. No existing configuration is moved or rewritten.
+No legacy paths, filenames, slash commands, XML tags or custom message aliases
+are supported. Existing configuration is never moved or rewritten.
 
 ## Protocol
 
@@ -47,24 +42,23 @@ glob = "*.toml"
 action = "command"
 ```
 
-Global rules apply to global sources. Project sources inherit those rules unless
-`<cwd>/.agents/bootstrap/protocol.toml` exists. Removing the project protocol
-restores inheritance. A malformed override is an error, not a fallback.
+Global rules apply to global sources. Project sources inherit them unless a
+project `protocol.toml` exists. Removing that override restores inheritance;
+a malformed override is an error, not a fallback.
 
-Each action selects direct regular files from its own folder: `memory` selects
+Each action selects direct regular files from its folder: `memory` selects
 from `memories/`, `command` from `commands/`. Globs are basename patterns with
-literal characters and `*`; no recursion, path separators, `**`, `?`, bracket
-classes, or brace expansion. Command globs must end in `.toml`. Rules execute in
-declaration order, files in lexical order, global scope before project scope.
-Two rules selecting the same file in the same action folder are rejected before
-that scope executes. The same basename in different folders is not an overlap.
-Unmatched files, child directories and source-file symlinks are ignored.
-Root-level `config.toml` and `protocol.toml` are never command sources.
-Inside `commands/`, those basenames are ordinary selectable command files;
-only the root-level protocol controls selection.
+literal characters and `*`; no recursion, separators, `**`, `?`, bracket
+classes or brace expansion. Command globs must end in `.toml`. Rules execute
+in declaration order, files in lexical order, global scope before project.
+Overlapping rules for the same action folder are rejected before that scope
+executes. The same basename in different folders is not an overlap.
+Unmatched files, subdirectories and source symlinks are ignored. Root-level
+`config.toml` and `protocol.toml` are never command sources; inside `commands/`,
+those basenames are ordinary selectable command files.
 
-Memory content is complete, strict UTF-8, without its filename. Command sources
-are strict UTF-8 TOML:
+Memories are complete strict UTF-8 text, without filenames. Commands are strict
+UTF-8 TOML:
 
 ```toml
 version = 1
@@ -72,47 +66,77 @@ argv = ["git", "status", "--short"]
 cwd = "."
 ```
 
-Commands run directly, without a shell; arguments are literal. `cwd` is optional
-and defaults to the current **project root**, including for global commands.
-Relative subdirectories must remain beneath that root after resolving symlinks.
-Absolute, escaping, missing or invalid working directories are errors.
-Commands have a 1,000 ms timeout and a 1,048,576-byte stdout bound. Nonzero exits,
-spawn failures, invalid definitions and non-UTF-8 stdout fail composition.
+Commands run directly without a shell; arguments are literal. Optional `cwd`
+defaults to the project root, including for global commands. Relative
+subdirectories must remain beneath that root after symlink resolution.
+Absolute, escaping, missing and invalid working directories are errors.
+Commands have a 1,000 ms timeout and a 1,048,576-byte stdout bound. Nonzero
+exits, spawn failures, invalid definitions and non-UTF-8 stdout fail composition.
 Stderr is drained, not injected. These limits are not a security sandbox:
-commands inherit the process environment and permissions, can modify files, and
-may spawn descendants. Review both global and project command configuration.
+commands inherit environment and permissions, can modify files and may spawn
+descendants. Review both global and project commands.
 
-## Lifecycle and user command
+## Snapshot lifecycle
 
-The factory registers handlers only: it does not read files or run commands.
-On each Pi `session_start` (startup, reload, new, resume or fork), composition
-reads fresh files and sends one hidden `bootstrap_session` custom message when
-nonempty. That message contains:
+The extension factory only registers handlers and creates empty runtime-local
+state. Each `session_start` (startup, reload, new, resume or fork) first clears
+the previous snapshot, then composes fresh content from the current cwd:
 
 ```xml
-<bootstrap_session version="1">
+<bootstrap version="1">
   <memory>User-authored guidance</memory>
   <command>
     <run>git status --short</run>
     <output> M README.md</output>
   </command>
-</bootstrap_session>
+</bootstrap>
 ```
 
 Memory text, invocation and output are XML-escaped; newlines are preserved and
-indented. No partial snapshot is sent on failure. Command-source failures notify
-with the filename and exit status when available; other protocol/filesystem
-errors propagate to Pi's handler error reporting.
+indented. Empty or failed composition leaves no snapshot. Command errors notify
+with filename and exit status when available; other errors propagate to Pi's
+handler error reporting. No partial result is injected.
 
-The `context` handler stably moves all existing `bootstrap_session` messages to
-the beginning of conversation context without changing persisted history. It
-does not reread files or execute commands. As in the source implementation,
-existing persisted snapshots are retained on resume; there is no deduplication,
-compaction reinjection, shutdown resource, or global in-memory cache.
-Pi restores system state after `context`; the existing `context_with_system`
-replacement/reference handler then handles request-local text as before.
+Snapshots are closure-local, not module-global or persisted. Shutdown clears
+them. Generation guards prevent a late asynchronous composition from restoring
+state after shutdown or superseding a newer session. A new extension runtime
+starts empty; resume/reload rebuilds from current files rather than recovering
+historical snapshots. There is no legacy snapshot migration.
 
-`/bootstrap` shows help. Supported operations:
+## Outgoing system prompt
+
+The single `context_with_system` request handler:
+
+1. Reads request-time replacement/reference configuration.
+2. Transforms Pi's transcript without mutating input messages.
+3. Transforms a copy of the bootstrap snapshot with explicit bootstrap paths.
+4. Writes reference files and appends bootstrap to the leading system message's
+   content, preserving its sections, timestamps and tool declarations.
+
+Bootstrap is **inside the system-prompt body**, never a separate `<message>`.
+There is no `context` reordering hook, `sendMessage`, `sendUserMessage`, or
+persisted bootstrap entry. Requests, tool continuations and compaction-derived
+histories reuse the snapshot without running commands again.
+
+Pi 1.0.0 stores system prompts as `content` plus `sections`, without literal
+outer `<system-prompt>` tags. Those tags denote the logical prompt container;
+adding them around native API text would duplicate framing rather than change
+its role. The real provider adapter emits the bootstrap-containing text as
+system instructions (or developer instructions where the provider requires it).
+Later system section patches cannot remove content injected into the leading
+system message. Adapters which collapse system deltas retain it too.
+
+Broad system preamble/postamble replacements and references process the original
+prompt, not bootstrap. Explicit `[system_prompt.bootstrap.memory]` or
+`[bootstrap.memory]` rules can replace/reference the request copy. Existing
+matching, escaping, reference-file and reload semantics remain unchanged.
+The original snapshot and conversation history remain immutable. A nonempty
+snapshot requires Pi's leading system message; malformed transcripts are
+reported rather than exposing bootstrap through a user-message fallback.
+
+## User command
+
+`/bootstrap` shows help. Operations:
 
 - `list [global|project] [memory|command]`: optional filters, either order.
 - `add [global|project] [memory|command]`: defaults to project memory.
@@ -121,121 +145,47 @@ replacement/reference handler then handles request-local text as before.
 Add/edit use the UI editor and reject non-interactive mode. Cancellation changes
 nothing. Command addition supplies an argv/cwd template and prepends `version = 1`
 after editing; editing an existing command shows its complete TOML. List/delete
-do not require interactive UI. Operations catch errors and notify the user.
-There is no model-callable memory-management tool or agent authoring workflow.
-Edits affect the next session snapshot, not the current one.
+work without interactive UI. Operations catch errors and notify the user.
+There are no model-callable management tools. Edits affect the next session
+snapshot, not the current one.
 
-## Inventory and parity evidence
+## Verification and boundaries
 
-Reference: read-only `pi-prime-session` at
-`bc18712f619f286e83693df0aa292ddb229fd641`. Runtime behavior was checked against
-its four source modules and both test files; the source README's command-cwd
-statement was stale, so the implementation and tests are authoritative.
+Validated with `npm test` (**66 passed, 0 failed**), `npm run typecheck`, and
+`git diff --check`. API evidence: Pi 1.0.0 extension event declarations,
+`core/messages.js`, pi-ai `utils/text.js`, `utils/transcript.js`, and
+`api/openai-responses-shared.js`; cross-checked against Context7
+`/earendil-works/pi`.
 
-| Source capability | Bootstrap component | Evidence |
-| --- | --- | --- |
-| Global/project repositories, safe IDs, exclusive creation, CRUD, sorted listing, missing-file errors | `src/bootstrap-repository.ts` | `bootstrap-session.test.ts`: CRUD, paths, ignored entries, missing directories, validation |
-| Scope/type filters, help/usage, editor template, automatic command version, cancellation, ambiguous IDs, notifications | `src/bootstrap-command.ts` | `bootstrap-session.test.ts`: slash dispatch, defaults/filters, editing/deletion, non-UI guards, ambiguity |
-| Default protocol creation, inheritance, override/removal | `src/bootstrap-protocol.ts` | `bootstrap-protocol.test.ts`: exclusive/concurrent install, inheritance and restoration |
-| Strict protocol schema, direct globs, rule/file ordering, overlap errors | `src/bootstrap-protocol.ts` | Protocol tests: invalid versions/TOML/globs/actions/overlap, ordered files and rules |
-| Complete UTF-8 memories, directly added sources, ignored symlinks/directories | Repository/protocol modules | Protocol tests: strict UTF-8, direct files, later additions, ignored sources |
-| Direct command argv, root-relative cwd, output/error handling and fixed limits | `src/bootstrap-protocol.ts` | Protocol tests: literal argv, global/project cwd, symlink containment, exit/spawn/timeout/output/UTF-8 errors |
-| Global-before-project XML composition, commands with run/output, escaping/line indentation, no partial result | `src/bootstrap-repository.ts` | Protocol tests: exact output and failed composition; session tests: no partial injection |
-| Session-start snapshot, hidden message, stable context ordering, no per-turn recomposition | `src/bootstrap-session.ts` | Session tests: registration, snapshots, stable ordering, repeated starts, empty/error handling |
-| Renamed command, symbols, tags and state; new file/folder layout | All `src/bootstrap-*` modules | Path/ID/default-protocol and full registration tests; runtime branding scan |
-| Existing tag replacement and reference writing, defaults/reload, immutability, system/tool handling | `index.ts`, unchanged `src/replace.ts` | All 33 original `bootstrap.test.ts` tests unchanged; added combined session/request integration test |
+- Original replacement/reference tests remain unchanged.
+- Protocol tests cover selection, execution order, inheritance, escaping,
+  command limits/errors, symlink containment and exact `<bootstrap>` composition.
+- Session tests cover CRUD, slash commands, paths, fresh lifecycle snapshots,
+  no conversation messages, request immutability and replacement integration.
+- Injection tests exercise Pi's real `convertToLlm` and OpenAI Responses request
+  builder through an intercepted HTTP fetch. They verify actual outgoing JSON
+  carries bootstrap only in system instructions, both with native system deltas
+  and collapsed transcripts; tools and user messages remain intact. Real child
+  process side effects prove commands execute once, not per request.
+- Frozen histories, explicit bootstrap references, empty/error starts, shutdown,
+  isolated reload runtimes and overlapping asynchronous starts are covered.
 
-Intentional changes beyond renaming/layout: reuse the existing `smol-toml`
-dependency rather than adding a second TOML parser; slash-command dispatch uses
-the same repository factory as startup; stderr is drained so a verbose command
-cannot deadlock on its pipe. The dependency lockfile now includes the previously
-omitted declared Pi peer, enabling ordinary `npm ci`.
+No interactive TUI or live provider request is needed for these checks. Test
+configuration and reference writes use temporary directories only. Live user
+configuration, external source checkout and Aven state remain untouched.
 
-## Implementation verification
+The imported repository/protocol/CRUD capabilities originated in the read-only
+`pi-prime-session` reference at `bc18712f619f286e83693df0aa292ddb229fd641`.
+Their command limits and behavior remain intact; the conversation-message
+lifecycle has intentionally been replaced, not retained for compatibility.
 
-- `npm ci --ignore-scripts`: passes after refreshing the incomplete lockfile;
-  installs 155 packages. npm reports the transitive advisory noted below.
-- `npm test`: 56 passed, 0 failed/skipped (33 original, 23 new).
-- `npm run typecheck`: passes.
-- `git diff --check`: passes.
-- Runtime and test source branding scan: no old branding remains.
-- `src/replace.ts`, `default.toml`, and the 33 original tests are unchanged.
+## Deployment note
 
-Lifecycle/UI tests use Pi API doubles plus real temporary filesystem and child
-processes; no interactive TUI or model-provider session was launched.
+Existing command rules such as `glob = "*.command.toml"` do not select renamed
+`command-<id>.toml` files. Users must explicitly change that command rule to
+`glob = "*.toml"`; fresh installations already receive it. The extension does
+not silently translate existing protocols or modify live configuration.
 
-## Independent verification and fixes
-
-Audited implementation `7d024de49d6a61b4e706f567778f3fc30512b8cc`
-against source `bc18712f619f286e83693df0aa292ddb229fd641` independently:
-compared all four source modules (including a branding-normalized diff), read
-both source test files, and inspected the embedded runtime and tests rather
-than relying on the inventory above. Slash-command dispatch is identical after
-renaming; lifecycle retains hidden snapshots, stable context ordering, fresh
-session-start composition and the source's command-error notification behavior.
-The repository/protocol differences implement the new folders, filenames and
-parser, with stderr draining and shared startup/command repository construction.
-The existing replacement implementation, default TOML and all 33 original tests
-are byte-unchanged from before the embedding commit.
-
-Two defects were reproduced with failing regression tests before fixing:
-
-- **Incomplete folder migration:** protocol scanning still excluded the basename
-  `protocol.toml` inside `commands/`. Repository list/read/edit accepted that
-  command, but composition silently omitted it. Removed the inherited root-file
-  exclusion from action-folder scanning. Regression covers `protocol.toml` and
-  `config.toml` commands, including edits, in both scopes; the existing root-file
-  exclusion test remains green.
-- **Overbroad cwd containment check (also present in the source):** a contained
-  directory named `..cache` was mistaken for parent traversal. Containment now
-  checks an actual `..` path component, not a string prefix. Regression covers
-  both the direct directory and a contained symlink to it; existing absolute,
-  parent-escape and outside-symlink rejection tests remain green.
-
-Additional regressions verify actual command side-effect ordering (scope, rule,
-then filename), overlap rejection before any command in that scope executes,
-and `/bootstrap add/edit/delete` through session injection using generated
-`command-<id>.toml` files. They also prove edits do not mutate the old snapshot.
-
-Independent validation in this worktree:
-
-- Initial test invocation could not load `smol-toml` because this fresh worktree
-  had no installed dependencies. `npm ci --ignore-scripts` then succeeded,
-  adding 155 packages with no manifest/lockfile changes (one known high advisory).
-- Targeted pre-fix regression run: 2 tests, 0 passed, 2 failed, exit 1 (omitted
-  command output and erroneous cwd escape rejection).
-- Final `npm test`: **60 passed, 0 failed, 0 skipped/cancelled**, exit 0
-  (33 original tests, 27 session/protocol tests).
-- `npm run typecheck`: exit 0. `git diff --check`: exit 0.
-- Case-insensitive runtime branding scan over `index.ts` and `src/*.ts`: no
-  old-brand identifiers or strings.
-
-No interactive Pi/model-provider session was launched; lifecycle integration is
-validated with API doubles, real temporary files and real child processes.
-Source checkout, live configuration and Aven state were read-only. Dependency
-upgrades remain explicitly deferred; this audit does not remediate that advisory.
-
-## Deployment observations
-
-The installed layout inspected read-only already uses `command-<id>.toml`, but
-its `protocol.toml` still has `glob = "*.command.toml"`. That rule does not select
-the renamed files. Independent read-only inspection confirmed one renamed command file and four
-renamed memory files. The exact required deployment edit is in
-`~/.config/pi/agent/extensions/pi-bootstrap/protocol.toml`, in the rule whose
-`action = "command"`:
-
-```diff
--glob = "*.command.toml"
-+glob = "*.toml"
-```
-
-This change is required to enable the installed command. Fresh installations
-already get `*.toml`; the regression for an existing legacy glob proves it
-selects nothing until explicitly corrected. This extension preserves existing
-protocols and does not silently translate legacy globs. Neither the external source checkout nor live user configuration
-was modified during implementation.
-
-Dependency audit reports a transitive high-severity `brace-expansion` advisory
-under the Pi host peer. This is separate from session glob matching (which does
-not use brace expansion). Updating the host dependency is follow-up work, not
-part of this capability migration.
+The previously reported transitive `brace-expansion` advisory under the Pi host
+peer is outside this lifecycle change. Session glob matching does not use
+brace expansion; dependency upgrades remain separate work.

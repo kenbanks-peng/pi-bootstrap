@@ -3,7 +3,7 @@ import { test } from "node:test";
 import { mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join } from "node:path";
-import bootstrap, { getConfigPath } from "../index.ts";
+import bootstrap, { getConfigPath, registerBootstrap } from "../index.ts";
 import { getBootstrapDirectory } from "../src/bootstrap-paths.ts";
 import { createBootstrapRepository, registerBootstrapSession } from "../src/bootstrap-session.ts";
 import { runBootstrapCommand, type BootstrapCommandUI } from "../src/bootstrap-command.ts";
@@ -18,8 +18,8 @@ function harness(repositoryFor?: Parameters<typeof registerBootstrapSession>[1])
     registerCommand: (name: string, spec: any) => commands.set(name, spec),
     sendMessage: (message: any) => messages.push(message),
   };
-  registerBootstrapSession(pi as never, repositoryFor);
-  return { handlers, commands, messages, pi };
+  const snapshot = registerBootstrapSession(pi as never, repositoryFor);
+  return { handlers, commands, messages, pi, snapshot };
 }
 
 function ui(values: Array<string | undefined> = []) {
@@ -49,7 +49,7 @@ test("full extension registers both existing transformation and session capabili
   h.handlers.clear();
   h.commands.clear();
   bootstrap(h.pi as never);
-  assert.deepEqual([...h.handlers.keys()], ["context_with_system", "session_start", "context"]);
+  assert.deepEqual([...h.handlers.keys()], ["session_shutdown", "session_start", "context_with_system"]);
   assert.deepEqual([...h.commands.keys()], ["bootstrap"]);
   assert.match(h.commands.get("bootstrap")!.description, /protocol.toml/);
   assert.deepEqual(h.messages, []);
@@ -62,29 +62,29 @@ test("session snapshots and existing request replacements compose without changi
   try {
     const repository = createBootstrapRepository(f.projectRoot);
     await repository.create("global", "memory", "Session guidance");
-    await writeFile(getConfigPath(), '[system_prompt.tools]\nreplacement = "New tools"\n[bootstrap_session.memory]\nreplacement = "Request-only guidance"\n');
+    await writeFile(getConfigPath(), '[system_prompt.tools]\nreplacement = "New tools"\n[system_prompt.preamble]\nreplacement = "New preamble"\n[system_prompt.postamble]\nrefer = "Read $link"\nlink = "prompt.md"\n');
     const h = harness();
     h.handlers.clear();
     bootstrap(h.pi as never);
     await h.handlers.get("session_start")!({}, { cwd: f.projectRoot, hasUI: false, ui: ui().api });
-    const stored = { role: "custom", ...h.messages[0] };
     const user = { role: "user", content: "Question" };
-    const ordered = h.handlers.get("context")!({ messages: [user, stored] }).messages;
-    const system = { role: "system", sections: { tools: "<tools>Old tools</tools>" }, toolsAdded: [{ name: "read" }] };
-    const result = await h.handlers.get("context_with_system")!({ messages: [system, ...ordered] });
-    assert.equal(result.messages[0].sections.tools, "<tools>New tools</tools>");
+    const system = { role: "system", content: "", sections: { preamble: "Old preamble", tools: "<tools>Old tools</tools>Tail" }, toolsAdded: [{ name: "read" }] };
+    const result = await h.handlers.get("context_with_system")!({ messages: [system, user] });
+    assert.equal(result.messages[0].sections.tools, "<tools>New tools</tools>Read prompt.md");
+    assert.equal(await readFile(join(getBootstrapDirectory(), "prompt.md"), "utf8"), "Tail");
     assert.equal(result.messages[0].toolsAdded, system.toolsAdded);
-    assert.match(result.messages[1].content, /Request-only guidance/);
-    assert.match(stored.content, /Session guidance/);
-    assert.equal(system.sections.tools, "<tools>Old tools</tools>");
-    assert.equal(result.messages[2].content, "Question");
+    assert.match(result.messages[0].content, /<bootstrap version="1">[\s\S]*Session guidance[\s\S]*<\/bootstrap>/);
+    assert.equal(system.sections.tools, "<tools>Old tools</tools>Tail");
+    assert.equal(result.messages[1].content, "Question");
+    assert.deepEqual(h.messages, []);
+    assert.equal(h.handlers.has("context"), false);
   } finally {
     if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
     else process.env.PI_CODING_AGENT_DIR = previous;
   }
 });
 
-test("session start snapshots once, stays hidden, reorders stably without mutation", async t => {
+test("session start snapshots once and request injection does not mutate history", async t => {
   const f = await fixture(t);
   await memory(f.project, "test.md", "First snapshot");
   let compositions = 0;
@@ -92,28 +92,30 @@ test("session start snapshots once, stays hidden, reorders stably without mutati
   const ctx = { cwd: f.projectRoot, hasUI: false, ui: ui().api };
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(compositions, 1);
-  assert.equal(h.messages.length, 1);
-  assert.equal(h.messages[0].customType, "bootstrap_session");
-  assert.equal(h.messages[0].display, false);
-  assert.match(h.messages[0].content, /<bootstrap_session version="1">/);
+  assert.deepEqual(h.messages, []);
+  assert.match(h.snapshot(), /<bootstrap version="1">/);
+  const config = join(f.root, "config.toml");
+  await writeFile(config, "");
+  registerBootstrap(h.pi as never, config, h.snapshot);
   await memory(f.project, "test.md", "Later snapshot");
-  const first = { role: "custom", ...h.messages[0] };
-  const second = { role: "custom", customType: "bootstrap_session", content: "Persisted snapshot" };
+  const first = h.snapshot();
   const other = { role: "custom", customType: "other", content: "Other" };
   const user = { role: "user", content: "Question" };
-  const event = { messages: [user, first, other, second] };
+  const event = { messages: [{ role: "system", content: "Prompt" }, user, other] };
   const before = structuredClone(event);
   for (let i = 0; i < 2; i++) {
-    assert.deepEqual(h.handlers.get("context")!(event).messages, [first, second, user, other]);
+    const result = await h.handlers.get("context_with_system")!(event);
+    assert.equal(result.messages[0].content, `Prompt\n\n${first}`);
+    assert.deepEqual(result.messages.slice(1), [user, other]);
   }
   assert.deepEqual(event, before);
   assert.equal(compositions, 1);
-  assert.match(first.content, /First snapshot/);
-  assert.equal(h.handlers.get("context")!({ messages: [user, other] }), undefined);
+  assert.match(first, /First snapshot/);
   // Pi invokes session_start again on a new runtime/session; there is no module-global cache.
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(compositions, 2);
-  assert.match(h.messages[1].content, /Later snapshot/);
+  assert.match(h.snapshot(), /Later snapshot/);
+  assert.deepEqual(h.messages, []);
 });
 
 test("every Pi session-start reason recomposes from the current cwd without runtime state", async t => {
@@ -123,9 +125,10 @@ test("every Pi session-start reason recomposes from the current cwd without runt
   for (const reason of ["startup", "reload", "new", "resume", "fork"]) {
     await memory(f.project, "reason.md", reason);
     await h.handlers.get("session_start")!({ reason }, ctx);
-    assert.match(h.messages.at(-1).content, new RegExp(`<memory>${reason}</memory>`));
+    assert.match(h.snapshot(), new RegExp(`<memory>${reason}</memory>`));
+    assert.equal((h.snapshot().match(/<memory>/g) ?? []).length, 1);
   }
-  assert.equal(h.messages.length, 5);
+  assert.deepEqual(h.messages, []);
 });
 
 test("empty composition sends no message and command failures notify without partial injection", async t => {
@@ -250,16 +253,18 @@ test("slash-created commands use renamed filenames and execute on the next sessi
   assert.deepEqual(await readdir(join(f.project, "commands")), [`${source.id}.toml`]);
   assert.equal(h.messages.length, 0);
   await h.handlers.get("session_start")!({}, ctx);
-  assert.match(h.messages[0].content, /<output>created<\/output>/);
+  const original = h.snapshot();
+  assert.match(original, /<output>created<\/output>/);
   await run(`edit ${source.id} command`, ctx);
   assert.match(notices.editors[1].initial, /^version = 1/);
-  assert.equal(h.messages.length, 1);
+  assert.equal(h.snapshot(), original);
   await h.handlers.get("session_start")!({}, ctx);
-  assert.match(h.messages[1].content, /<output>edited<\/output>/);
-  assert.match(h.messages[0].content, /<output>created<\/output>/);
+  assert.match(h.snapshot(), /<output>edited<\/output>/);
+  assert.match(original, /<output>created<\/output>/);
   await run(`delete ${source.id} command`, ctx);
   await h.handlers.get("session_start")!({}, ctx);
-  assert.equal(h.messages.length, 2);
+  assert.equal(h.snapshot(), "");
+  assert.deepEqual(h.messages, []);
 });
 
 test("command argument validation and ambiguous IDs never mutate files", async t => {

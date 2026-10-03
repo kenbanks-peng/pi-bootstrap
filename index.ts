@@ -4,7 +4,7 @@ import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { parseReplacements, replaceMessages } from "./src/replace.ts";
+import { parseReplacements, replaceMessages, replaceTags } from "./src/replace.ts";
 import { getBootstrapDirectory } from "./src/bootstrap-paths.ts";
 import { registerBootstrapSession } from "./src/bootstrap-session.ts";
 
@@ -13,11 +13,11 @@ export function getConfigPath(): string {
 }
 
 export default function bootstrap(pi: ExtensionAPI) {
-  registerBootstrap(pi);
-  registerBootstrapSession(pi);
+  const snapshot = registerBootstrapSession(pi);
+  registerBootstrap(pi, getConfigPath(), snapshot);
 }
 
-export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
+export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snapshot: () => string = () => "") {
   pi.on("context_with_system", async event => {
     let config: string;
     try {
@@ -33,14 +33,33 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
       config = await readFile(path, "utf8");
     }
     const references = new Map<string, string>();
-    const messages = replaceMessages(event.messages, parseReplacements(config), (link, text) => {
+    const replacements = parseReplacements(config);
+    const saveReference = (link: string, text: string) => {
       const target = link === "~" ? homedir() : link.startsWith("~/")
         ? join(homedir(), link.slice(2)) : resolve(dirname(path), link);
       references.set(target, text);
-    });
+    };
+    const messages = replaceMessages(event.messages, replacements, saveReference);
+    // Bootstrap has no independent system preamble/postamble. Explicit bootstrap
+    // paths still work, but broad prompt-edge rules cannot eat this snapshot.
+    const bootstraps = replaceTags(snapshot(), replacements, ["system-prompt"], [], saveReference);
     for (const [target, text] of references) {
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, text, "utf8");
+    }
+    // Inject last: broad prompt replacements/references must not consume the snapshot.
+    // Pi serializes system content + sections as the system-prompt body, not a message.
+    if (bootstraps) {
+      const first = messages[0];
+      if (!first || first.role !== "system") {
+        throw new Error("Bootstrap injection requires a leading system message");
+      }
+      messages[0] = {
+        ...first,
+        content: typeof first.content === "string"
+          ? [first.content, bootstraps].filter(Boolean).join("\n\n")
+          : [...first.content, { type: "text", text: bootstraps }],
+      };
     }
     return { messages };
   });

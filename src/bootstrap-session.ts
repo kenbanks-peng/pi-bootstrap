@@ -13,21 +13,22 @@ export function createBootstrapRepository(cwd: string, home = homedir(), agentDi
   });
 }
 
+/** A runtime-local snapshot, never a persisted conversation message. */
 export function registerBootstrapSession(
   pi: ExtensionAPI,
   repositoryFor: (cwd: string) => BootstrapRepository = createBootstrapRepository,
-): void {
+): () => string {
+  let snapshot = "";
+  let generation = 0;
+  const clear = () => { snapshot = ""; return ++generation; };
+  pi.on("session_shutdown", () => { clear(); });
   pi.on("session_start", async (_event, ctx) => {
+    const current = clear();
     try {
-      const bootstraps = await repositoryFor(ctx.cwd).compose();
-      if (!bootstraps) return;
-
-      pi.sendMessage({
-        customType: "bootstrap_session",
-        content: bootstraps,
-        display: false,
-      });
+      const composed = await repositoryFor(ctx.cwd).compose();
+      if (current === generation) snapshot = composed;
     } catch (error) {
+      if (current !== generation) return;
       if (error instanceof CommandSourceError) {
         if (error.exitCode !== undefined) {
           ctx.ui.notify(`${error.sourceName} returned error code ${error.exitCode}.`);
@@ -40,22 +41,6 @@ export function registerBootstrapSession(
     }
   });
 
-  pi.on("context", (event) => {
-    const bootstrapMessages = event.messages.filter(
-      (message) => message.role === "custom" && message.customType === "bootstrap_session",
-    );
-    if (bootstrapMessages.length === 0) return;
-
-    return {
-      messages: [
-        ...bootstrapMessages,
-        ...event.messages.filter(
-          (message) => message.role !== "custom" || message.customType !== "bootstrap_session",
-        ),
-      ],
-    };
-  });
-
   pi.registerCommand("bootstrap", {
     description: "Manage Bootstrap memories and commands; injection requires a matching protocol.toml rule",
     handler: async (args, ctx) => {
@@ -66,4 +51,5 @@ export function registerBootstrapSession(
       });
     },
   });
+  return () => snapshot;
 }

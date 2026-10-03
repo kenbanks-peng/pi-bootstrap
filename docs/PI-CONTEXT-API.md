@@ -64,7 +64,7 @@ Empty custom sections are ignored. To omit the generated default sections, set `
 
 The `context` callback cannot remove Pi's system instructions. Use `before_agent_start` or `context_with_system` for that.
 
-Bootstrap or memory content may be an ordinary conversation message, not part of `systemPromptOptions`. Filter or rewrite such messages in `context`. To stop their source from adding them, change or disable the extension that supplies them. Filtering a request does not delete stored session history.
+pi-bootstrap uses `context_with_system` to inject its runtime-local session snapshot into the leading system message after request replacements. It never creates a custom or user message. Pi stores the system-prompt body as `content` plus named `sections`; its provider adapters render these as system instructions (or the provider's developer role), not user content. `<bootstrap>` belongs in that body, logically inside `<system-prompt>`; Pi's native API payload does not add a literal outer XML container. Later section patches and provider transcript collapse preserve the injected content. Neither input messages nor persisted history are mutated.
 
 ## Add, remove, or change tools
 
@@ -95,7 +95,7 @@ Removing a tool from the active set does not necessarily disable it. `codemode` 
 - Session events cover startup, shutdown, switching, forking, and tree navigation.
 - Other events report messages, turns, tool execution, model selection, and provider responses.
 
-For model-facing content, use `pi.sendMessage()` or `pi.sendUserMessage()`. `pi.appendEntry()` stores extension state but does not send it to the model. Rendering APIs change terminal display, not model input.
+For conversation content, use `pi.sendMessage()` or `pi.sendUserMessage()`. Custom messages convert to user messages for providers, so these APIs are not suitable for bootstrap system instructions. `pi.appendEntry()` stores extension state but does not send it to the model. Rendering APIs change terminal display, not model input.
 
 ## SDK startup controls
 
