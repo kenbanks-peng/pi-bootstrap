@@ -26,6 +26,27 @@ replacement = "New content"
 Changes `<one><two>Old content</two></one>` to
 `<one><two>New content</two></one>`.
 
+For text at the start or end of any tag body:
+
+```toml
+[abc.preamble]
+replacement = "New start"
+
+[abc.postamble]
+replacement = "New end"
+```
+
+For `<abc>Before<def>hi</def>After</abc>`, this produces
+`<abc>New start<def>hi</def>New end</abc>`.
+
+- `preamble` selects text after the opening tag and before the first child tag.
+- `postamble` selects text after the last child tag and before the closing tag.
+- These suffixes are reserved references. They work at any depth, with any parent name.
+- Self-closing tags form boundaries. Tags inside code fences and unmatched tags do not.
+- If there are no child tags, either reference selects the complete body.
+- Empty edge regions accept inserted text. Whitespace is part of the selected text.
+- Whole-body replacements take precedence over these references.
+
 For tools guidance in the system prompt:
 
 ```toml
@@ -37,7 +58,7 @@ Pi stores system text without an outer tag. The extension supplies `system-promp
 as its parent for matching, without adding it to the outgoing text.
 `system_prompt` selects this parent through the generic underscore fallback.
 The same rule applies to arbitrary nested tags: `[system_prompt.one.two]`.
-Tool declarations stay unchanged.
+`[system_prompt.preamble]` and `[system_prompt.postamble]` select the edges of\nthe system text without an outer tag. Tool declarations stay unchanged.
 
 - Paths match complete, case-sensitive tag ancestry.
   Each segment uses its exact name first. If that name is absent under the selected

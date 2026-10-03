@@ -51,8 +51,9 @@ function resolvePaths(replacements: Map<string, string>, paths: string[][]): Map
 
 export function replaceTags(text: string, replacements: Map<string, string>, parent: string[] = []): string {
   if (!replacements.size) return text;
-  const tokens: { name: string; closing: boolean; start: number; end: number }[] = [];
-  const regions: { start: number; end: number; bodyStart: number; bodyEnd: number; path: string[] }[] = [];
+  const tokens: { name: string; closing: boolean; selfClosing: boolean; start: number; end: number }[] = [];
+  const regions: { start: number; end: number; bodyStart: number; bodyEnd: number; path: string[];
+    special?: "preamble" | "postamble" }[] = [];
   let fence: { char: string; size: number } | undefined;
   for (const line of text.matchAll(/[^\n]*(?:\n|$)/g)) {
     const raw = line[0].replace(/\r?\n$/, "");
@@ -69,14 +70,14 @@ export function replaceTags(text: string, replacements: Map<string, string>, par
       const start = line.index! + match.index!;
       const end = start + match[0].length;
       const name = match[2];
-      if (match[1] || !/\/\s*$/.test(match[3]))
-        tokens.push({ name, closing: !!match[1], start, end });
+      tokens.push({ name, closing: !!match[1], selfClosing: !match[1] && /\/\s*$/.test(match[3]), start, end });
     }
   }
   // Pair tags first so literal text such as Map<string> adds no ancestry.
   const pending: number[] = [];
   const pairs = new Map<number, number>();
   for (const [index, token] of tokens.entries()) {
+    if (token.selfClosing) continue;
     if (!token.closing) pending.push(index);
     else {
       const at = pending.findLastIndex(open => tokens[open].name === token.name);
@@ -96,17 +97,41 @@ export function replaceTags(text: string, replacements: Map<string, string>, par
     } else if (closes.has(index)) stack.pop();
   }
 
-  const direct = resolvePaths(replacements, regions.map(region => region.path));
+  // Special references select only the text at the edges of a tag body.
+  // Only paired tags and self-closing tags form boundaries; literal type notation does not.
+  const boundaries = tokens.filter((token, index) => token.selfClosing || pairs.has(index) || closes.has(index));
+  const containers = [...regions];
+  if (parent.length)
+    containers.push({ start: 0, end: text.length, bodyStart: 0, bodyEnd: text.length, path: [] });
+  for (const region of containers) {
+    const children = boundaries.filter(token => token.start >= region.bodyStart && token.end <= region.bodyEnd);
+    for (const special of ["preamble", "postamble"] as const) {
+      const start = special === "preamble" ? region.bodyStart : (children.at(-1)?.end ?? region.bodyStart);
+      const end = special === "postamble" ? region.bodyEnd : (children[0]?.start ?? region.bodyEnd);
+      regions.push({ start, end, bodyStart: start, bodyEnd: end, path: [...region.path, special], special });
+    }
+  }
+  // These suffixes are reserved references, not child tag names.
+  const targets = regions.filter(region => region.special || region.path.length < 2 ||
+    !["preamble", "postamble"].includes(region.path.at(-1)!));
+  targets.sort((a, b) => a.start - b.start ||
+    Number(!a.special) - Number(!b.special) || b.end - a.end);
+
+  const direct = resolvePaths(replacements, targets
+    .filter(region => !region.special || region.path.length > 1)
+    .map(region => region.path));
   const scoped = parent.length
-    ? resolvePaths(replacements, regions.map(region => [...parent, ...region.path])) : direct;
+    ? resolvePaths(replacements, targets.map(region => [...parent, ...region.path])) : direct;
 
   // An outer replacement includes its children. Never scan inserted text.
   let result = "";
   let at = 0;
-  for (const edit of regions) {
+  for (const edit of targets) {
     if (edit.start < at) continue;
-    const value = scoped.get(JSON.stringify([...parent, ...edit.path])) ??
-      direct.get(JSON.stringify(edit.path));
+    const reserved = !edit.special && parent.length > 0 &&
+      ["preamble", "postamble"].includes(edit.path.at(-1)!);
+    const value = (reserved ? undefined : scoped.get(JSON.stringify([...parent, ...edit.path]))) ??
+      (edit.special && edit.path.length === 1 ? undefined : direct.get(JSON.stringify(edit.path)));
     if (value === undefined) continue;
     result += text.slice(at, edit.bodyStart) + value + text.slice(edit.bodyEnd, edit.end);
     at = edit.end;

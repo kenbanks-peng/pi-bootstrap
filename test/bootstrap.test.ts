@@ -9,6 +9,63 @@ import { parseReplacements, replaceTags, replaceMessages } from "../src/replace.
 
 const replace = (text: string, config: string) => replaceTags(text, parseReplacements(config));
 
+test("preamble and postamble replace text at tag body edges", () => {
+  const text = "<abc>\nthis is some preamble.\n<def>hi</def>\nhere is some postamble\n</abc>";
+  assert.equal(replace(text,
+    '[abc.preamble]\nreplacement = "Before"\n[abc.postamble]\nreplacement = "After"'),
+    "<abc>Before<def>hi</def>After</abc>");
+});
+
+test("special references support nested paths, repeats, and underscore fallback", () => {
+  const text = "<outer-tag><abc>Before<def>Old</def>After</abc><abc>B<def>D</def>A</abc></outer-tag>";
+  assert.equal(replace(text,
+    '[outer_tag.abc.preamble]\nreplacement = ""\n[outer_tag.abc.def]\nreplacement = "New"\n[outer_tag.abc.postamble]\nreplacement = "End"'),
+    "<outer-tag><abc><def>New</def>End</abc><abc><def>New</def>End</abc></outer-tag>");
+});
+
+test("edge boundaries include self-closing tags and exclude fenced and unmatched tags", () => {
+  assert.equal(replace('<abc id="a">Before<empty/>After</abc>',
+    '[abc.preamble]\nreplacement = "P"\n[abc.postamble]\nreplacement = "Q"'),
+    '<abc id="a">P<empty/>Q</abc>');
+  const text = "<abc>Map<string>\n~~~\n<example>literal</example>\n~~~\n<def>hi</def>After</abc>";
+  assert.equal(replace(text, '[abc.preamble]\nreplacement = "P"'), "<abc>P<def>hi</def>After</abc>");
+  assert.equal(replace("<abc>P<def><inner>I</inner></def>Middle<last>L</last>Q</abc>",
+    '[abc.postamble]\nreplacement = "End"'),
+    "<abc>P<def><inner>I</inner></def>Middle<last>L</last>End</abc>");
+});
+
+test("special references include empty edges and leaf bodies without rescanning inserted text", () => {
+  assert.equal(replace("<abc><def>hi</def></abc>",
+    '[abc.preamble]\nreplacement = "<def>P</def>"\n[abc.postamble]\nreplacement = "Q"\n[abc.def]\nreplacement = "New"'),
+    "<abc><def>P</def><def>New</def>Q</abc>");
+  for (const suffix of ["preamble", "postamble"])
+    assert.equal(replace("<abc>Body</abc>", '[abc.' + suffix + ']\nreplacement = "New"'),
+      "<abc>New</abc>");
+  assert.equal(replace("<abc>P<def>hi</def>Q</abc>",
+    '[abc.preamble]\nreplacement = "P2"\n[abc.postamble]\nreplacement = "Q2"\n[abc]\nreplacement = "Whole"'),
+    "<abc>Whole</abc>");
+});
+
+test("special suffixes do not select literal child tags with the same name", () => {
+  assert.equal(replace("<abc>Before<preamble>Literal</preamble>After</abc>",
+    '[abc.preamble]\nreplacement = "New"'),
+    "<abc>New<preamble>Literal</preamble>After</abc>");
+  const result = replaceMessages([{ role: "system", content: "Before<preamble>Literal</preamble>After" }],
+    parseReplacements('[system_prompt.preamble]\nreplacement = "New"'));
+  assert.equal(result[0].content, "New<preamble>Literal</preamble>After");
+});
+
+test("system prompt edge references work without an outer tag", () => {
+  const messages = [
+    { role: "system", content: "Before<tools>Old</tools>After" },
+    { role: "user", content: "Before<tools>Old</tools>After" },
+  ];
+  const result = replaceMessages(messages, parseReplacements(
+    '[system_prompt.preamble]\nreplacement = "P"\n[system_prompt.postamble]\nreplacement = "Q"\n[system_prompt.tools]\nreplacement = "New"'));
+  assert.equal(result[0].content, "P<tools>New</tools>Q");
+  assert.equal(result[1].content, messages[1].content);
+});
+
 test("[one] replaces only the body of a root tag", () => {
   assert.equal(replace('Before <one id="a">Old</one> after', '[one]\nreplacement = "New"'),
     'Before <one id="a">New</one> after');
