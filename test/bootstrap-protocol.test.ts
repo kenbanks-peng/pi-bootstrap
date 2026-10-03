@@ -46,6 +46,13 @@ test("only direct regular files in action-specific folders are selected, sorted 
   assert.match(await f.repository.compose(), /Added directly/);
 });
 
+test("closing tags have no extra blank line after trailing source line breaks", async t => {
+  const f = await fixture(t);
+  await memory(f.project, "trailing.md", "First\nlast\r\n\r\n");
+  await command(f.project, "trailing.toml", executable('process.stdout.write("First\\nlast\\n\\n")'));
+  assert.equal(await f.repository.compose(), '<bootstrap>\n<memory>\nFirst\nlast\n</memory>\n<command>\nTest command\nFirst\nlast\n</command>\n</bootstrap>');
+});
+
 test("rule order precedes filename order and overlap is scoped to the action folder", async t => {
   const f = await fixture(t);
   await protocol(f.project, '[[rule]]\nglob = "z.md"\naction = "memory"\n[[rule]]\nglob = "a.md"\naction = "memory"\n');

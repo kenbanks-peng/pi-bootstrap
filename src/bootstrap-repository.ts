@@ -119,8 +119,8 @@ export class BootstrapRepository {
 }
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {
-  if (entry.type === "memory") return `<memory>\n${escapeXml(entry.content)}\n</memory>`;
-  return `<command>\n${escapeXml(entry.description)}\n${escapeXml(entry.output)}\n</command>`;
+  if (entry.type === "memory") return `<memory>\n${escapeXml(entry.content.replace(/[\r\n]+$/, ""))}\n</memory>`;
+  return `<command>\n${escapeXml(entry.description)}\n${escapeXml(entry.output.replace(/[\r\n]+$/, ""))}\n</command>`;
 }
 
 function escapeXml(value: string): string {
