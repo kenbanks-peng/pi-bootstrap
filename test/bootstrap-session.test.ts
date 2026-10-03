@@ -17,6 +17,8 @@ function harness(repositoryFor?: Parameters<typeof registerBootstrapSession>[1])
     on: (name: string, handler: (...args: any[]) => any) => handlers.set(name, handler),
     registerCommand: (name: string, spec: any) => commands.set(name, spec),
     sendMessage: (message: any) => messages.push(message),
+    getAllTools: () => [{ name: "read", description: "Read files" }],
+    getActiveTools: () => ["read"],
   };
   const snapshot = registerBootstrapSession(pi as never, repositoryFor);
   return { handlers, commands, messages, pi, snapshot };
@@ -70,7 +72,9 @@ test("session snapshots and existing request replacements compose without changi
     const user = { role: "user", content: "Question" };
     const system = { role: "system", content: "", sections: { preamble: "Old preamble", tools: "<tools>Old tools</tools>Tail" }, toolsAdded: [{ name: "read" }] };
     const result = await h.handlers.get("context_with_system")!({ messages: [system, user] });
-    assert.equal(result.messages[0].sections.tools, "<tools>New tools</tools>Read prompt.md");
+    assert.match(result.messages[0].content, /<tools>New tools<\/tools>Read prompt.md[\s\S]*<bootstrap/);
+    assert.equal(result.messages[0].sections, undefined);
+    assert.match(result.messages[0].content, /<\/bootstrap>$/);
     assert.equal(await readFile(join(getBootstrapDirectory(), "prompt.md"), "utf8"), "Tail");
     assert.equal(result.messages[0].toolsAdded, system.toolsAdded);
     assert.match(result.messages[0].content, /<bootstrap version="1">[\s\S]*Session guidance[\s\S]*<\/bootstrap>/);
@@ -144,7 +148,9 @@ test("empty composition sends no message and command failures notify without par
   assert.deepEqual(notices.notifications.pop(), { message: "bad.toml returned error code 7.", level: undefined });
   await command(f.project, "bad.toml", "version = 1\nargv = []");
   await h.handlers.get("session_start")!({}, ctx);
-  assert.deepEqual(notices.notifications.pop(), { message: "bad.toml had an error.", level: "error" });
+  const failure = notices.notifications.pop()!;
+  assert.match(failure.message, /bad.toml had an error:.*non-empty argv/);
+  assert.equal(failure.level, "error");
   assert.equal(h.messages.length, 0);
   await protocol(f.project, "invalid =");
   await assert.rejects(h.handlers.get("session_start")!({}, ctx), /not valid TOML/);

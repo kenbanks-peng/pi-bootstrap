@@ -2,6 +2,9 @@ import { parse } from "smol-toml";
 import { mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
 import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { evaluateExpression, type BootstrapExpressionContext } from "./bootstrap-expression.js";
+
+export type { BootstrapExpressionContext } from "./bootstrap-expression.js";
 
 export const COMMAND_TIMEOUT_MS = 1_000;
 export const COMMAND_OUTPUT_LIMIT_BYTES = 1_048_576;
@@ -23,7 +26,8 @@ class CommandExitError extends Error {
 
 export type BootstrapSessionEntry =
   | { type: "memory"; content: string }
-  | { type: "command"; argv: [string, ...string[]]; output: string };
+  | { type: "command"; argv: [string, ...string[]]; output: string }
+  | { type: "command"; expression: string; output: string };
 
 export const DEFAULT_PROTOCOL = `version = ${BOOTSTRAP_VERSION}
 
@@ -46,11 +50,9 @@ export interface BootstrapProtocolV1 {
   rule: BootstrapRuleV1[];
 }
 
-interface CommandSourceV1 {
-  version: typeof BOOTSTRAP_VERSION;
-  argv: [string, ...string[]];
-  cwd?: string;
-}
+type CommandSourceV1 =
+  | { version: typeof BOOTSTRAP_VERSION; argv: [string, ...string[]]; cwd?: string }
+  | { version: typeof BOOTSTRAP_VERSION; expression: string };
 
 const protocolFilename = "protocol.toml";
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -73,7 +75,7 @@ export async function loadProtocol(sourceRoot: string, scopeLabel: string): Prom
   }
 }
 
-export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocolV1, projectRoot: string): Promise<BootstrapSessionEntry[]> {
+export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocolV1, projectRoot: string, expressionContext?: BootstrapExpressionContext): Promise<BootstrapSessionEntry[]> {
   const files = {
     memory: await listDirectFiles(join(sourceRoot, "memories"), scopeLabel),
     command: await listDirectFiles(join(sourceRoot, "commands"), scopeLabel),
@@ -87,7 +89,7 @@ export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: st
       if (rule.action === "memory") {
         sessionEntries.push({ type: "memory", content: await readUtf8(sourcePath, `${scopeLabel} source "${filename}"`) });
       } else {
-        sessionEntries.push(await runCommandSource(sourcePath, projectRoot, scopeLabel));
+        sessionEntries.push(await runCommandSource(sourcePath, projectRoot, scopeLabel, expressionContext));
       }
     }
   }
@@ -161,10 +163,14 @@ function matchesGlob(filename: string, glob: string): boolean {
   return new RegExp(expression).test(filename);
 }
 
-async function runCommandSource(sourcePath: string, projectRoot: string, scopeLabel: string): Promise<Extract<BootstrapSessionEntry, { type: "command" }>> {
+async function runCommandSource(sourcePath: string, projectRoot: string, scopeLabel: string, expressionContext?: BootstrapExpressionContext): Promise<Extract<BootstrapSessionEntry, { type: "command" }>> {
   const sourceName = basename(sourcePath);
   try {
     const source = parseCommandSource(await readUtf8(sourcePath, `${scopeLabel} command source "${sourceName}"`), sourceName, scopeLabel);
+    if ("expression" in source) {
+      if (!expressionContext) throw new Error("Expression commands require a Pi session context.");
+      return { type: "command", expression: source.expression, output: await evaluateExpression(source.expression, expressionContext, sourceName, COMMAND_TIMEOUT_MS, COMMAND_OUTPUT_LIMIT_BYTES) };
+    }
     const cwd = await commandCwd(source.cwd, projectRoot, sourceName, scopeLabel);
     const output = await execute(source.argv, cwd, sourceName, scopeLabel);
     try {
@@ -184,8 +190,22 @@ async function runCommandSource(sourcePath: string, projectRoot: string, scopeLa
 
 function parseCommandSource(text: string, sourceName: string, scopeLabel: string): CommandSourceV1 {
   const value = parseToml(text, `${scopeLabel} command source "${sourceName}"`);
-  if (!isRecord(value) || value.version !== BOOTSTRAP_VERSION || !Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
-    throw new Error(`${scopeLabel} command source "${sourceName}" must contain version = ${BOOTSTRAP_VERSION} and a non-empty argv string array.`);
+  const label = `${scopeLabel} command source "${sourceName}"`;
+  if (!isRecord(value) || value.version !== BOOTSTRAP_VERSION) {
+    throw new Error(`${label} must contain version = ${BOOTSTRAP_VERSION}.`);
+  }
+  if (("argv" in value) === ("expression" in value)) {
+    throw new Error(`${label} must contain exactly one of argv or expression.`);
+  }
+  if ("expression" in value) {
+    if (typeof value.expression !== "string" || value.expression.trim().length === 0) {
+      throw new Error(`${label} expression must be a non-empty string.`);
+    }
+    if ("cwd" in value) throw new Error(`${label} cwd is only supported with argv.`);
+    return { version: BOOTSTRAP_VERSION, expression: value.expression };
+  }
+  if (!Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
+    throw new Error(`${label} must contain a non-empty argv string array.`);
   }
   if (value.cwd !== undefined && (typeof value.cwd !== "string" || value.cwd.length === 0)) {
     throw new Error(`${scopeLabel} command source "${sourceName}" has an invalid cwd.`);

@@ -25,7 +25,10 @@ export function registerBootstrapSession(
   pi.on("session_start", async (_event, ctx) => {
     const current = clear();
     try {
-      const composed = await repositoryFor(ctx.cwd).compose();
+      const composed = await repositoryFor(ctx.cwd).compose({
+        allTools: pi.getAllTools(),
+        activeTools: pi.getActiveTools(),
+      });
       if (current === generation) snapshot = composed;
     } catch (error) {
       if (current !== generation) return;
@@ -33,7 +36,7 @@ export function registerBootstrapSession(
         if (error.exitCode !== undefined) {
           ctx.ui.notify(`${error.sourceName} returned error code ${error.exitCode}.`);
         } else {
-          ctx.ui.notify(`${error.sourceName} had an error.`, "error");
+          ctx.ui.notify(`${error.sourceName} had an error: ${error.message}`, "error");
         }
         return;
       }

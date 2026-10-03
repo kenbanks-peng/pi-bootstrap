@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { installDefaultProtocol, loadProtocol, resolveProtocolMemories } from "./bootstrap-protocol.js";
-import type { BootstrapSessionEntry } from "./bootstrap-protocol.js";
+import type { BootstrapExpressionContext, BootstrapSessionEntry } from "./bootstrap-protocol.js";
 
 export type BootstrapScope = "global" | "project";
 export type BootstrapSourceType = "memory" | "command";
@@ -80,7 +80,7 @@ export class BootstrapRepository {
     return sources.flat().sort((left, right) => left.id.localeCompare(right.id) || left.type.localeCompare(right.type));
   }
 
-  async compose(): Promise<string> {
+  async compose(expressionContext?: BootstrapExpressionContext): Promise<string> {
     const globalDirectory = this.directoryFor("global");
     await installDefaultProtocol(globalDirectory);
     const globalProtocol = await loadProtocol(globalDirectory, "Global");
@@ -89,8 +89,8 @@ export class BootstrapRepository {
     const projectDirectory = this.directoryFor("project");
     const projectProtocol = await loadProtocol(projectDirectory, "Project");
     const projectRoot = dirname(dirname(projectDirectory));
-    const global = await resolveProtocolMemories(globalDirectory, "Global", globalProtocol, projectRoot);
-    const project = await resolveProtocolMemories(projectDirectory, "Project", projectProtocol ?? globalProtocol, projectRoot);
+    const global = await resolveProtocolMemories(globalDirectory, "Global", globalProtocol, projectRoot, expressionContext);
+    const project = await resolveProtocolMemories(projectDirectory, "Project", projectProtocol ?? globalProtocol, projectRoot, expressionContext);
     const entries = [...global, ...project];
 
     return entries.length === 0
@@ -120,7 +120,8 @@ export class BootstrapRepository {
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {
   if (entry.type === "memory") return `  <memory>${formatXmlText(entry.content, "  ")}</memory>`;
-  return `  <command>\n    <run>${formatXmlText(entry.argv.join(" "), "    ")}</run>\n    <output>${formatXmlText(entry.output, "    ")}</output>\n  </command>`;
+  const invocation = "expression" in entry ? entry.expression : entry.argv.join(" ");
+  return `  <command>\n    <run>${formatXmlText(invocation, "    ")}</run>\n    <output>${formatXmlText(entry.output, "    ")}</output>\n  </command>`;
 }
 
 function formatXmlText(value: string, continuationIndent: string): string {

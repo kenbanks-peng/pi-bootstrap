@@ -9,7 +9,7 @@ Global configuration lives under `~/.config/pi/agent/extensions/pi-bootstrap/`
 (or `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/`):
 
 - `memories/*.md`: user-authored guidance.
-- `commands/*.toml`: direct command definitions.
+- `commands/*.toml`: external command or JavaScript expression definitions.
 - `protocol.toml`: versioned rules selecting session sources; created if missing.
 - `config.toml`: existing request-time replacement/reference rules.
 
@@ -19,8 +19,9 @@ policy for that project. Session sources are snapshotted on `session_start`, not
 on every request. Commands execute with your permissions: review them before use.
 
 Each outgoing system prompt receives `<bootstrap version="1">…</bootstrap>`
-inside its system-prompt body—not a separate `<message>`, custom message, or user
-message. The snapshot is runtime-local: startup, reload, new, resume, and fork
+at the end of its system-prompt body, after all current prompt sections—not a
+separate `<message>`, custom message, or user message. Each command has its own
+`<command>…</command>` wrapper. The snapshot is runtime-local: startup, reload, new, resume, and fork
 compose fresh content; empty/failed starts and shutdown clear it. Nothing is
 persisted into conversation history, and commands do not rerun per request.
 
@@ -33,6 +34,25 @@ Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
 `delete <id>`. Add/list accept optional `global|project` and `memory|command`
 filters; add defaults to `project memory`. Edit/delete accept an optional type.
 No model-callable management tools are registered.
+
+Each command file must contain `version = 1` and exactly one of `argv` or
+`expression`. Existing `argv` files work without changes. To list registered
+tools, create `commands/tools.toml` in either scope:
+
+```toml
+version = 1
+expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
+```
+
+Expressions can also use `pi.getAllTools()` and `pi.getActiveTools()`. These
+methods return read-only session snapshots, not the full Pi extension interface.
+`ALL_TOOLS` is an alias for `pi.getAllTools()`, not codemode's visibility-filtered
+list. Expressions must return a string synchronously. Do not set `cwd` in an
+expression file. Review expressions as executable configuration; the Node VM
+is not a security sandbox.
+
+The command rule in `protocol.toml` must use `glob = "*.toml"` to select these
+files. Run `/reload` after you change sources or the protocol.
 
 See [session configuration and capability parity](docs/session-capabilities.md)
 for protocol examples, execution limits, lifecycle, and migration decisions.
@@ -112,8 +132,10 @@ Tool declarations stay unchanged.
 - Repeated matches are replaced. If both parent and child have replacements, the parent wins.
 - Tags inside Markdown code fences are ignored. Self-closing tags have no body.
 - All message text is processed, including system sections and text blocks.
-  Bootstrap is transformed separately, then inserted into the leading system
-  message. Tool declarations, stored history, and the session snapshot stay unchanged.
+  Bootstrap is transformed separately. Current system content and section patches
+  are folded into the leading system message, with bootstrap last. Tool deltas
+  keep their transcript positions. Tool declarations, stored history, and the
+  session snapshot stay unchanged.
 - The config is read for each request. A missing config is created from `default.toml`.
   Invalid config causes a handler error; no partial result is returned.
   Unmatched tag-like text, such as `Map<string>`, stays unchanged.

@@ -58,7 +58,7 @@ Unmatched files, subdirectories and source symlinks are ignored. Root-level
 those basenames are ordinary selectable command files.
 
 Memories are complete strict UTF-8 text, without filenames. Commands are strict
-UTF-8 TOML:
+UTF-8 TOML with `version = 1` and exactly one of `argv` or `expression`:
 
 ```toml
 version = 1
@@ -75,6 +75,44 @@ exits, spawn failures, invalid definitions and non-UTF-8 stdout fail composition
 Stderr is drained, not injected. These limits are not a security sandbox:
 commands inherit environment and permissions, can modify files and may spawn
 descendants. Review both global and project commands.
+
+### Expression commands
+
+Create a file such as `commands/tools.toml`:
+
+```toml
+version = 1
+expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
+```
+
+The expression is JavaScript and must return a string synchronously. Empty strings
+are valid results. Missing, empty, or non-string expressions, both execution
+fields, neither execution field, and `cwd` on an expression file are errors.
+
+The extension supplies these read-only values:
+
+- `ALL_TOOLS`: JSON-copied tool metadata from `pi.getAllTools()`.
+- `pi.getAllTools()`: returns the same frozen array.
+- `pi.getActiveTools()`: returns frozen active tool names.
+
+These are snapshots taken when this extension's `session_start` handler runs.
+Tools registered later are included after the next session start or reload.
+Registered metadata can include inactive or hidden tools; this `ALL_TOOLS` alias
+does not reproduce codemode's visibility rules. JSON serialization preserves
+data, not functions.
+
+Each expression runs in a fresh Node VM context inside a worker thread. No host callbacks, filesystem
+interface, `process`, `require`, or session-changing Pi methods are supplied.
+Dynamic code generation is disabled. The parent terminates the worker after
+1,000 ms, including worker startup and queued microtasks. Returned UTF-8 text has
+a 1,048,576-byte bound.
+These limits do not bound memory allocation. The Node VM is not a security
+sandbox. Only use trusted expression configuration.
+
+Expressions and external commands follow the same source ordering and error
+handling. The expression text is XML-escaped into `<run>`, and its result is
+XML-escaped into `<output>`. Failed evaluation clears the session snapshot and
+reports the source filename and error. Neither execution method runs per request.
 
 ## Snapshot lifecycle
 
@@ -94,7 +132,7 @@ the previous snapshot, then composes fresh content from the current cwd:
 
 Memory text, invocation and output are XML-escaped; newlines are preserved and
 indented. Empty or failed composition leaves no snapshot. Command errors notify
-with filename and exit status when available; other errors propagate to Pi's
+with filename and exit status or error details when available; other errors propagate to Pi's
 handler error reporting. No partial result is injected.
 
 Snapshots are closure-local, not module-global or persisted. Shutdown clears
@@ -110,10 +148,15 @@ The single `context_with_system` request handler:
 1. Reads request-time replacement/reference configuration.
 2. Transforms Pi's transcript without mutating input messages.
 3. Transforms a copy of the bootstrap snapshot with explicit bootstrap paths.
-4. Writes reference files and appends bootstrap to the leading system message's
-   content, preserving its sections, timestamps and tool declarations.
+4. Writes reference files.
+5. Replays all system content and section patches into the leading message,
+   then appends bootstrap last. Later system messages retain their tool deltas,
+   positions and metadata; their prompt content and sections are folded into
+   the leading message. Input messages and stored history stay unchanged.
 
-Bootstrap is **inside the system-prompt body**, never a separate `<message>`.
+Bootstrap is **last inside the system-prompt body**, logically immediately before
+`</system-prompt>`, never a separate `<message>`. Each command retains its own
+`<command>…</command>` wrapper.
 There is no `context` reordering hook, `sendMessage`, `sendUserMessage`, or
 persisted bootstrap entry. Requests, tool continuations and compaction-derived
 histories reuse the snapshot without running commands again.
@@ -123,8 +166,10 @@ outer `<system-prompt>` tags. Those tags denote the logical prompt container;
 adding them around native API text would duplicate framing rather than change
 its role. The real provider adapter emits the bootstrap-containing text as
 system instructions (or developer instructions where the provider requires it).
-Later system section patches cannot remove content injected into the leading
-system message. Adapters which collapse system deltas retain it too.
+Request-local section replay applies updates and removals before bootstrap is
+appended. Both native system-delta adapters and adapters which collapse system
+deltas receive bootstrap at the end of the assembled prompt. Empty snapshots
+leave the original section and content layout unchanged.
 
 Broad system preamble/postamble replacements and references process the original
 prompt, not bootstrap. Explicit `[system_prompt.bootstrap.memory]` or
@@ -144,14 +189,15 @@ reported rather than exposing bootstrap through a user-message fallback.
 
 Add/edit use the UI editor and reject non-interactive mode. Cancellation changes
 nothing. Command addition supplies an argv/cwd template and prepends `version = 1`
-after editing; editing an existing command shows its complete TOML. List/delete
+after editing. The template also shows an expression example; remove `argv` and
+`cwd` to use it. Editing an existing command shows its complete TOML. List/delete
 work without interactive UI. Operations catch errors and notify the user.
 There are no model-callable management tools. Edits affect the next session
 snapshot, not the current one.
 
 ## Verification and boundaries
 
-Validated with `npm test` (**66 passed, 0 failed**), `npm run typecheck`, and
+Validated with `npm test` (**73 passed, 0 failed**), `npm run typecheck`, and
 `git diff --check`. API evidence: Pi 1.0.0 extension event declarations,
 `core/messages.js`, pi-ai `utils/text.js`, `utils/transcript.js`, and
 `api/openai-responses-shared.js`; cross-checked against Context7
@@ -167,12 +213,18 @@ Validated with `npm test` (**66 passed, 0 failed**), `npm run typecheck`, and
   carries bootstrap only in system instructions, both with native system deltas
   and collapsed transcripts; tools and user messages remain intact. Real child
   process side effects prove commands execute once, not per request.
+- Expression tests cover both scopes, mixed argv/expression sources, read-only
+  tool snapshots, validation, errors, timeouts, UTF-8 byte limits, XML escaping,
+  reload, and request reuse without reevaluation.
+- Placement tests verify final prompt order after section updates, removals,
+  additions and later system content; tool deltas keep their original positions.
 - Frozen histories, explicit bootstrap references, empty/error starts, shutdown,
   isolated reload runtimes and overlapping asynchronous starts are covered.
 
 No interactive TUI or live provider request is needed for these checks. Test
-configuration and reference writes use temporary directories only. Live user
-configuration, external source checkout and Aven state remain untouched.
+configuration and reference writes use temporary directories only. Tests do not change live user configuration, external source checkout, or Aven
+state. The global command rule was separately changed from `*.command.toml` to
+`*.toml` at the user's request.
 
 The imported repository/protocol/CRUD capabilities originated in the read-only
 `pi-prime-session` reference at `bc18712f619f286e83693df0aa292ddb229fd641`.

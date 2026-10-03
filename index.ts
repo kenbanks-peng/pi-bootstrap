@@ -47,18 +47,34 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snap
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, text, "utf8");
     }
-    // Inject last: broad prompt replacements/references must not consume the snapshot.
-    // Pi serializes system content + sections as the system-prompt body, not a message.
+    // Inject after replacements and after replaying prompt sections. Pi renders
+    // content before sections, so appending to content alone is not the prompt tail.
     if (bootstraps) {
       const first = messages[0];
       if (!first || first.role !== "system") {
         throw new Error("Bootstrap injection requires a leading system message");
       }
+      const { sections: _initialSections, ...initialMetadata } = first;
+      const content: string[] = [];
+      const sections = new Map<string, string>();
+      for (const [index, message] of messages.entries()) {
+        if (message.role !== "system") continue;
+        const text = typeof message.content === "string"
+          ? message.content
+          : message.content.filter(block => block.type === "text").map(block => block.text).join("\n");
+        if (text) content.push(text);
+        for (const [name, value] of Object.entries(message.sections ?? {})) {
+          if (value === null) sections.delete(name);
+          else sections.set(name, value);
+        }
+        // Keep system/tool delta positions and metadata, but fold their prompt
+        // text into the leading message so every adapter gets the same prompt tail.
+        const { sections: _sections, ...metadata } = message;
+        messages[index] = { ...metadata, content: "" };
+      }
       messages[0] = {
-        ...first,
-        content: typeof first.content === "string"
-          ? [first.content, bootstraps].filter(Boolean).join("\n\n")
-          : [...first.content, { type: "text", text: bootstraps }],
+        ...initialMetadata,
+        content: [...content, ...sections.values(), bootstraps].filter(Boolean).join("\n\n"),
       };
     }
     return { messages };

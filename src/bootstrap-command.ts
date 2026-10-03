@@ -9,7 +9,7 @@ export interface BootstrapCommandUI {
 
 const api = "/bootstrap list [global|project] [memory|command]\n/bootstrap add [global|project] [memory|command]\n/bootstrap edit <id> [memory|command]\n/bootstrap delete <id> [memory|command]";
 const usage = "Usage: /bootstrap list [global|project] [memory|command] | add [global|project] [memory|command] | edit <id> [memory|command] | delete <id> [memory|command]";
-const commandTemplate = "argv = [\"git\", \"status\", \"--short\"]\ncwd = \".\"\n";
+const commandTemplate = "# Use exactly one of argv or expression. Remove cwd for expressions.\nargv = [\"git\", \"status\", \"--short\"]\ncwd = \".\"\n# expression = 'ALL_TOOLS.map(t => t.name).join(\"\\n\")'\n";
 const commandVersion = `version = ${BOOTSTRAP_VERSION}\n`;
 
 export async function runBootstrapCommand(args: string, bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {

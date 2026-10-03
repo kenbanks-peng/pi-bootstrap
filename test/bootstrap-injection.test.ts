@@ -24,6 +24,8 @@ function harness(repositoryFor: Parameters<typeof registerBootstrapSession>[1]) 
   const pi = {
     on: (name: string, fn: (...args: any[]) => any) => handlers.set(name, fn),
     registerCommand: () => {},
+    getAllTools: () => [{ name: "read" }],
+    getActiveTools: () => ["read"],
     sendMessage: () => assert.fail("Bootstrap must never call sendMessage"),
     sendUserMessage: () => assert.fail("Bootstrap must never call sendUserMessage"),
     appendEntry: () => assert.fail("Bootstrap must not persist snapshots"),
@@ -44,6 +46,7 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   const f = await fixture(t);
   const marker = join(f.root, "executions");
   await memory(f.project, "guidance.md", "Only system <guidance>");
+  await command(f.project, "tools.toml", 'version = 1\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
   await command(f.project, "once.toml", executable(`require('node:fs').appendFileSync(${JSON.stringify(marker)}, 'x'); process.stdout.write('Snapshot output')`));
   const h = harness(() => f.repository);
   const config = join(f.root, "config.toml");
@@ -76,6 +79,12 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.ok(payload, "provider must reach the HTTP request boundary");
     assert.equal(payload.input[0].role, "system");
     assert.match(payload.input[0].content, /<bootstrap version="1">[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
+    assert.match(payload.input[0].content, /<output>Registered tools: read<\/output>/);
+    assert.match(payload.input[0].content, /<\/bootstrap>$/);
+    assert.equal((payload.input[0].content.match(/<command>/g) ?? []).length, 2);
+    assert.equal((payload.input[0].content.match(/<\/command>/g) ?? []).length, 2);
+    assert.match(payload.input[0].content, /<command>\s*<run>[\s\S]*?<\/run>\s*<output>Snapshot output<\/output>\s*<\/command>/);
+    assert.match(payload.input[0].content, /Read rules.md[\s\S]*<bootstrap/);
     assert.equal(JSON.stringify(payload).split('<bootstrap version=').length - 1, 1);
     assert.deepEqual(payload.input.filter((m: any) => m.role === "user"), [{ role: "user", content: [{ type: "input_text", text: "Question" }] }]);
     assert.ok(payload.tools.some((tool: any) => tool.name === "read"));
@@ -177,7 +186,10 @@ test("string, empty and section-only system prompts inject without changing conv
     const result = await h.handlers.get("context_with_system")!({ messages });
     assert.match(JSON.stringify(result.messages[0]), /Snapshot/);
     assert.deepEqual(result.messages.slice(1), messages.slice(1));
-    assert.deepEqual(result.messages[0].sections, messages[0].sections);
+    assert.equal(result.messages[0].sections, undefined);
+    assert.match(result.messages[0].content, /<rules>Rules<\/rules>[\s\S]*<bootstrap/);
+    assert.match(result.messages[0].content, /<\/bootstrap>$/);
+    assert.deepEqual(messages[0].sections, { rules: "<rules>Rules</rules>" });
   }
   await assert.rejects(h.handlers.get("context_with_system")!({ messages: [{ role: "user", content: "User" }] }), /leading system message/);
 });
