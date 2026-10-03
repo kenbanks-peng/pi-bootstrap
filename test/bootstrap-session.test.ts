@@ -77,12 +77,12 @@ test("session snapshots and existing request replacements compose without changi
     const user = { role: "user", content: "Question" };
     const system = { role: "system", content: "", sections: { preamble: "Old preamble", tools: "<tools>Old tools</tools>Tail" }, toolsAdded: [{ name: "read" }] };
     const result = await h.handlers.get("context_with_system")!({ messages: [system, user] }, { cwd: f.projectRoot });
-    assert.match(result.messages[0].content, /<tools>\nNew tools\n<\/tools>Read prompt.md[\s\S]*<bootstrap/);
+    assert.match(result.messages[0].content, /<tools>\nNew tools\n<\/tools>Read prompt.md[\s\S]*<memory/);
     assert.equal(result.messages[0].sections, undefined);
-    assert.match(result.messages[0].content, /<\/bootstrap>$/);
+    assert.match(result.messages[0].content, /<\/memory>$/);
     assert.equal(await readFile(join(getBootstrapDirectory(), "prompt.md"), "utf8"), "Tail");
     assert.equal(result.messages[0].toolsAdded, system.toolsAdded);
-    assert.match(result.messages[0].content, /<bootstrap>[\s\S]*Session guidance[\s\S]*<\/bootstrap>/);
+    assert.match(result.messages[0].content, /<memory>[\s\S]*Session guidance[\s\S]*<\/memory>/);
     assert.equal(system.sections.tools, "<tools>Old tools</tools>Tail");
     assert.equal(result.messages[1].content, "Question");
     assert.deepEqual(h.messages, []);
@@ -102,7 +102,7 @@ test("session start snapshots once and request injection does not mutate history
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(compositions, 1);
   assert.deepEqual(h.messages, []);
-  assert.match(h.snapshot(), /<bootstrap>/);
+  assert.match(h.snapshot(), /<memory>/);
   registerBootstrap(h.pi as never, () => f.repository, h.snapshot);
   await memory(f.project, "test.md", "Later snapshot");
   const first = h.snapshot();
@@ -132,8 +132,8 @@ test("every Pi session-start reason recomposes from the current cwd without runt
   for (const reason of ["startup", "reload", "new", "resume", "fork"]) {
     await memory(f.project, "reason.md", reason);
     await h.handlers.get("session_start")!({ reason }, ctx);
-    assert.match(h.snapshot(), new RegExp(`<bootstrap>\n${reason}\n</bootstrap>`));
-    assert.doesNotMatch(h.snapshot(), /<\/?(?:memory|command)>/);
+    assert.match(h.snapshot(), new RegExp(`<memory>\n${reason}\n</memory>`));
+    assert.doesNotMatch(h.snapshot(), /<\/?(?:bootstrap|command)>/);
   }
   assert.deepEqual(h.messages, []);
 });

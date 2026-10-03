@@ -54,7 +54,7 @@ test("section commands replace request sections, combine in source order, and st
   const original = structuredClone(messages);
   const result = await h.run("context_with_system", { messages }, { cwd: f.projectRoot });
   assert.match(result.messages[0].content, /<skills>\nRead skills.md\n<\/skills>/);
-  assert.match(result.messages[0].content, /<bootstrap>\nMemory\n<\/bootstrap>$/);
+  assert.match(result.messages[0].content, /<memory>\nMemory\n<\/memory>$/);
   assert.doesNotMatch(result.messages[0].content, /Global|Project|Old catalog|Historical catalog/);
   assert.equal(await readFile(join(f.global, "skills.md"), "utf8"), "\nGlobal\n&lt;global&gt;\n\nProject\n&lt;project&gt;\n");
   assert.equal(result.messages[2].content, messages[2].content);

@@ -30,7 +30,7 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
       const path = JSON.parse(key) as string[];
       const name = path[1];
       if (path.length === 2 && path[0].replaceAll("_", "-") === "system-prompt" &&
-        !["preamble", "postamble", "bootstrap"].includes(name)) {
+        !["preamble", "postamble", "memory", "commands"].includes(name)) {
         patches[name] = `<${name}>\n${body}\n</${name}>`;
       } else generated.set(key, body);
     }
@@ -42,7 +42,7 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
     }), generated);
 
     const messages = replaceMessages(prepared, replacements, saveReference);
-    // Bootstrap has no independent system preamble/postamble. Explicit bootstrap
+    // Bootstrap has no independent system preamble/postamble. Explicit memory/commands
     // paths still work, but broad prompt-edge rules cannot eat this snapshot.
     const generatedBootstrap = replaceTags(snapshot(), generated, ["system-prompt"], []);
     const bootstraps = replaceTags(generatedBootstrap, replacements, ["system-prompt"], [], saveReference);

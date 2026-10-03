@@ -164,12 +164,14 @@ state. Each `session_start` (startup, reload, new, resume or fork) first clears
 the previous snapshot, then composes fresh content from the current cwd:
 
 ```xml
-<bootstrap>
+<memory>
 User-authored guidance
+</memory>
 
+<commands>
 Working tree status
  M README.md
-</bootstrap>
+</commands>
 ```
 
 Memory text, description and output are XML-escaped; newlines are preserved. A blank line separates items. Empty or failed composition leaves no snapshot. Command errors notify
@@ -212,8 +214,8 @@ deltas receive bootstrap at the end of the assembled prompt. Empty snapshots
 leave the original section and content layout unchanged.
 
 Broad system preamble/postamble replacements and references process the original
-prompt, not bootstrap. Explicit `section = "system_prompt.bootstrap"` or
-`section = "bootstrap"` actions can replace/reference the request copy. Tag matching and escaping remain unchanged. Request actions refresh on each
+prompt, not bootstrap. Explicit `section = "system_prompt.memory"` or
+`section = "memory"` actions can replace/reference the request copy. Tag matching and escaping remain unchanged. Request actions refresh on each
 request; session output remains fixed until a new snapshot.
 The original snapshot and conversation history remain immutable. A nonempty
 snapshot requires Pi's leading system message; malformed transcripts are
@@ -249,7 +251,7 @@ Validated with `npm test` (**101 passed, 0 failed**), `npm run typecheck`, and
 - Action tests cover schema validation, references, duplicate targets, project
   overrides, protocol selection, file edits, deletion, and slash-command management.
 - Protocol tests cover selection, execution order, inheritance, escaping,
-  command limits/errors, symlink containment and exact `<bootstrap>` composition.
+  command limits/errors, symlink containment and exact `<memory>` and `<commands>` composition.
 - Session tests cover CRUD, slash commands, paths, fresh lifecycle snapshots,
   no conversation messages, request immutability and replacement integration.
 - Injection tests exercise Pi's real `convertToLlm` and OpenAI Responses request

@@ -10,7 +10,7 @@ test("default protocol is installed exclusively, inherited, overridden and resto
   const f = await fixture(t);
   await memory(f.global, "global.md", "Global");
   await memory(f.project, "project.md", "Project");
-  assert.equal(await f.repository.compose(), '<bootstrap>\nGlobal\n\nProject\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<memory>\nGlobal\n\nProject\n</memory>');
   assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), DEFAULT_PROTOCOL);
   assert.match(DEFAULT_PROTOCOL, /glob = "\*\.toml"/);
   await protocol(f.project, '[[rule]]\nglob = "only-*.md"\naction = "memory"\n');
@@ -41,7 +41,7 @@ test("only direct regular files in action-specific folders are selected, sorted 
   await symlink(join(f.project, "memories", "a.md"), join(f.project, "memories", "linked.md"));
   await mkdir(join(f.project, "memories", "folder.md"));
   await writeFile(join(f.project, "memories", "folder.md", "hidden.md"), "Hidden");
-  assert.equal(await f.repository.compose(), '<bootstrap>\n&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;\n\nZ\nlast\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<memory>\n&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;\n\nZ\nlast\n</memory>');
   await memory(f.project, "later.md", "Added directly");
   assert.match(await f.repository.compose(), /Added directly/);
 });
@@ -50,7 +50,7 @@ test("items have one blank line between them after trailing source line breaks",
   const f = await fixture(t);
   await memory(f.project, "trailing.md", "First\nlast\r\n\r\n");
   await command(f.project, "trailing.toml", executable('process.stdout.write("First\\nlast\\n\\n")'));
-  assert.equal(await f.repository.compose(), '<bootstrap>\nFirst\nlast\n\nTest command\nFirst\nlast\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<memory>\nFirst\nlast\n</memory>\n\n<commands>\nTest command\nFirst\nlast\n</commands>');
 });
 
 test("rule order precedes filename order and overlap is scoped to the action folder", async t => {

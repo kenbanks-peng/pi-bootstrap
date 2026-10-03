@@ -159,7 +159,7 @@ test("request transform removes historical full catalogs without changing messag
 test("lazy skill sections compose with request replacements and bootstrap, including empty snapshots", async t => {
   const f = await fixture(t);
   await actions(f.global, { "system_prompt.rules": "New rules" });
-  for (const snapshot of ["", '<bootstrap>Memory</bootstrap>']) {
+  for (const snapshot of ["", '<memory>Memory</memory>']) {
     const h = harness();
     const options = h.start([skill("alpha", "Long description")]);
     registerBootstrap(h.pi as never, () => f.repository, () => snapshot, h.transform, () => ({ [JSON.stringify(["system_prompt", "skills"])]: "Available skill names: alpha" }));
@@ -176,7 +176,7 @@ test("lazy skill sections compose with request replacements and bootstrap, inclu
     assert.doesNotMatch(text, /Long description|\/skills\/alpha/);
     assert.deepEqual(messages, before);
     assert.deepEqual(result.messages[0].toolsAdded, messages[0].toolsAdded);
-    if (snapshot) assert.match(result.messages[0].content, /<\/bootstrap>$/);
+    if (snapshot) assert.match(result.messages[0].content, /<\/memory>$/);
     assert.equal(result.messages.at(-1).content, "Request");
   }
 });

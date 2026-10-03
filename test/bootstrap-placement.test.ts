@@ -7,7 +7,7 @@ test("bootstrap follows current sections and later system text while tool deltas
   const f = await fixture(t);
   let handler: any;
   registerBootstrap({ on: (_name: string, fn: any) => { handler = fn; } } as never, () => f.repository,
-    () => '<bootstrap>\n  <command>First command\none</command>\n  <command>Second command\ntwo</command>\n</bootstrap>');
+    () => '<commands>\n  <command>First command\none</command>\n  <command>Second command\ntwo</command>\n</commands>');
   const toolsAdded = [{ name: "read" }];
   const toolsRemoved = [{ name: "bash" }];
   const messages = [
@@ -18,7 +18,7 @@ test("bootstrap follows current sections and later system text while tool deltas
   const before = structuredClone(messages);
   const result = await handler({ messages }, { cwd: f.projectRoot });
   assert.equal(result.messages[0].content,
-    'Base\n\nLater instructions\n\nCurrent rules\n\nWorkspace\n\nNew skills\n\n<bootstrap>\n  <command>First command\none</command>\n  <command>Second command\ntwo</command>\n</bootstrap>');
+    'Base\n\nLater instructions\n\nCurrent rules\n\nWorkspace\n\nNew skills\n\n<commands>\n  <command>First command\none</command>\n  <command>Second command\ntwo</command>\n</commands>');
   assert.equal(result.messages[0].sections, undefined);
   assert.equal(result.messages[0].toolsAdded, toolsAdded);
   assert.deepEqual(result.messages[1], messages[1]);

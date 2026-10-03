@@ -153,7 +153,8 @@ export class BootstrapRepository {
 }
 
 export function formatSnapshot(entries: BootstrapSessionEntry[]): BootstrapSnapshot {
-  const ordinary: BootstrapSessionEntry[] = [];
+  const memories: BootstrapSessionEntry[] = [];
+  const commands: BootstrapSessionEntry[] = [];
   const groups = new Map<string, string[]>();
   for (const entry of entries) {
     if (entry.type === "command" && "deferred" in entry && entry.deferred) continue;
@@ -162,11 +163,14 @@ export function formatSnapshot(entries: BootstrapSessionEntry[]): BootstrapSnaps
       const items = groups.get(key) ?? [];
       items.push(formatSessionEntry(entry));
       groups.set(key, items);
-    } else ordinary.push(entry);
+    } else if (entry.type === "memory") memories.push(entry);
+    else commands.push(entry);
   }
   return {
     entries,
-    bootstrap: ordinary.length ? `<bootstrap>\n${ordinary.map(formatSessionEntry).join("\n\n")}\n</bootstrap>` : "",
+    bootstrap: ([["memory", memories], ["commands", commands]] as const).map(([tag, items]) => {
+      return items.length ? `<${tag}>\n${items.map(formatSessionEntry).join("\n\n")}\n</${tag}>` : "";
+    }).filter(Boolean).join("\n\n"),
     sections: Object.fromEntries([...groups].map(([path, items]) => [path, items.join("\n\n")])),
   };
 }

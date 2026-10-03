@@ -6,7 +6,7 @@ test("commands show an escaped description line and output without execution det
   const f = await fixture(t);
   await command(f.project, "example.toml", 'description = "Available <tools>&"\nexpression = \'"read\\nbash"\'\n');
   assert.equal(await f.repository.compose({ allTools: [], activeTools: [] }),
-    '<bootstrap>\nAvailable &lt;tools&gt;&amp;\nread\nbash\n</bootstrap>');
+    '<commands>\nAvailable &lt;tools&gt;&amp;\nread\nbash\n</commands>');
 });
 
 test("command descriptions must be non-empty single-line strings", async t => {

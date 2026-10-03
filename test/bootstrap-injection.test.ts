@@ -79,16 +79,16 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.equal(response.stopReason, "error");
     assert.ok(payload, "provider must reach the HTTP request boundary");
     assert.equal(payload.input[0].role, "system");
-    assert.match(payload.input[0].content, /<bootstrap>[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
+    assert.match(payload.input[0].content, /<memory>[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/commands>/);
     assert.match(payload.input[0].content, /Test command\nRegistered tools: read/);
     assert.match(payload.input[0].content, /<skills>\nSkills:\nalpha\n<\/skills>/);
     assert.doesNotMatch(payload.input[0].content, /Old catalog|Historical catalog|Private description|\/alpha\/SKILL.md/);
     assert.equal(payload.input[0].content.split("<skills>").length - 1, 1);
-    assert.match(payload.input[0].content, /<\/bootstrap>$/);
-    assert.doesNotMatch(payload.input[0].content, /<\/?(?:memory|command)>/);
+    assert.match(payload.input[0].content, /<\/commands>$/);
+    assert.doesNotMatch(payload.input[0].content, /<\/?(?:bootstrap|command)>/);
     assert.match(payload.input[0].content, /Test command\nSnapshot output/);
-    assert.match(payload.input[0].content, /Read rules.md[\s\S]*<bootstrap/);
-    assert.equal(JSON.stringify(payload).split('<bootstrap>').length - 1, 1);
+    assert.match(payload.input[0].content, /Read rules.md[\s\S]*<memory/);
+    assert.equal(JSON.stringify(payload).split('<memory>').length - 1, 1);
     assert.deepEqual(payload.input.filter((m: any) => m.role === "user"), [{ role: "user", content: [{ type: "input_text", text: "Question" }] }]);
     assert.ok(payload.tools.some((tool: any) => tool.name === "read"));
     assert.deepEqual(history, before);
@@ -98,21 +98,21 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   assert.doesNotMatch(await readFile(join(f.global, "rules.md"), "utf8"), /bootstrap/);
 });
 
-test("explicit bootstrap replacements and references are request-local and keep the container", async t => {
+test("explicit memory replacements and references are request-local and keep the container", async t => {
   const f = await fixture(t);
   await memory(f.project, "one.md", "Original memory");
   const h = harness(() => f.repository);
   registerBootstrap(h.pi as never, () => f.repository, h.snapshot);
   await h.handlers.get("session_start")!({}, context(f.projectRoot));
   const stored = h.snapshot();
-  await actions(f.global, { "system_prompt.bootstrap": { refer: "See $link", link: "memory.md" }, "system_prompt.preamble": "New preamble", "system_prompt.postamble": "New postamble" });
+  await actions(f.global, { "system_prompt.memory": { refer: "See $link", link: "memory.md" }, "system_prompt.preamble": "New preamble", "system_prompt.postamble": "New postamble" });
   const event = freeze({ messages: [{ role: "system", content: "Prompt", timestamp: 0 }] });
   const referenced = await h.handlers.get("context_with_system")!(event, { cwd: f.projectRoot });
-  assert.match(referenced.messages[0].content, /<bootstrap>\nSee memory.md\n<\/bootstrap>/);
+  assert.match(referenced.messages[0].content, /<memory>\nSee memory.md\n<\/memory>/);
   assert.equal(await readFile(join(f.global, "memory.md"), "utf8"), "\nOriginal memory\n");
-  await actions(f.global, { bootstrap: "Request-only" });
+  await actions(f.global, { memory: "Request-only" });
   const replaced = await h.handlers.get("context_with_system")!(event, { cwd: f.projectRoot });
-  assert.match(replaced.messages[0].content, /<bootstrap>\nRequest-only\n<\/bootstrap>/);
+  assert.match(replaced.messages[0].content, /<memory>\nRequest-only\n<\/memory>/);
   assert.equal(h.snapshot(), stored);
   assert.match(stored, /Original memory/);
   assert.equal(event.messages[0].content, "Prompt");
@@ -180,15 +180,15 @@ test("late composition cannot repopulate shutdown or superseded session state", 
 test("string, empty and section-only system prompts inject without changing conversation order", async t => {
   const f = await fixture(t);
   const h = harness(() => f.repository);
-  registerBootstrap(h.pi as never, () => f.repository, () => '<bootstrap>Snapshot</bootstrap>');
+  registerBootstrap(h.pi as never, () => f.repository, () => '<memory>Snapshot</memory>');
   for (const content of ["Plain", "", []]) {
     const messages = freeze([{ role: "system", content, sections: { rules: "<rules>Rules</rules>" }, timestamp: 0 }, { role: "user", content: "User", timestamp: 1 }]);
     const result = await h.handlers.get("context_with_system")!({ messages }, { cwd: f.projectRoot });
     assert.match(JSON.stringify(result.messages[0]), /Snapshot/);
     assert.deepEqual(result.messages.slice(1), messages.slice(1));
     assert.equal(result.messages[0].sections, undefined);
-    assert.match(result.messages[0].content, /<rules>Rules<\/rules>[\s\S]*<bootstrap/);
-    assert.match(result.messages[0].content, /<\/bootstrap>$/);
+    assert.match(result.messages[0].content, /<rules>Rules<\/rules>[\s\S]*<memory/);
+    assert.match(result.messages[0].content, /<\/memory>$/);
     assert.deepEqual(messages[0].sections, { rules: "<rules>Rules</rules>" });
   }
   await assert.rejects(h.handlers.get("context_with_system")!({ messages: [{ role: "user", content: "User" }] }, { cwd: f.projectRoot }), /leading system message/);

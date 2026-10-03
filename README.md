@@ -17,14 +17,14 @@ sources precede project sources; a project `protocol.toml` overrides the global
 policy for that project. Memories and executable command output are saved on `session_start`, not
 on every request. Replacement and reference actions are read on each request. Skill expressions run once before the first agent run, when Pi supplies skill metadata. Commands execute with your permissions: review them before use.
 
-Each outgoing system prompt receives `<bootstrap>…</bootstrap>`
+Each outgoing system prompt receives memories in `<memory>…</memory>` and commands without a section specification in `<commands>…</commands>`
 at the end of its system-prompt body, after all current prompt sections—not a
-separate `<message>`, custom message, or user message. Memory and command items have no item tags and are separated by a blank line. The snapshot is runtime-local: startup, reload, new, resume, and fork
+separate `<message>`, custom message, or user message. Commands with a section specification use that section. Memory and command items have no item tags and are separated by a blank line. The snapshot is runtime-local: startup, reload, new, resume, and fork
 compose fresh content; empty/failed starts and shutdown clear it. Nothing is
 persisted into conversation history, and executable commands do not rerun per request.
 
 Request replacements/references run before injection. Explicit
-`section = "system_prompt.bootstrap"` (or `section = "bootstrap"`) actions can transform
+`section = "system_prompt.memory"` (or `section = "memory"`) actions can transform
 the request copy; broad system preamble/postamble rules cannot remove bootstrap.
 Memory and executable command edits affect the next session snapshot.
 Replacement and reference edits affect the next request.
@@ -81,7 +81,7 @@ Run `/reload` after installing this change.
 ## Command-defined prompt sections
 
 Set `section = "system_prompt.skills"` in a command file to replace the system prompt's
-`<skills>` section instead of adding the item to `<bootstrap>`.
+`<skills>` section instead of adding the item to `<commands>`.
 Both `argv` and `expression` commands use the same `section` path format as
 replacement and reference actions. Omit `section` to add output to bootstrap.
 A direct path such as `system_prompt.skills` creates or replaces that system
@@ -263,7 +263,7 @@ Use an array for literal dots in a tag name: `section = ["one.two"]`.
 - Section command output is inserted before these actions. A reference action
   can therefore save generated section text. A whole-section replacement
   discards that output; use only the replacement if the output is not needed.
-- Explicit `system_prompt.bootstrap` or `bootstrap` actions transform a copy
+- Explicit `system_prompt.memory` or `bootstrap` actions transform a copy
   of the session snapshot. Broad system prompt edge actions cannot remove it.
 - Only outgoing request copies change. Stored history, tool declarations,
   and the session snapshot stay unchanged.
