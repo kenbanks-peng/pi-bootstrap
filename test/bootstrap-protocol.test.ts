@@ -10,7 +10,7 @@ test("default protocol is installed exclusively, inherited, overridden and resto
   const f = await fixture(t);
   await memory(f.global, "global.md", "Global");
   await memory(f.project, "project.md", "Project");
-  assert.equal(await f.repository.compose(), '<bootstrap>\n<memory>\nGlobal\n</memory>\n<memory>\nProject\n</memory>\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<bootstrap>\nGlobal\n\nProject\n</bootstrap>');
   assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), DEFAULT_PROTOCOL);
   assert.match(DEFAULT_PROTOCOL, /glob = "\*\.toml"/);
   await protocol(f.project, '[[rule]]\nglob = "only-*.md"\naction = "memory"\n');
@@ -41,16 +41,16 @@ test("only direct regular files in action-specific folders are selected, sorted 
   await symlink(join(f.project, "memories", "a.md"), join(f.project, "memories", "linked.md"));
   await mkdir(join(f.project, "memories", "folder.md"));
   await writeFile(join(f.project, "memories", "folder.md", "hidden.md"), "Hidden");
-  assert.equal(await f.repository.compose(), '<bootstrap>\n<memory>\n&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;\n</memory>\n<memory>\nZ\nlast\n</memory>\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<bootstrap>\n&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;\n\nZ\nlast\n</bootstrap>');
   await memory(f.project, "later.md", "Added directly");
   assert.match(await f.repository.compose(), /Added directly/);
 });
 
-test("closing tags have no extra blank line after trailing source line breaks", async t => {
+test("items have one blank line between them after trailing source line breaks", async t => {
   const f = await fixture(t);
   await memory(f.project, "trailing.md", "First\nlast\r\n\r\n");
   await command(f.project, "trailing.toml", executable('process.stdout.write("First\\nlast\\n\\n")'));
-  assert.equal(await f.repository.compose(), '<bootstrap>\n<memory>\nFirst\nlast\n</memory>\n<command>\nTest command\nFirst\nlast\n</command>\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<bootstrap>\nFirst\nlast\n\nTest command\nFirst\nlast\n</bootstrap>');
 });
 
 test("rule order precedes filename order and overlap is scoped to the action folder", async t => {
@@ -71,7 +71,7 @@ test("command argv is literal, output preserves lines and XML cannot introduce m
   await command(f.project, "command-test.toml", `description = "Test command"\nargv = ${JSON.stringify([process.execPath, "-e", "process.stdout.write(process.argv[1])", "literal; $HOME <tag>&\nnext"])}\ncwd = "."\n`);
   const output = await f.repository.compose();
   assert.doesNotMatch(output, /<run>|<output>|process\.stdout/);
-  assert.match(output, /Test command\nliteral; \$HOME &lt;tag&gt;&amp;\nnext\n<\/command>/);
+  assert.match(output, /Test command\nliteral; \$HOME &lt;tag&gt;&amp;\nnext/);
   assert.doesNotMatch(output, /<tag>/);
 });
 
@@ -81,7 +81,7 @@ test("both scopes run commands relative to the project root, including contained
   await writeFile(join(f.projectRoot, "child", "marker.txt"), "child-marker");
   await command(f.global, "global.toml", executable('process.stdout.write(require("fs").readFileSync("child/marker.txt"))'));
   await command(f.project, "project.toml", executable('process.stdout.write(require("fs").readFileSync("marker.txt"))', "child"));
-  assert.equal((await f.repository.compose()).match(/Test command\nchild-marker\n<\/command>/g)?.length, 2);
+  assert.equal((await f.repository.compose()).match(/Test command\nchild-marker/g)?.length, 2);
 });
 
 test("commands execute in scope, rule and filename order and overlap is preflighted", async t => {
@@ -131,7 +131,7 @@ test("command timeout, output bound, invalid UTF-8, spawn errors and noisy stder
   await command(f.project, "case.toml", 'description = "Test command"\nargv = ["/nonexistent/bootstrap-executable"]\n');
   await assert.rejects(f.repository.compose(), /execution failed/);
   await command(f.project, "case.toml", executable('process.stderr.write("x".repeat(2000000), () => process.stdout.write("ok"))'));
-  assert.match(await f.repository.compose(), /Test command\nok\n<\/command>/);
+  assert.match(await f.repository.compose(), /Test command\nok/);
 });
 
 test("command definitions and cwd containment are validated", async t => {
@@ -186,7 +186,7 @@ test("existing unmatched command globs remain unchanged rather than being silent
   assert.equal(await f.repository.compose(), "");
   assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), existing);
   await protocol(f.global, commandProtocol);
-  assert.match(await f.repository.compose(), /Test command\nSelected\n<\/command>/);
+  assert.match(await f.repository.compose(), /Test command\nSelected/);
 });
 
 test("command files named protocol and config are ordinary sources inside commands", async t => {
@@ -202,7 +202,7 @@ test("command files named protocol and config are ordinary sources inside comman
   const output = await f.repository.compose();
   for (const scope of ["global", "project"]) {
     for (const id of ["protocol", "config"]) {
-      assert.ok(output.includes(`Test command\nedited-${scope}-${id}\n</command>`));
+      assert.ok(output.includes(`Test command\nedited-${scope}-${id}`));
     }
   }
 });
@@ -214,7 +214,7 @@ test("contained cwd names beginning with two dots are not parent traversal", asy
   await symlink(join(f.projectRoot, "..cache"), join(f.projectRoot, "alias"));
   for (const cwd of ["..cache", "alias"]) {
     await command(f.project, "command-contained.toml", executable('process.stdout.write(require("fs").readFileSync("marker.txt"))', cwd));
-    assert.match(await f.repository.compose(), /Test command\ncontained\n<\/command>/);
+    assert.match(await f.repository.compose(), /Test command\ncontained/);
   }
 });
 

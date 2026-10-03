@@ -95,7 +95,7 @@ export class BootstrapRepository {
 
     return entries.length === 0
       ? ""
-      : `<bootstrap>\n${entries.map(formatSessionEntry).join("\n")}\n</bootstrap>`;
+      : `<bootstrap>\n${entries.map(formatSessionEntry).join("\n\n")}\n</bootstrap>`;
   }
 
   private directoryFor(scope: BootstrapScope): string {
@@ -119,8 +119,8 @@ export class BootstrapRepository {
 }
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {
-  if (entry.type === "memory") return `<memory>\n${escapeXml(entry.content.replace(/[\r\n]+$/, ""))}\n</memory>`;
-  return `<command>\n${escapeXml(entry.description)}\n${escapeXml(entry.output.replace(/[\r\n]+$/, ""))}\n</command>`;
+  if (entry.type === "memory") return escapeXml(entry.content.replace(/[\r\n]+$/, ""));
+  return `${escapeXml(entry.description)}\n${escapeXml(entry.output.replace(/[\r\n]+$/, ""))}`;
 }
 
 function escapeXml(value: string): string {

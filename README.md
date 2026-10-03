@@ -20,13 +20,12 @@ on every request. Commands execute with your permissions: review them before use
 
 Each outgoing system prompt receives `<bootstrap>…</bootstrap>`
 at the end of its system-prompt body, after all current prompt sections—not a
-separate `<message>`, custom message, or user message. Each command has its own
-`<command>…</command>` wrapper. The snapshot is runtime-local: startup, reload, new, resume, and fork
+separate `<message>`, custom message, or user message. Memory and command items have no item tags and are separated by a blank line. The snapshot is runtime-local: startup, reload, new, resume, and fork
 compose fresh content; empty/failed starts and shutdown clear it. Nothing is
 persisted into conversation history, and commands do not rerun per request.
 
 Request replacements/references run before injection. Explicit
-`[system_prompt.bootstrap.memory]` (or `[bootstrap.memory]`) rules can transform
+`[system_prompt.bootstrap]` (or `[bootstrap]`) rules can transform
 the request copy; broad system preamble/postamble rules cannot remove bootstrap.
 Management edits affect the next session snapshot, not the current one.
 
@@ -37,7 +36,7 @@ No model-callable management tools are registered.
 
 Each command file must contain a non-empty single-line
 `description`, and exactly one of `argv` or `expression`. Add a description to
-existing command files. Each `<command>` contains the description line followed
+existing command files. Each command item contains the description line followed
 by the XML-escaped output, without `<run>` or `<output>` tags. Execution details
 are not included. To list registered
 tools, create `commands/tools.toml` in either scope:

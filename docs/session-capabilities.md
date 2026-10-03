@@ -111,7 +111,7 @@ These limits do not bound memory allocation. The Node VM is not a security
 sandbox. Only use trusted expression configuration.
 
 Expressions and external commands follow the same source ordering and error
-handling. Each `<command>` contains the XML-escaped description on one line,
+handling. Each command item contains the XML-escaped description on one line,
 then the XML-escaped output without `<run>` or `<output>` tags. Execution details
 are not included. Failed evaluation clears the session snapshot and
 reports the source filename and error. Neither execution method runs per request.
@@ -124,16 +124,14 @@ the previous snapshot, then composes fresh content from the current cwd:
 
 ```xml
 <bootstrap>
-  <memory>User-authored guidance</memory>
-  <command>
+User-authored guidance
+
 Working tree status
  M README.md
-  </command>
 </bootstrap>
 ```
 
-Memory text, description and output are XML-escaped; newlines are preserved and
-indented. Empty or failed composition leaves no snapshot. Command errors notify
+Memory text, description and output are XML-escaped; newlines are preserved. A blank line separates items. Empty or failed composition leaves no snapshot. Command errors notify
 with filename and exit status or error details when available; other errors propagate to Pi's
 handler error reporting. No partial result is injected.
 
@@ -157,8 +155,7 @@ The single `context_with_system` request handler:
    the leading message. Input messages and stored history stay unchanged.
 
 Bootstrap is **last inside the system-prompt body**, logically immediately before
-`</system-prompt>`, never a separate `<message>`. Each command retains its own
-`<command>…</command>` wrapper.
+`</system-prompt>`, never a separate `<message>`. Memory and command items have no item tags; a blank line separates items.
 There is no `context` reordering hook, `sendMessage`, `sendUserMessage`, or
 persisted bootstrap entry. Requests, tool continuations and compaction-derived
 histories reuse the snapshot without running commands again.
@@ -174,8 +171,8 @@ deltas receive bootstrap at the end of the assembled prompt. Empty snapshots
 leave the original section and content layout unchanged.
 
 Broad system preamble/postamble replacements and references process the original
-prompt, not bootstrap. Explicit `[system_prompt.bootstrap.memory]` or
-`[bootstrap.memory]` rules can replace/reference the request copy. Existing
+prompt, not bootstrap. Explicit `[system_prompt.bootstrap]` or
+`[bootstrap]` rules can replace/reference the request copy. Existing
 matching, escaping, reference-file and reload semantics remain unchanged.
 The original snapshot and conversation history remain immutable. A nonempty
 snapshot requires Pi's leading system message; malformed transcripts are

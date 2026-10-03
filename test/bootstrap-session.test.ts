@@ -135,8 +135,8 @@ test("every Pi session-start reason recomposes from the current cwd without runt
   for (const reason of ["startup", "reload", "new", "resume", "fork"]) {
     await memory(f.project, "reason.md", reason);
     await h.handlers.get("session_start")!({ reason }, ctx);
-    assert.match(h.snapshot(), new RegExp(`<memory>\n${reason}\n</memory>`));
-    assert.equal((h.snapshot().match(/<memory>/g) ?? []).length, 1);
+    assert.match(h.snapshot(), new RegExp(`<bootstrap>\n${reason}\n</bootstrap>`));
+    assert.doesNotMatch(h.snapshot(), /<\/?(?:memory|command)>/);
   }
   assert.deepEqual(h.messages, []);
 });
@@ -267,13 +267,13 @@ test("slash-created commands use renamed filenames and execute on the next sessi
   assert.equal(h.messages.length, 0);
   await h.handlers.get("session_start")!({}, ctx);
   const original = h.snapshot();
-  assert.match(original, /Test command\ncreated\n<\/command>/);
+  assert.match(original, /Test command\ncreated\n/);
   await run(`edit ${source.id} command`, ctx);
   assert.match(notices.editors[1].initial, /^description/);
   assert.equal(h.snapshot(), original);
   await h.handlers.get("session_start")!({}, ctx);
-  assert.match(h.snapshot(), /Test command\nedited\n<\/command>/);
-  assert.match(original, /Test command\ncreated\n<\/command>/);
+  assert.match(h.snapshot(), /Test command\nedited\n/);
+  assert.match(original, /Test command\ncreated\n/);
   await run(`delete ${source.id} command`, ctx);
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(h.snapshot(), "");
