@@ -152,7 +152,7 @@ test("underscores use exact tags first and hyphen tags only when exact tags are 
   assert.equal(replace("<abc_def>\nExact\n</abc_def><abc-def>Hyphen</abc-def>", config),
     "<abc_def>\nNew\n</abc_def><abc-def>Hyphen</abc-def>");
   assert.equal(replace("<abc-def>Old</abc-def>", '[abc_def]\nreplacement = ""'),
-    "<abc-def>\n\n</abc-def>");
+    "");
 });
 
 test("fallback applies to each nested segment and is limited to its parent", () => {
@@ -201,7 +201,7 @@ test("repeated and same-name nested tags use their own paths", () => {
 });
 
 test("replacement text is exact, may be empty, and is not scanned again", () => {
-  assert.equal(replace("<one>\nOld\n</one>", '[one]\nreplacement = ""'), "<one>\n\n</one>");
+  assert.equal(replace("<one>\nOld\n</one>", '[one]\nreplacement = ""'), "");
   assert.equal(replace("<one>Old</one>", '[one]\nreplacement = "  New  "'), "<one>\n  New  \n</one>");
   assert.equal(replace("<one>Old</one>", '[one]\nreplacement = "<one>New</one> $&"'),
     "<one>\n<one>New</one> $&\n</one>");
@@ -414,7 +414,7 @@ test("the hook creates a default config, preserves edits, and registers no UI", 
       const config = '[one]\nreplacement = "' + value + '"';
       await writeFile(path, config);
       const result = await run(event);
-      assert.equal(result.messages[0].content, "Plain text <one>\n" + value + "\n</one>");
+      assert.equal(result.messages[0].content, value === "" ? "Plain text " : "Plain text <one>\n" + value + "\n</one>");
       assert.equal(event.messages[0].content, "Plain text <one>Old</one>");
       assert.equal(await readFile(path, "utf8"), config);
       assert.deepEqual(await readdir(dir), ["config.toml"]);

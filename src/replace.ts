@@ -148,6 +148,11 @@ export function replaceTags(text: string, replacements: ReadonlyMap<string, Acti
     const value = (reserved ? undefined : scoped.get(JSON.stringify([...parent, ...edit.path]))) ??
       (edit.special && edit.path.length === 1 ? undefined : direct.get(JSON.stringify(edit.path)));
     if (value === undefined) continue;
+    if (value === "") {
+      result += text.slice(at, edit.start);
+      at = edit.end;
+      continue;
+    }
     let replacement: string;
     if (typeof value === "string") replacement = value;
     else {
