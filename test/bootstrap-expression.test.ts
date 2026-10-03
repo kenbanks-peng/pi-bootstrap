@@ -20,10 +20,10 @@ test("expressions and argv are peers in both scopes, with descriptions and escap
   await command(f.project, "b.toml", expression('pi.getActiveTools().join(",")'));
   await command(f.project, "c.toml", executable('process.stdout.write("external")'));
   const output = await f.repository.compose(data);
-  assert.match(output, /Test command\nread\n    bash\n  <\/command>/);
-  assert.match(output, /Test command\n&lt;read&gt;&amp;\n  <\/command>/);
-  assert.match(output, /Test command\nread\n  <\/command>/);
-  assert.match(output, /Test command\nexternal\n  <\/command>/);
+  assert.match(output, /Test command\nread\nbash\n<\/command>/);
+  assert.match(output, /Test command\n&lt;read&gt;&amp;\n<\/command>/);
+  assert.match(output, /Test command\nread\n<\/command>/);
+  assert.match(output, /Test command\nexternal\n<\/command>/);
   assert.doesNotMatch(output, /<run>|<output>|ALL_TOOLS\.map|process\.stdout/);
   assert.deepEqual(data.activeTools, ["read"]);
 });
@@ -65,7 +65,7 @@ test("expression failures are typed, bounded, and never return partial bootstrap
     });
   }
   await command(f.project, "case.toml", expression('"recovered"'));
-  assert.match(await f.repository.compose(data), /Test command\nrecovered\n  <\/command>/);
+  assert.match(await f.repository.compose(data), /Test command\nrecovered\n<\/command>/);
 });
 
 test("expressions get read-only copies, not host capabilities or session mutation methods", async t => {
@@ -85,7 +85,7 @@ test("expressions get read-only copies, not host capabilities or session mutatio
   assert.equal(data.allTools[0].parameters!.type, "object");
   assert.deepEqual(data.activeTools, ["read"]);
   await command(f.project, "case.toml", expression('String(ALL_TOOLS === pi.getAllTools())'));
-  assert.match(await f.repository.compose(data), /Test command\ntrue\n  <\/command>/);
+  assert.match(await f.repository.compose(data), /Test command\ntrue\n<\/command>/);
 });
 
 test("session expressions snapshot tools once, refresh on reload, and clear on error", async t => {
@@ -104,18 +104,18 @@ test("session expressions snapshot tools once, refresh on reload, and clear on e
   const notices: string[] = [];
   const ctx = { cwd: f.projectRoot, ui: { notify: (message: string) => notices.push(message) } };
   await handlers.get("session_start")!({}, ctx);
-  assert.match(snapshot(), /Test command\nread\n  <\/command>/);
+  assert.match(snapshot(), /Test command\nread\n<\/command>/);
   names = ["bash"];
   const config = join(f.root, "config.toml");
   await writeFile(config, "");
   registerBootstrap(pi as never, config, snapshot);
   for (let i = 0; i < 2; i++) {
     const result = await handlers.get("context_with_system")!({ messages: [{ role: "system", content: "" }] });
-    assert.match(result.messages[0].content, /Test command\nread\n  <\/command>/);
+    assert.match(result.messages[0].content, /Test command\nread\n<\/command>/);
   }
   assert.equal(reads, 1);
   await handlers.get("session_start")!({ reason: "reload" }, ctx);
-  assert.match(snapshot(), /Test command\nbash\n  <\/command>/);
+  assert.match(snapshot(), /Test command\nbash\n<\/command>/);
   await command(f.project, "tools.toml", expression('pi.unknown()'));
   await handlers.get("session_start")!({}, ctx);
   assert.equal(snapshot(), "");

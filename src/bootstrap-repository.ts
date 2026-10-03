@@ -119,12 +119,8 @@ export class BootstrapRepository {
 }
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {
-  if (entry.type === "memory") return `  <memory>\n${formatXmlText(entry.content, "  ")}\n  </memory>`;
-  return `  <command>\n${escapeXml(entry.description)}\n${formatXmlText(entry.output, "    ")}\n  </command>`;
-}
-
-function formatXmlText(value: string, continuationIndent: string): string {
-  return escapeXml(value).replace(/\r?\n/g, (lineBreak) => `${lineBreak}${continuationIndent}`);
+  if (entry.type === "memory") return `<memory>\n${escapeXml(entry.content)}\n</memory>`;
+  return `<command>\n${escapeXml(entry.description)}\n${escapeXml(entry.output)}\n</command>`;
 }
 
 function escapeXml(value: string): string {
