@@ -49,7 +49,8 @@ function resolvePaths(replacements: Map<string, string>, paths: string[][]): Map
   return resolved;
 }
 
-export function replaceTags(text: string, replacements: Map<string, string>, parent: string[] = []): string {
+export function replaceTags(text: string, replacements: Map<string, string>, parent: string[] = [],
+  implicitEdges: readonly ("preamble" | "postamble")[] = ["preamble", "postamble"]): string {
   if (!replacements.size) return text;
   const tokens: { name: string; closing: boolean; selfClosing: boolean; start: number; end: number }[] = [];
   const regions: { start: number; end: number; bodyStart: number; bodyEnd: number; path: string[];
@@ -105,7 +106,7 @@ export function replaceTags(text: string, replacements: Map<string, string>, par
     containers.push({ start: 0, end: text.length, bodyStart: 0, bodyEnd: text.length, path: [] });
   for (const region of containers) {
     const children = boundaries.filter(token => token.start >= region.bodyStart && token.end <= region.bodyEnd);
-    for (const special of ["preamble", "postamble"] as const) {
+    for (const special of region.path.length ? ["preamble", "postamble"] as const : implicitEdges) {
       const start = special === "preamble" ? region.bodyStart : (children.at(-1)?.end ?? region.bodyStart);
       const end = special === "postamble" ? region.bodyEnd : (children[0]?.start ?? region.bodyEnd);
       regions.push({ start, end, bodyStart: start, bodyEnd: end, path: [...region.path, special], special });
@@ -146,19 +147,47 @@ interface Message {
 }
 
 export function replaceMessages<T extends Message>(messages: T[], replacements: Map<string, string>): T[] {
-  return messages.map(message => {
+  // Section messages can be patches. Find the final section's last writer,
+  // rather than treating every patch or section as a complete system prompt.
+  const sections = new Map<string, number>();
+  for (const [index, message] of messages.entries()) {
+    if (message.role !== "system") continue;
+    if (!message.sections) sections.clear();
+    else for (const [name, value] of Object.entries(message.sections)) {
+      if (value === null) sections.delete(name);
+      else sections.set(name, index);
+    }
+  }
+  const lastSection = [...sections].at(-1);
+  return messages.map((message, index) => {
     const next = { ...message };
     // Pi stores the system prompt body without its outer container tag.
     const parent = message.role === "system" ? ["system-prompt"] : [];
-    const replace = (text: string) => replaceTags(text, replacements, parent);
+    const replace = (text: string, edges: readonly ("preamble" | "postamble")[] =
+      message.sections ? [] : ["preamble", "postamble"]) => replaceTags(text, replacements, parent, edges);
     if (typeof message.content === "string") next.content = replace(message.content);
-    else if (Array.isArray(message.content))
-      next.content = message.content.map(block =>
-        isTable(block) && block.type === "text" && typeof block.text === "string"
-          ? { ...block, text: replace(block.text) } : block);
+    else if (Array.isArray(message.content)) {
+      const textIndices = message.content.flatMap((item, at) =>
+        isTable(item) && item.type === "text" && typeof item.text === "string" ? [at] : []);
+      next.content = message.content.map((block, blockIndex) => {
+        const edges: ("preamble" | "postamble")[] = [];
+        if (!message.sections) {
+          if (blockIndex === textIndices[0]) edges.push("preamble");
+          if (blockIndex === textIndices.at(-1)) edges.push("postamble");
+        }
+        return isTable(block) && block.type === "text" && typeof block.text === "string"
+          ? { ...block, text: replace(block.text, edges) } : block;
+      });
+    }
     if (message.sections)
-      next.sections = Object.fromEntries(Object.entries(message.sections).map(([name, value]) =>
-        [name, typeof value === "string" ? replace(value) : value]));
+      next.sections = Object.fromEntries(Object.entries(message.sections).map(([name, value]) => {
+        const edges: ("preamble" | "postamble")[] = [];
+        if (message.role === "system") {
+          if (name === "preamble") edges.push("preamble");
+          if (lastSection?.[0] === name && lastSection[1] === index) edges.push("postamble");
+        }
+        return [name, typeof value === "string" ? replace(value, edges) : value];
+      }));
     return next;
   });
 }

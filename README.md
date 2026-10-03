@@ -58,7 +58,13 @@ Pi stores system text without an outer tag. The extension supplies `system-promp
 as its parent for matching, without adding it to the outgoing text.
 `system_prompt` selects this parent through the generic underscore fallback.
 The same rule applies to arbitrary nested tags: `[system_prompt.one.two]`.
-`[system_prompt.preamble]` and `[system_prompt.postamble]` select the edges of\nthe system text without an outer tag. Tool declarations stay unchanged.
+`[system_prompt.preamble]` and `[system_prompt.postamble]` select the edges of
+the system text without an outer tag. For structured prompts, the preamble reference
+selects only the `preamble` section, not the start of each section or empty content.
+The postamble reference selects the end of the final active section. Section updates
+do not create new prompt edges. For text blocks, only the first and last text blocks
+receive these references. Nested references still apply within each section.
+Tool declarations stay unchanged.
 
 - Paths match complete, case-sensitive tag ancestry.
   Each segment uses its exact name first. If that name is absent under the selected

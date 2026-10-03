@@ -55,6 +55,70 @@ test("special suffixes do not select literal child tags with the same name", () 
   assert.equal(result[0].content, "New<preamble>Literal</preamble>After");
 });
 
+test("a structured system prompt has one preamble, not one per section", () => {
+  const messages = [{ role: "system", content: "", sections: {
+    preamble: "Original opening",
+    tools: "<tools>Old guidance</tools>",
+    rules: "<rules>Rules</rules>",
+    docs: "<docs>Docs</docs>",
+  } }];
+  const result = replaceMessages(messages, parseReplacements(
+    '[system_prompt.preamble]\nreplacement = "PREAMBLE REPLACEMENT TEXT"'));
+  assert.deepEqual(result[0].sections, {
+    preamble: "PREAMBLE REPLACEMENT TEXT",
+    tools: "<tools>Old guidance</tools>",
+    rules: "<rules>Rules</rules>",
+    docs: "<docs>Docs</docs>",
+  });
+  assert.equal(result[0].content, "");
+});
+
+test("system section updates do not create more preambles or postambles", () => {
+  const messages: { role: string; content: string; sections: Record<string, string | null> }[] = [
+    { role: "system", content: "", sections: {
+      preamble: "Opening", tools: "<tools>T</tools>", rules: "<rules>R</rules>",
+    } },
+    { role: "system", content: "", sections: { tools: "<tools>Updated</tools>" } },
+    { role: "system", content: "", sections: { rules: null } },
+  ];
+  const before = structuredClone(messages);
+  const result = replaceMessages(messages, parseReplacements(
+    '[system_prompt.preamble]\nreplacement = "PREAMBLE REPLACEMENT TEXT"\n[system_prompt.postamble]\nreplacement = "POSTAMBLE REPLACEMENT TEXT"'));
+  assert.deepEqual(result[0].sections, {
+    preamble: "PREAMBLE REPLACEMENT TEXT", tools: "<tools>T</tools>", rules: "<rules>R</rules>",
+  });
+  assert.deepEqual(result[1].sections, { tools: "<tools>Updated</tools>POSTAMBLE REPLACEMENT TEXT" });
+  assert.deepEqual(result[2].sections, { rules: null });
+  assert.ok(result.every(message => message.content === ""));
+  assert.deepEqual(messages, before);
+});
+
+test("system text blocks receive edge replacements only in the first and last text blocks", () => {
+  const result = replaceMessages([{ role: "system", content: [
+    { type: "text", text: "Before<tools>T</tools>" },
+    { type: "image", data: "unchanged" },
+    { type: "text", text: "<rules>R</rules>" },
+    { type: "text", text: "<docs>D</docs>After" },
+  ] }], parseReplacements(
+    '[system_prompt.preamble]\nreplacement = "P"\n[system_prompt.postamble]\nreplacement = "Q"'));
+  assert.deepEqual(result[0].content, [
+    { type: "text", text: "P<tools>T</tools>" },
+    { type: "image", data: "unchanged" },
+    { type: "text", text: "<rules>R</rules>" },
+    { type: "text", text: "<docs>D</docs>Q" },
+  ]);
+});
+
+test("nested edge references still work inside structured system sections", () => {
+  const result = replaceMessages([{ role: "system", sections: {
+    preamble: "Opening", tools: "<tools>Before<child>C</child>After</tools>",
+  } }], parseReplacements(
+    '[system_prompt.tools.preamble]\nreplacement = "P"\n[system_prompt.tools.postamble]\nreplacement = "Q"'));
+  assert.deepEqual(result[0].sections, {
+    preamble: "Opening", tools: "<tools>P<child>C</child>Q</tools>",
+  });
+});
+
 test("system prompt edge references work without an outer tag", () => {
   const messages = [
     { role: "system", content: "Before<tools>Old</tools>After" },
