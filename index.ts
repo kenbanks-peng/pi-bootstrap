@@ -5,14 +5,16 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseReplacements, replaceMessages } from "./src/replace.ts";
+import { getBootstrapDirectory } from "./src/bootstrap-paths.ts";
+import { registerBootstrapSession } from "./src/bootstrap-session.ts";
 
 export function getConfigPath(): string {
-  return join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"),
-    "extensions", "pi-bootstrap", "config.toml");
+  return join(getBootstrapDirectory(), "config.toml");
 }
 
 export default function bootstrap(pi: ExtensionAPI) {
   registerBootstrap(pi);
+  registerBootstrapSession(pi);
 }
 
 export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {

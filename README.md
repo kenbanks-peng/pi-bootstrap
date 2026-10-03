@@ -1,14 +1,37 @@
 # pi-bootstrap
 
-Replace tagged text in Pi requests, or save it to a file and insert a reference,
-with actions from `config.toml`.
+Bootstrap Pi sessions with user-managed memories and command output. Replace
+tagged request text, or save it to a file and insert a reference, using `config.toml`.
+
+## Session context
+
+Global configuration lives under `~/.config/pi/agent/extensions/pi-bootstrap/`
+(or `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/`):
+
+- `memories/*.md`: user-authored guidance.
+- `commands/*.toml`: direct command definitions.
+- `protocol.toml`: versioned rules selecting session sources; created if missing.
+- `config.toml`: existing request-time replacement/reference rules.
+
+Project sources use `.agents/bootstrap/` with the same session layout. Global
+sources precede project sources; a project `protocol.toml` overrides the global
+policy for that project. Session sources are snapshotted on `session_start`, not
+on every request. Commands execute with your permissions: review them before use.
+
+Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
+`delete <id>`. Add/list accept optional `global|project` and `memory|command`
+filters; add defaults to `project memory`. Edit/delete accept an optional type.
+No model-callable management tools are registered.
+
+See [session configuration and capability parity](docs/session-capabilities.md)
+for protocol examples, execution limits, lifecycle, and migration decisions.
 
 ## Configuration
 
 On the first request, the extension copies [default.toml](default.toml) to
-`~/.pi/agent/extensions/pi-bootstrap/config.toml` if that file is missing.
+`~/.config/pi/agent/extensions/pi-bootstrap/config.toml` if that file is missing.
 Existing config files stay unchanged. Edit `config.toml` to set replacements.
-If `PI_CODING_AGENT_DIR` is set, use that directory instead of `~/.pi/agent`.
+If `PI_CODING_AGENT_DIR` is set, use that directory instead of `~/.config/pi/agent`.
 
 ```toml
 [one]
@@ -90,7 +113,7 @@ Use `refer` and `link` instead of `replacement`:
 ```toml
 [system_prompt.docs]
 refer = "Pi documentation can be found at $link. Read it only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI."
-link = "~/.pi/agents/extensions/pi-docs.md"
+link = "~/.config/pi/agent/extensions/pi-bootstrap/links/docs.md"
 ```
 
 The extension saves the original `<docs>` body to the link file. It then replaces

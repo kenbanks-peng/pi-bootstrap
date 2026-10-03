@@ -1,0 +1,260 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { mkdir, readFile, readdir, symlink, writeFile } from "node:fs/promises";
+import { homedir } from "node:os";
+import { join } from "node:path";
+import bootstrap, { getConfigPath } from "../index.ts";
+import { getBootstrapDirectory } from "../src/bootstrap-paths.ts";
+import { createBootstrapRepository, registerBootstrapSession } from "../src/bootstrap-session.ts";
+import { runBootstrapCommand, type BootstrapCommandUI } from "../src/bootstrap-command.ts";
+import { fixture, memory, command, executable, protocol } from "./session-fixture.ts";
+
+function harness(repositoryFor?: Parameters<typeof registerBootstrapSession>[1]) {
+  const handlers = new Map<string, (...args: any[]) => any>();
+  const commands = new Map<string, { description: string; handler: (...args: any[]) => any }>();
+  const messages: any[] = [];
+  const pi = {
+    on: (name: string, handler: (...args: any[]) => any) => handlers.set(name, handler),
+    registerCommand: (name: string, spec: any) => commands.set(name, spec),
+    sendMessage: (message: any) => messages.push(message),
+  };
+  registerBootstrapSession(pi as never, repositoryFor);
+  return { handlers, commands, messages, pi };
+}
+
+function ui(values: Array<string | undefined> = []) {
+  const notifications: Array<{ message: string; level?: string }> = [];
+  const editors: Array<{ title: string; initial: string }> = [];
+  const api: BootstrapCommandUI = {
+    hasUI: true,
+    editor: async (title, initial) => { editors.push({ title, initial }); return values.shift(); },
+    notify: (message, level) => { notifications.push({ message, level }); },
+  };
+  return { api, editors, notifications };
+}
+
+test("portable default paths, agent override and renamed project scope", () => {
+  assert.equal(getBootstrapDirectory("/home/someone", ""), "/home/someone/.config/pi/agent/extensions/pi-bootstrap");
+  assert.equal(getBootstrapDirectory("/home/someone", "/custom/pi"), "/custom/pi/extensions/pi-bootstrap");
+  assert.equal(getConfigPath(), join(getBootstrapDirectory(), "config.toml"));
+  assert.equal(getBootstrapDirectory(), join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".config", "pi", "agent"), "extensions", "pi-bootstrap"));
+  assert.deepEqual(createBootstrapRepository("/workspace/product", "/home/someone", "").directories, {
+    globalDirectory: "/home/someone/.config/pi/agent/extensions/pi-bootstrap",
+    projectDirectory: "/workspace/product/.agents/bootstrap",
+  });
+});
+
+test("full extension registers both existing transformation and session capabilities without IO", () => {
+  const h = harness();
+  h.handlers.clear();
+  h.commands.clear();
+  bootstrap(h.pi as never);
+  assert.deepEqual([...h.handlers.keys()], ["context_with_system", "session_start", "context"]);
+  assert.deepEqual([...h.commands.keys()], ["bootstrap"]);
+  assert.match(h.commands.get("bootstrap")!.description, /protocol.toml/);
+  assert.deepEqual(h.messages, []);
+});
+
+test("session snapshots and existing request replacements compose without changing stored history", async t => {
+  const f = await fixture(t);
+  const previous = process.env.PI_CODING_AGENT_DIR;
+  process.env.PI_CODING_AGENT_DIR = join(f.root, "agent");
+  try {
+    const repository = createBootstrapRepository(f.projectRoot);
+    await repository.create("global", "memory", "Session guidance");
+    await writeFile(getConfigPath(), '[system_prompt.tools]\nreplacement = "New tools"\n[bootstrap_session.memory]\nreplacement = "Request-only guidance"\n');
+    const h = harness();
+    h.handlers.clear();
+    bootstrap(h.pi as never);
+    await h.handlers.get("session_start")!({}, { cwd: f.projectRoot, hasUI: false, ui: ui().api });
+    const stored = { role: "custom", ...h.messages[0] };
+    const user = { role: "user", content: "Question" };
+    const ordered = h.handlers.get("context")!({ messages: [user, stored] }).messages;
+    const system = { role: "system", sections: { tools: "<tools>Old tools</tools>" }, toolsAdded: [{ name: "read" }] };
+    const result = await h.handlers.get("context_with_system")!({ messages: [system, ...ordered] });
+    assert.equal(result.messages[0].sections.tools, "<tools>New tools</tools>");
+    assert.equal(result.messages[0].toolsAdded, system.toolsAdded);
+    assert.match(result.messages[1].content, /Request-only guidance/);
+    assert.match(stored.content, /Session guidance/);
+    assert.equal(system.sections.tools, "<tools>Old tools</tools>");
+    assert.equal(result.messages[2].content, "Question");
+  } finally {
+    if (previous === undefined) delete process.env.PI_CODING_AGENT_DIR;
+    else process.env.PI_CODING_AGENT_DIR = previous;
+  }
+});
+
+test("session start snapshots once, stays hidden, reorders stably without mutation", async t => {
+  const f = await fixture(t);
+  await memory(f.project, "test.md", "First snapshot");
+  let compositions = 0;
+  const h = harness(cwd => { assert.equal(cwd, f.projectRoot); compositions++; return f.repository; });
+  const ctx = { cwd: f.projectRoot, hasUI: false, ui: ui().api };
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.equal(compositions, 1);
+  assert.equal(h.messages.length, 1);
+  assert.equal(h.messages[0].customType, "bootstrap_session");
+  assert.equal(h.messages[0].display, false);
+  assert.match(h.messages[0].content, /<bootstrap_session version="1">/);
+  await memory(f.project, "test.md", "Later snapshot");
+  const first = { role: "custom", ...h.messages[0] };
+  const second = { role: "custom", customType: "bootstrap_session", content: "Persisted snapshot" };
+  const other = { role: "custom", customType: "other", content: "Other" };
+  const user = { role: "user", content: "Question" };
+  const event = { messages: [user, first, other, second] };
+  const before = structuredClone(event);
+  for (let i = 0; i < 2; i++) {
+    assert.deepEqual(h.handlers.get("context")!(event).messages, [first, second, user, other]);
+  }
+  assert.deepEqual(event, before);
+  assert.equal(compositions, 1);
+  assert.match(first.content, /First snapshot/);
+  assert.equal(h.handlers.get("context")!({ messages: [user, other] }), undefined);
+  // Pi invokes session_start again on a new runtime/session; there is no module-global cache.
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.equal(compositions, 2);
+  assert.match(h.messages[1].content, /Later snapshot/);
+});
+
+test("every Pi session-start reason recomposes from the current cwd without runtime state", async t => {
+  const f = await fixture(t);
+  const h = harness(() => f.repository);
+  const ctx = { cwd: f.projectRoot, hasUI: false, ui: ui().api };
+  for (const reason of ["startup", "reload", "new", "resume", "fork"]) {
+    await memory(f.project, "reason.md", reason);
+    await h.handlers.get("session_start")!({ reason }, ctx);
+    assert.match(h.messages.at(-1).content, new RegExp(`<memory>${reason}</memory>`));
+  }
+  assert.equal(h.messages.length, 5);
+});
+
+test("empty composition sends no message and command failures notify without partial injection", async t => {
+  const f = await fixture(t);
+  const h = harness(() => f.repository);
+  const notices = ui();
+  const ctx = { cwd: f.projectRoot, hasUI: true, ui: notices.api };
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.equal(h.messages.length, 0);
+  await memory(f.project, "first.md", "not partially injected");
+  await command(f.project, "bad.toml", executable("process.exit(7)"));
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.deepEqual(notices.notifications.pop(), { message: "bad.toml returned error code 7.", level: undefined });
+  await command(f.project, "bad.toml", "version = 1\nargv = []");
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.deepEqual(notices.notifications.pop(), { message: "bad.toml had an error.", level: "error" });
+  assert.equal(h.messages.length, 0);
+  await protocol(f.project, "invalid =");
+  await assert.rejects(h.handlers.get("session_start")!({}, ctx), /not valid TOML/);
+});
+
+test("repository CRUD uses commands/*.toml and memories/*.md with type-prefixed IDs", async t => {
+  const f = await fixture(t);
+  for (const scope of ["global", "project"] as const) {
+    for (const type of ["memory", "command"] as const) {
+      const id = await f.repository.create(scope, type, "original");
+      assert.match(id, new RegExp(`^${type}-[0-9a-f]{8}$`));
+      const source = { id, type };
+      const path = join(f.repository.directories[`${scope}Directory`], type === "memory" ? "memories" : "commands", id + (type === "memory" ? ".md" : ".toml"));
+      assert.equal(await readFile(path, "utf8"), "original");
+      assert.ok((await f.repository.list(scope)).some(s => s.id === id && s.type === type));
+      await f.repository.edit(scope, source, "edited");
+      assert.equal(await f.repository.read(scope, source), "edited");
+      await f.repository.delete(scope, source);
+      assert.deepEqual(await f.repository.list(scope), []);
+      await assert.rejects(f.repository.read(scope, source), /does not exist/);
+      await assert.rejects(f.repository.edit(scope, source, "no"), /does not exist/);
+      await assert.rejects(f.repository.delete(scope, source), /does not exist/);
+      await assert.rejects(f.repository.read(scope, { id: "../escape", type }), /Invalid Bootstrap ID/);
+    }
+  }
+});
+
+test("repository listing ignores invalid names, symlinks, subdirectories and root files", async t => {
+  const f = await fixture(t);
+  await memory(f.project, "z.md", "Z");
+  await command(f.project, "a.toml", "A");
+  await memory(f.project, "bad name.md", "bad");
+  await memory(f.project, ".md", "bad");
+  await command(f.project, "other.txt", "bad");
+  await writeFile(join(f.project, "root.md"), "bad");
+  await mkdir(join(f.project, "memories", "folder.md"));
+  await symlink(join(f.project, "memories", "z.md"), join(f.project, "memories", "linked.md"));
+  assert.deepEqual(await f.repository.list("project"), [{ id: "a", type: "command" }, { id: "z", type: "memory" }]);
+  const empty = createBootstrapRepository(join(f.root, "absent"), f.root, join(f.root, "empty"));
+  assert.deepEqual(await empty.list("global"), []);
+  assert.deepEqual(await empty.list("project"), []);
+  await empty.create("project", "memory", "creates directories");
+  assert.equal((await empty.list("project")).length, 1);
+});
+
+test("slash command uses the same repository factory and offers only /bootstrap", async t => {
+  const f = await fixture(t);
+  const h = harness(() => f.repository);
+  const notices = ui(["New memory", 'argv = ["git", "status"]\n']);
+  const ctx = { cwd: f.projectRoot, hasUI: true, ui: notices.api };
+  const run = h.commands.get("bootstrap")!.handler;
+  await run("", ctx);
+  assert.match(notices.notifications[0].message, /\/bootstrap list/);
+  await run("add global memory", ctx);
+  await run("add global command", ctx);
+  assert.match(notices.notifications[1].message, /^Added Global memory Bootstrap "memory-[0-9a-f]{8}"\.$/);
+  assert.match(notices.notifications[2].message, /^Added Global command Bootstrap "command-[0-9a-f]{8}"\.$/);
+  assert.doesNotMatch(notices.editors[1].initial, /version/);
+  const sources = await f.repository.list("global");
+  const added = sources.find(s => s.type === "command")!;
+  assert.equal(await f.repository.read("global", added), 'version = 1\nargv = ["git", "status"]\n');
+  await run("list global", ctx);
+  assert.match(notices.notifications.at(-1)!.message, /memory: New memory/);
+  assert.match(notices.notifications.at(-1)!.message, /command: version = 1/);
+});
+
+test("command defaults, filters, edits, deletion, cancellation and non-UI operation", async t => {
+  const f = await fixture(t);
+  const notices = ui(["Initial", "Edited", undefined, undefined]);
+  const run = (args: string) => runBootstrapCommand(args, f.repository, notices.api);
+  await run("add");
+  const [source] = await f.repository.list("project");
+  assert.equal(source.type, "memory");
+  assert.equal(await f.repository.read("project", source), "Initial");
+  await run(`edit ${source.id}`);
+  assert.equal(notices.editors[1].initial, "Initial");
+  assert.equal(await f.repository.read("project", source), "Edited");
+  await run(`edit ${source.id} memory`);
+  assert.match(notices.notifications.at(-1)!.message, /cancelled/);
+  assert.equal(await f.repository.read("project", source), "Edited");
+  await run("add command project");
+  assert.match(notices.notifications.at(-1)!.message, /cancelled/);
+  assert.equal((await readdir(join(f.project, "commands"))).length, 0);
+  await run("list command");
+  assert.equal(notices.notifications.at(-1)!.message, "global: none\n\nproject: none");
+  notices.api.hasUI = false;
+  await run("add");
+  assert.match(notices.notifications.at(-1)!.message, /requires interactive UI/);
+  await run(`edit ${source.id}`);
+  assert.match(notices.notifications.at(-1)!.message, /requires interactive UI/);
+  await run(`delete ${source.id}`);
+  assert.deepEqual(await f.repository.list("project"), []);
+  await run(`delete ${source.id}`);
+  assert.match(notices.notifications.at(-1)!.message, /does not exist/);
+});
+
+test("command argument validation and ambiguous IDs never mutate files", async t => {
+  const f = await fixture(t);
+  await memory(f.global, "same.md", "Global");
+  await memory(f.project, "same.md", "Project");
+  await command(f.project, "same.toml", "Command");
+  const notices = ui();
+  const run = (args: string) => runBootstrapCommand(args, f.repository, notices.api);
+  for (const args of ["wat", "list global project", "list memory command", "list junk", "list global memory extra", "edit", "delete", "edit same bad", "delete same memory extra"]) {
+    await run(args);
+    assert.equal(notices.notifications.at(-1)!.level, "error");
+    assert.match(notices.notifications.at(-1)!.message, /Usage:/);
+  }
+  await run("delete same");
+  assert.match(notices.notifications.at(-1)!.message, /ambiguous/);
+  await run("delete same memory");
+  assert.match(notices.notifications.at(-1)!.message, /ambiguous/);
+  await run("delete same command");
+  assert.match(notices.notifications.at(-1)!.message, /Deleted Project command/);
+  assert.equal(await f.repository.read("project", { id: "same", type: "memory" }), "Project");
+});
