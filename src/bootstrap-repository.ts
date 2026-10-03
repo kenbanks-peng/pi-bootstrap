@@ -119,9 +119,9 @@ export class BootstrapRepository {
 }
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {
-  if (entry.type === "memory") return `  <memory>${formatXmlText(entry.content, "  ")}</memory>`;
+  if (entry.type === "memory") return `  <memory>\n${formatXmlText(entry.content, "  ")}\n  </memory>`;
   const invocation = "expression" in entry ? entry.expression : entry.argv.join(" ");
-  return `  <command>\n    <run>${formatXmlText(invocation, "    ")}</run>\n    <output>${formatXmlText(entry.output, "    ")}</output>\n  </command>`;
+  return `  <command>\n    <run>\n${formatXmlText(invocation, "    ")}\n    </run>\n    <output>\n${formatXmlText(entry.output, "    ")}\n    </output>\n  </command>`;
 }
 
 function formatXmlText(value: string, continuationIndent: string): string {

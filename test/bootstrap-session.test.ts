@@ -72,7 +72,7 @@ test("session snapshots and existing request replacements compose without changi
     const user = { role: "user", content: "Question" };
     const system = { role: "system", content: "", sections: { preamble: "Old preamble", tools: "<tools>Old tools</tools>Tail" }, toolsAdded: [{ name: "read" }] };
     const result = await h.handlers.get("context_with_system")!({ messages: [system, user] });
-    assert.match(result.messages[0].content, /<tools>New tools<\/tools>Read prompt.md[\s\S]*<bootstrap/);
+    assert.match(result.messages[0].content, /<tools>\nNew tools\n<\/tools>Read prompt.md[\s\S]*<bootstrap/);
     assert.equal(result.messages[0].sections, undefined);
     assert.match(result.messages[0].content, /<\/bootstrap>$/);
     assert.equal(await readFile(join(getBootstrapDirectory(), "prompt.md"), "utf8"), "Tail");
@@ -129,7 +129,7 @@ test("every Pi session-start reason recomposes from the current cwd without runt
   for (const reason of ["startup", "reload", "new", "resume", "fork"]) {
     await memory(f.project, "reason.md", reason);
     await h.handlers.get("session_start")!({ reason }, ctx);
-    assert.match(h.snapshot(), new RegExp(`<memory>${reason}</memory>`));
+    assert.match(h.snapshot(), new RegExp(`<memory>\n${reason}\n  </memory>`));
     assert.equal((h.snapshot().match(/<memory>/g) ?? []).length, 1);
   }
   assert.deepEqual(h.messages, []);
@@ -260,13 +260,13 @@ test("slash-created commands use renamed filenames and execute on the next sessi
   assert.equal(h.messages.length, 0);
   await h.handlers.get("session_start")!({}, ctx);
   const original = h.snapshot();
-  assert.match(original, /<output>created<\/output>/);
+  assert.match(original, /<output>\ncreated\n    <\/output>/);
   await run(`edit ${source.id} command`, ctx);
   assert.match(notices.editors[1].initial, /^version = 1/);
   assert.equal(h.snapshot(), original);
   await h.handlers.get("session_start")!({}, ctx);
-  assert.match(h.snapshot(), /<output>edited<\/output>/);
-  assert.match(original, /<output>created<\/output>/);
+  assert.match(h.snapshot(), /<output>\nedited\n    <\/output>/);
+  assert.match(original, /<output>\ncreated\n    <\/output>/);
   await run(`delete ${source.id} command`, ctx);
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(h.snapshot(), "");

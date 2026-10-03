@@ -20,7 +20,7 @@ test("special references support nested paths, repeats, and underscore fallback"
   const text = "<outer-tag><abc>Before<def>Old</def>After</abc><abc>B<def>D</def>A</abc></outer-tag>";
   assert.equal(replace(text,
     '[outer_tag.abc.preamble]\nreplacement = ""\n[outer_tag.abc.def]\nreplacement = "New"\n[outer_tag.abc.postamble]\nreplacement = "End"'),
-    "<outer-tag><abc><def>New</def>End</abc><abc><def>New</def>End</abc></outer-tag>");
+    "<outer-tag><abc><def>\nNew\n</def>End</abc><abc><def>\nNew\n</def>End</abc></outer-tag>");
 });
 
 test("edge boundaries include self-closing tags and exclude fenced and unmatched tags", () => {
@@ -37,13 +37,13 @@ test("edge boundaries include self-closing tags and exclude fenced and unmatched
 test("special references include empty edges and leaf bodies without rescanning inserted text", () => {
   assert.equal(replace("<abc><def>hi</def></abc>",
     '[abc.preamble]\nreplacement = "<def>P</def>"\n[abc.postamble]\nreplacement = "Q"\n[abc.def]\nreplacement = "New"'),
-    "<abc><def>P</def><def>New</def>Q</abc>");
+    "<abc><def>P</def><def>\nNew\n</def>Q</abc>");
   for (const suffix of ["preamble", "postamble"])
     assert.equal(replace("<abc>Body</abc>", '[abc.' + suffix + ']\nreplacement = "New"'),
       "<abc>New</abc>");
   assert.equal(replace("<abc>P<def>hi</def>Q</abc>",
     '[abc.preamble]\nreplacement = "P2"\n[abc.postamble]\nreplacement = "Q2"\n[abc]\nreplacement = "Whole"'),
-    "<abc>Whole</abc>");
+    "<abc>\nWhole\n</abc>");
 });
 
 test("special suffixes do not select literal child tags with the same name", () => {
@@ -126,33 +126,33 @@ test("system prompt edge references work without an outer tag", () => {
   ];
   const result = replaceMessages(messages, parseReplacements(
     '[system_prompt.preamble]\nreplacement = "P"\n[system_prompt.postamble]\nreplacement = "Q"\n[system_prompt.tools]\nreplacement = "New"'));
-  assert.equal(result[0].content, "P<tools>New</tools>Q");
+  assert.equal(result[0].content, "P<tools>\nNew\n</tools>Q");
   assert.equal(result[1].content, messages[1].content);
 });
 
 test("[one] replaces only the body of a root tag", () => {
   assert.equal(replace('Before <one id="a">Old</one> after', '[one]\nreplacement = "New"'),
-    'Before <one id="a">New</one> after');
+    'Before <one id="a">\nNew\n</one> after');
 });
 
 test("[one.two] matches exact ancestry at any depth", () => {
   const text = "<two>A</two><one><two>B</two></one><other><one><two>C</two></one></other>";
   assert.equal(replace(text, '[one.two]\nreplacement = "New"'),
-    "<two>A</two><one><two>New</two></one><other><one><two>C</two></one></other>");
+    "<two>A</two><one><two>\nNew\n</two></one><other><one><two>C</two></one></other>");
   assert.equal(replace(text, '[other.one.two]\nreplacement = "Deep"'),
-    "<two>A</two><one><two>B</two></one><other><one><two>Deep</two></one></other>");
+    "<two>A</two><one><two>B</two></one><other><one><two>\nDeep\n</two></one></other>");
 });
 
 test("underscores use exact tags first and hyphen tags only when exact tags are absent", () => {
   const config = '[abc_def]\nreplacement = "New"';
-  assert.equal(replace("<abc_def>Old</abc_def>", config), "<abc_def>New</abc_def>");
-  assert.equal(replace("<abc-def>Old</abc-def>", config), "<abc-def>New</abc-def>");
-  assert.equal(replace("<abc-def>Hyphen</abc-def><abc_def>Exact</abc_def>", config),
-    "<abc-def>Hyphen</abc-def><abc_def>New</abc_def>");
-  assert.equal(replace("<abc_def>Exact</abc_def><abc-def>Hyphen</abc-def>", config),
-    "<abc_def>New</abc_def><abc-def>Hyphen</abc-def>");
+  assert.equal(replace("<abc_def>Old</abc_def>", config), "<abc_def>\nNew\n</abc_def>");
+  assert.equal(replace("<abc-def>Old</abc-def>", config), "<abc-def>\nNew\n</abc-def>");
+  assert.equal(replace("<abc-def>Hyphen</abc-def><abc_def>\nExact\n</abc_def>", config),
+    "<abc-def>Hyphen</abc-def><abc_def>\nNew\n</abc_def>");
+  assert.equal(replace("<abc_def>\nExact\n</abc_def><abc-def>Hyphen</abc-def>", config),
+    "<abc_def>\nNew\n</abc_def><abc-def>Hyphen</abc-def>");
   assert.equal(replace("<abc-def>Old</abc-def>", '[abc_def]\nreplacement = ""'),
-    "<abc-def></abc-def>");
+    "<abc-def>\n\n</abc-def>");
 });
 
 test("fallback applies to each nested segment and is limited to its parent", () => {
@@ -160,14 +160,14 @@ test("fallback applies to each nested segment and is limited to its parent", () 
   for (const outer of ["abc_def", "abc-def"])
     for (const inner of ["ghi_jkl", "ghi-jkl"]) {
       const text = "<" + outer + "><" + inner + ">Old</" + inner + "></" + outer + ">";
-      assert.equal(replace(text, config), text.replace("Old", "New"));
+      assert.equal(replace(text, config), text.replace("Old", "\nNew\n"));
     }
   assert.equal(replace("<other><ghi_jkl>Other</ghi_jkl></other><abc-def><ghi-jkl>Old</ghi-jkl></abc-def>", config),
-    "<other><ghi_jkl>Other</ghi_jkl></other><abc-def><ghi-jkl>New</ghi-jkl></abc-def>");
+    "<other><ghi_jkl>Other</ghi_jkl></other><abc-def><ghi-jkl>\nNew\n</ghi-jkl></abc-def>");
   assert.equal(replace("<abc_def><ghi-jkl>Old</ghi-jkl></abc_def><abc-def><ghi_jkl>Other</ghi_jkl></abc-def>", config),
-    "<abc_def><ghi-jkl>New</ghi-jkl></abc_def><abc-def><ghi_jkl>Other</ghi_jkl></abc-def>");
+    "<abc_def><ghi-jkl>\nNew\n</ghi-jkl></abc_def><abc-def><ghi_jkl>Other</ghi_jkl></abc-def>");
   // An exact parent exists, so do not use the fallback parent to find a child.
-  const text = "<abc_def>Exact</abc_def><abc-def><ghi-jkl>Old</ghi-jkl></abc-def>";
+  const text = "<abc_def>\nExact\n</abc_def><abc-def><ghi-jkl>Old</ghi-jkl></abc-def>";
   assert.equal(replace(text, config), text);
 });
 
@@ -175,7 +175,7 @@ test("literal hyphen configuration takes precedence over an underscore fallback"
   for (const config of [
     '[abc_def]\nreplacement = "Fallback"\n[abc-def]\nreplacement = "Exact"',
     '[abc-def]\nreplacement = "Exact"\n[abc_def]\nreplacement = "Fallback"',
-  ]) assert.equal(replace("<abc-def>Old</abc-def>", config), "<abc-def>Exact</abc-def>");
+  ]) assert.equal(replace("<abc-def>Old</abc-def>", config), "<abc-def>\nExact\n</abc-def>");
   assert.equal(replace("<abc_def>Old</abc_def>", '[abc-def]\nreplacement = "New"'),
     "<abc_def>Old</abc_def>");
 });
@@ -183,7 +183,7 @@ test("literal hyphen configuration takes precedence over an underscore fallback"
 test("generic fallback works for the system-prompt tag without a special alias", () => {
   assert.equal(replace("<system-prompt><tools>Old</tools></system-prompt>",
     '[system_prompt.tools]\nreplacement = "New"'),
-    "<system-prompt><tools>New</tools></system-prompt>");
+    "<system-prompt><tools>\nNew\n</tools></system-prompt>");
 });
 
 test("untagged text, unmatched tags, and case differences stay unchanged", () => {
@@ -195,39 +195,39 @@ test("untagged text, unmatched tags, and case differences stay unchanged", () =>
 
 test("repeated and same-name nested tags use their own paths", () => {
   assert.equal(replace("<one>A</one><one>B</one>", '[one]\nreplacement = "New"'),
-    "<one>New</one><one>New</one>");
+    "<one>\nNew\n</one><one>\nNew\n</one>");
   assert.equal(replace("<one><one>A</one></one>", '[one.one]\nreplacement = "New"'),
-    "<one><one>New</one></one>");
+    "<one><one>\nNew\n</one></one>");
 });
 
 test("replacement text is exact, may be empty, and is not scanned again", () => {
-  assert.equal(replace("<one>\nOld\n</one>", '[one]\nreplacement = ""'), "<one></one>");
-  assert.equal(replace("<one>Old</one>", '[one]\nreplacement = "  New  "'), "<one>  New  </one>");
+  assert.equal(replace("<one>\nOld\n</one>", '[one]\nreplacement = ""'), "<one>\n\n</one>");
+  assert.equal(replace("<one>Old</one>", '[one]\nreplacement = "  New  "'), "<one>\n  New  \n</one>");
   assert.equal(replace("<one>Old</one>", '[one]\nreplacement = "<one>New</one> $&"'),
-    "<one><one>New</one> $&</one>");
+    "<one>\n<one>New</one> $&\n</one>");
   assert.equal(replace("<one>Old</one>", '[one]\nreplacement = """\nNew\ncontent\n"""'),
-    "<one>New\ncontent\n</one>");
+    "<one>\nNew\ncontent\n\n</one>");
 });
 
 test("parent replacements take precedence over child replacements", () => {
   assert.equal(replace("<one><two>Old</two></one><one><two>Again</two></one>",
     '[one.two]\nreplacement = "Child"\n[one]\nreplacement = "Parent"'),
-    "<one>Parent</one><one>Parent</one>");
+    "<one>\nParent\n</one><one>\nParent\n</one>");
 });
 
 test("attributes and self-closing tags do not change ancestry", () => {
   assert.equal(replace('<one attr=">"><empty/><two data=\'x\'>Old</two></one>',
     '[one.two]\nreplacement = "New"'),
-    '<one attr=">"><empty/><two data=\'x\'>New</two></one>');
+    '<one attr=">"><empty/><two data=\'x\'>\nNew\n</two></one>');
   assert.equal(replace("<one/><one>Old</one>", '[one]\nreplacement = "New"'),
-    "<one/><one>New</one>");
+    "<one/><one>\nNew\n</one>");
 });
 
 test("Markdown fences keep tag examples literal", () => {
   for (const fence of ["~~~", "```"]) {
     const text = fence + "\n<one>Example</one>\n<unclosed>\n" + fence + "\n<one>Old</one>";
     assert.equal(replace(text, '[one]\nreplacement = "New"'),
-      fence + "\n<one>Example</one>\n<unclosed>\n" + fence + "\n<one>New</one>");
+      fence + "\n<one>Example</one>\n<unclosed>\n" + fence + "\n<one>\nNew\n</one>");
   }
 });
 
@@ -237,7 +237,7 @@ test("literal type notation does not stop replacements or change ancestry", () =
     "Map<string> <one><two>Old</two></one>",
     "<one>Map<string> <two>Old</two></one>",
     "<one><two>Old Map<string></two></one>",
-  ]) assert.equal(replace(text, config), text.replace(/<two>.*?<\/two>/, "<two>New</two>"));
+  ]) assert.equal(replace(text, config), text.replace(/<two>.*?<\/two>/, "<two>\nNew\n</two>"));
 });
 
 test("invalid configuration is rejected and unmatched tags stay unchanged", () => {
@@ -249,11 +249,11 @@ test("invalid configuration is rejected and unmatched tags stay unchanged", () =
 });
 
 test("tag names have no special meaning and quoted path segments stay literal", () => {
-  assert.equal(replace("<tools>Old</tools>", '[tools]\nreplacement = "New"'), "<tools>New</tools>");
+  assert.equal(replace("<tools>Old</tools>", '[tools]\nreplacement = "New"'), "<tools>\nNew\n</tools>");
   assert.equal(replace("<replacement>Old</replacement>", '[replacement]\nreplacement = "New"'),
-    "<replacement>New</replacement>");
+    "<replacement>\nNew\n</replacement>");
   assert.equal(replace("<one.two>Old</one.two>", '["one.two"]\nreplacement = "New"'),
-    "<one.two>New</one.two>");
+    "<one.two>\nNew\n</one.two>");
   assert.equal(replace("<one><two>Old</two></one>", '["one.two"]\nreplacement = "New"'),
     "<one><two>Old</two></one>");
 });
@@ -271,11 +271,11 @@ test("all message roles use literal paths without changing stored messages or no
   const before = structuredClone(messages);
   const result = replaceMessages(messages, parseReplacements('[one]\nreplacement = "New"'));
   assert.deepEqual(messages, before);
-  assert.deepEqual(result[0].sections, { arbitrary: "<one>New</one>", empty: null });
+  assert.deepEqual(result[0].sections, { arbitrary: "<one>\nNew\n</one>", empty: null });
   assert.equal(result[0].toolsAdded, toolsAdded);
-  assert.equal(result[1].content, "<one>New</one>");
-  assert.deepEqual(result[2].content, [{ type: "text", text: "<one>New</one>" }, toolCall]);
-  assert.deepEqual(result[3].content, [image, { type: "text", text: "<one>New</one>" }]);
+  assert.equal(result[1].content, "<one>\nNew\n</one>");
+  assert.deepEqual(result[2].content, [{ type: "text", text: "<one>\nNew\n</one>" }, toolCall]);
+  assert.deepEqual(result[3].content, [image, { type: "text", text: "<one>\nNew\n</one>" }]);
 });
 
 test("system_prompt paths select system text without changing tools or conversation text", () => {
@@ -293,12 +293,12 @@ test("system_prompt paths select system text without changing tools or conversat
   const result = replaceMessages(messages, parseReplacements(
     '[system_prompt.tools]\nreplacement = "New guidance"\n[system_prompt.one.two]\nreplacement = "New nested text"'));
   assert.deepEqual(result[0].sections, {
-    tools: "<tools>New guidance</tools>",
-    custom: "<one><two>New nested text</two></one>",
+    tools: "<tools>\nNew guidance\n</tools>",
+    custom: "<one><two>\nNew nested text\n</two></one>",
   });
   assert.equal(result[0].toolsAdded, toolsAdded);
-  assert.equal(result[1].content, "<tools>New guidance</tools>");
-  assert.deepEqual(result[2].content, [{ type: "text", text: "<one><two>New nested text</two></one>" }]);
+  assert.equal(result[1].content, "<tools>\nNew guidance\n</tools>");
+  assert.deepEqual(result[2].content, [{ type: "text", text: "<one><two>\nNew nested text\n</two></one>" }]);
   assert.equal(result[3].content, messages[3].content);
   assert.deepEqual(messages, original);
 });
@@ -320,7 +320,7 @@ test("refer captures exact original bodies and follows replacement precedence", 
   const messages = [{ role: "system", sections: { docs: '<docs id="a">\n<child>Original</child>\n</docs>' } }];
   const before = structuredClone(messages);
   const result = replaceMessages(messages, config, (link, text) => saved.push([link, text]));
-  assert.equal(result[0].sections.docs, '<docs id="a">Read ~/docs/$&.md and ~/docs/$&.md</docs>');
+  assert.equal(result[0].sections.docs, '<docs id="a">\nRead ~/docs/$&.md and ~/docs/$&.md\n</docs>');
   assert.deepEqual(saved, [["~/docs/$&.md", "\n<child>Original</child>\n"]]);
   assert.deepEqual(messages, before);
   assert.throws(() => replaceMessages(messages, config), /reference writer/);
@@ -352,7 +352,7 @@ test("the hook saves refer files, refreshes them, and propagates write failures"
     for (const body of ["\nOriginal docs\n", "Updated docs", ""]) {
       const event = { messages: [{ role: "system", sections: { docs: "<docs>" + body + "</docs>" } }] };
       const result = await run(event);
-      assert.equal(result.messages[0].sections.docs, "<docs>Read nested/docs.md</docs>");
+      assert.equal(result.messages[0].sections.docs, "<docs>\nRead nested/docs.md\n</docs>");
       assert.equal(await readFile(join(dir, "nested/docs.md"), "utf8"), body);
       assert.equal(event.messages[0].sections.docs, "<docs>" + body + "</docs>");
     }
@@ -381,7 +381,7 @@ test("the hook expands home links only for file writes", async () => {
   try {
     await writeFile(join(dir, "config.toml"), '[docs]\nrefer = "Read $link"\nlink = ' + JSON.stringify(link));
     const result = await run({ messages: [{ role: "system", content: "<docs>Home docs</docs>" }] });
-    assert.equal(result.messages[0].content, "<docs>Read " + link + "</docs>");
+    assert.equal(result.messages[0].content, "<docs>\nRead " + link + "\n</docs>");
     assert.equal(await readFile(join(dir, "docs.md"), "utf8"), "Home docs");
   } finally {
     await rm(dir, { recursive: true, force: true });
@@ -406,7 +406,7 @@ test("the hook creates a default config, preserves edits, and registers no UI", 
     const toolsAdded = [{ name: "read", description: "Real tool" }];
     const system = { role: "system", content: "", sections: { tools: "<tools>Old guidance</tools>" }, toolsAdded };
     const replaced = (await run({ messages: [system] })).messages[0];
-    assert.equal(replaced.sections.tools, "<tools>TOOLS REPLACEMENT TEXT</tools>");
+    assert.equal(replaced.sections.tools, "<tools>\nTOOLS REPLACEMENT TEXT\n</tools>");
     assert.equal(replaced.toolsAdded, toolsAdded);
     assert.equal(system.sections.tools, "<tools>Old guidance</tools>");
     assert.deepEqual(await readdir(dir), ["config.toml"]);
@@ -414,7 +414,7 @@ test("the hook creates a default config, preserves edits, and registers no UI", 
       const config = '[one]\nreplacement = "' + value + '"';
       await writeFile(path, config);
       const result = await run(event);
-      assert.equal(result.messages[0].content, "Plain text <one>" + value + "</one>");
+      assert.equal(result.messages[0].content, "Plain text <one>\n" + value + "\n</one>");
       assert.equal(event.messages[0].content, "Plain text <one>Old</one>");
       assert.equal(await readFile(path, "utf8"), config);
       assert.deepEqual(await readdir(dir), ["config.toml"]);

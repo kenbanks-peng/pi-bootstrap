@@ -79,11 +79,11 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.ok(payload, "provider must reach the HTTP request boundary");
     assert.equal(payload.input[0].role, "system");
     assert.match(payload.input[0].content, /<bootstrap version="1">[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
-    assert.match(payload.input[0].content, /<output>Registered tools: read<\/output>/);
+    assert.match(payload.input[0].content, /<output>\nRegistered tools: read\n    <\/output>/);
     assert.match(payload.input[0].content, /<\/bootstrap>$/);
     assert.equal((payload.input[0].content.match(/<command>/g) ?? []).length, 2);
     assert.equal((payload.input[0].content.match(/<\/command>/g) ?? []).length, 2);
-    assert.match(payload.input[0].content, /<command>\s*<run>[\s\S]*?<\/run>\s*<output>Snapshot output<\/output>\s*<\/command>/);
+    assert.match(payload.input[0].content, /<command>\s*<run>\n[\s\S]*?\n    <\/run>\s*<output>\nSnapshot output\n    <\/output>\s*<\/command>/);
     assert.match(payload.input[0].content, /Read rules.md[\s\S]*<bootstrap/);
     assert.equal(JSON.stringify(payload).split('<bootstrap version=').length - 1, 1);
     assert.deepEqual(payload.input.filter((m: any) => m.role === "user"), [{ role: "user", content: [{ type: "input_text", text: "Question" }] }]);
@@ -106,11 +106,11 @@ test("explicit bootstrap replacements and references are request-local and keep 
   await writeFile(config, '[system_prompt.bootstrap.memory]\nrefer = "See $link"\nlink = "memory.md"\n[system_prompt.preamble]\nreplacement = "New preamble"\n[system_prompt.postamble]\nreplacement = "New postamble"\n');
   const event = freeze({ messages: [{ role: "system", content: "Prompt", timestamp: 0 }] });
   const referenced = await h.handlers.get("context_with_system")!(event);
-  assert.match(referenced.messages[0].content, /<bootstrap version="1">\n  <memory>See memory.md<\/memory>\n<\/bootstrap>/);
-  assert.equal(await readFile(join(f.root, "memory.md"), "utf8"), "Original memory");
+  assert.match(referenced.messages[0].content, /<bootstrap version="1">\n  <memory>\nSee memory.md\n  <\/memory>\n<\/bootstrap>/);
+  assert.equal(await readFile(join(f.root, "memory.md"), "utf8"), "\nOriginal memory\n  ");
   await writeFile(config, '[bootstrap.memory]\nreplacement = "Request-only"\n');
   const replaced = await h.handlers.get("context_with_system")!(event);
-  assert.match(replaced.messages[0].content, /<memory>Request-only<\/memory>/);
+  assert.match(replaced.messages[0].content, /<memory>\nRequest-only\n  <\/memory>/);
   assert.equal(h.snapshot(), stored);
   assert.match(stored, /Original memory/);
   assert.equal(event.messages[0].content, "Prompt");

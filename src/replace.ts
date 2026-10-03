@@ -155,6 +155,11 @@ export function replaceTags(text: string, replacements: ReadonlyMap<string, Acti
       saveReference(value.link, text.slice(edit.bodyStart, edit.bodyEnd));
       replacement = value.refer.replaceAll("$link", () => value.link);
     }
+    // Keep replacement and reference text separate from the retained tags.
+    if (!edit.special) {
+      const indent = /(?:^|\n)([ \t]*)$/.exec(text.slice(edit.bodyStart, edit.bodyEnd))?.[1] ?? "";
+      replacement = `\n${replacement}\n${indent}`;
+    }
     result += text.slice(at, edit.bodyStart) + replacement + text.slice(edit.bodyEnd, edit.end);
     at = edit.end;
   }
