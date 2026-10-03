@@ -8,7 +8,7 @@ export type { BootstrapExpressionContext } from "./bootstrap-expression.js";
 
 export const COMMAND_TIMEOUT_MS = 1_000;
 export const COMMAND_OUTPUT_LIMIT_BYTES = 1_048_576;
-export const BOOTSTRAP_VERSION = 1;
+
 
 export type BootstrapAction = "memory" | "command";
 
@@ -29,30 +29,28 @@ export type BootstrapSessionEntry =
   | { type: "command"; description: string; argv: [string, ...string[]]; output: string }
   | { type: "command"; description: string; expression: string; output: string };
 
-export const DEFAULT_PROTOCOL = `version = ${BOOTSTRAP_VERSION}
-
-[[rule]]
+export const DEFAULT_PROTOCOL = `[[rule]]
 glob = "*.md"
 action = "memory"
 
 [[rule]]
+
 glob = "*.toml"
 action = "command"
 `;
 
-interface BootstrapRuleV1 {
+interface BootstrapRule {
   glob: string;
   action: BootstrapAction;
 }
 
-export interface BootstrapProtocolV1 {
-  version: typeof BOOTSTRAP_VERSION;
-  rule: BootstrapRuleV1[];
+export interface BootstrapProtocol {
+  rule: BootstrapRule[];
 }
 
-type CommandSourceV1 =
-  | { version: typeof BOOTSTRAP_VERSION; description: string; argv: [string, ...string[]]; cwd?: string }
-  | { version: typeof BOOTSTRAP_VERSION; description: string; expression: string };
+type CommandSource =
+  | { description: string; argv: [string, ...string[]]; cwd?: string }
+  | { description: string; expression: string };
 
 const protocolFilename = "protocol.toml";
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -66,7 +64,7 @@ export async function installDefaultProtocol(sourceRoot: string): Promise<void> 
   }
 }
 
-export async function loadProtocol(sourceRoot: string, scopeLabel: string): Promise<BootstrapProtocolV1 | undefined> {
+export async function loadProtocol(sourceRoot: string, scopeLabel: string): Promise<BootstrapProtocol | undefined> {
   try {
     return parseProtocol(await readUtf8(resolve(sourceRoot, protocolFilename), `${scopeLabel} protocol`), scopeLabel);
   } catch (error) {
@@ -75,7 +73,7 @@ export async function loadProtocol(sourceRoot: string, scopeLabel: string): Prom
   }
 }
 
-export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocolV1, projectRoot: string, expressionContext?: BootstrapExpressionContext): Promise<BootstrapSessionEntry[]> {
+export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocol, projectRoot: string, expressionContext?: BootstrapExpressionContext): Promise<BootstrapSessionEntry[]> {
   const files = {
     memory: await listDirectFiles(join(sourceRoot, "memories"), scopeLabel),
     command: await listDirectFiles(join(sourceRoot, "commands"), scopeLabel),
@@ -97,17 +95,17 @@ export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: st
   return sessionEntries;
 }
 
-function parseProtocol(text: string, scopeLabel: string): BootstrapProtocolV1 {
+function parseProtocol(text: string, scopeLabel: string): BootstrapProtocol {
   const value = parseToml(text, `${scopeLabel} protocol`);
-  if (!isRecord(value) || value.version !== BOOTSTRAP_VERSION || !Array.isArray(value.rule) || value.rule.length === 0) {
-    throw new Error(`${scopeLabel} protocol must contain version = ${BOOTSTRAP_VERSION} and one or more [[rule]] entries.`);
+  if (!isRecord(value) || !Array.isArray(value.rule) || value.rule.length === 0) {
+    throw new Error(`${scopeLabel} protocol must contain one or more [[rule]] entries.`);
   }
 
   const rules = value.rule.map((rule, index) => parseRule(rule, index, scopeLabel));
-  return { version: BOOTSTRAP_VERSION, rule: rules };
+  return { rule: rules };
 }
 
-function parseRule(value: unknown, index: number, scopeLabel: string): BootstrapRuleV1 {
+function parseRule(value: unknown, index: number, scopeLabel: string): BootstrapRule {
   if (!isRecord(value) || typeof value.glob !== "string" || !isSupportedBasenameGlob(value.glob)) {
     throw new Error(`${scopeLabel} protocol rule ${index + 1} has an unsupported direct-file glob.`);
   }
@@ -143,7 +141,7 @@ async function listDirectFiles(sourceRoot: string, scopeLabel: string): Promise<
   }
 }
 
-function selectFiles(protocol: BootstrapProtocolV1, files: Record<BootstrapAction, string[]>, scopeLabel: string): Array<{ rule: BootstrapRuleV1; filenames: string[] }> {
+function selectFiles(protocol: BootstrapProtocol, files: Record<BootstrapAction, string[]>, scopeLabel: string): Array<{ rule: BootstrapRule; filenames: string[] }> {
   const matched = new Set<string>();
   return protocol.rule.map((rule, index) => {
     const matches = files[rule.action].filter((filename) => matchesGlob(filename, rule.glob));
@@ -188,11 +186,11 @@ async function runCommandSource(sourcePath: string, projectRoot: string, scopeLa
   }
 }
 
-function parseCommandSource(text: string, sourceName: string, scopeLabel: string): CommandSourceV1 {
+function parseCommandSource(text: string, sourceName: string, scopeLabel: string): CommandSource {
   const value = parseToml(text, `${scopeLabel} command source "${sourceName}"`);
   const label = `${scopeLabel} command source "${sourceName}"`;
-  if (!isRecord(value) || value.version !== BOOTSTRAP_VERSION) {
-    throw new Error(`${label} must contain version = ${BOOTSTRAP_VERSION}.`);
+  if (!isRecord(value)) {
+    throw new Error(`${label} must be a TOML table.`);
   }
   if (typeof value.description !== "string" || value.description.trim().length === 0 || /[\r\n]/.test(value.description)) {
     throw new Error(`${label} description must be a non-empty single-line string.`);
@@ -205,7 +203,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
       throw new Error(`${label} expression must be a non-empty string.`);
     }
     if ("cwd" in value) throw new Error(`${label} cwd is only supported with argv.`);
-    return { version: BOOTSTRAP_VERSION, description: value.description, expression: value.expression };
+    return { description: value.description, expression: value.expression };
   }
   if (!Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
     throw new Error(`${label} must contain a non-empty argv string array.`);
@@ -213,7 +211,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (value.cwd !== undefined && (typeof value.cwd !== "string" || value.cwd.length === 0)) {
     throw new Error(`${scopeLabel} command source "${sourceName}" has an invalid cwd.`);
   }
-  return { version: BOOTSTRAP_VERSION, description: value.description, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
+  return { description: value.description, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
 }
 
 async function commandCwd(cwd: string | undefined, projectRoot: string, sourceName: string, scopeLabel: string): Promise<string> {

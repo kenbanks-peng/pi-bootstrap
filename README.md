@@ -10,7 +10,7 @@ Global configuration lives under `~/.config/pi/agent/extensions/pi-bootstrap/`
 
 - `memories/*.md`: user-authored guidance.
 - `commands/*.toml`: external command or JavaScript expression definitions.
-- `protocol.toml`: versioned rules selecting session sources; created if missing.
+- `protocol.toml`: rules selecting session sources; created if missing.
 - `config.toml`: existing request-time replacement/reference rules.
 
 Project sources use `.agents/bootstrap/` with the same session layout. Global
@@ -18,7 +18,7 @@ sources precede project sources; a project `protocol.toml` overrides the global
 policy for that project. Session sources are snapshotted on `session_start`, not
 on every request. Commands execute with your permissions: review them before use.
 
-Each outgoing system prompt receives `<bootstrap version="1">…</bootstrap>`
+Each outgoing system prompt receives `<bootstrap>…</bootstrap>`
 at the end of its system-prompt body, after all current prompt sections—not a
 separate `<message>`, custom message, or user message. Each command has its own
 `<command>…</command>` wrapper. The snapshot is runtime-local: startup, reload, new, resume, and fork
@@ -35,7 +35,7 @@ Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
 filters; add defaults to `project memory`. Edit/delete accept an optional type.
 No model-callable management tools are registered.
 
-Each command file must contain `version = 1`, a non-empty single-line
+Each command file must contain a non-empty single-line
 `description`, and exactly one of `argv` or `expression`. Add a description to
 existing command files. Each `<command>` contains the description line followed
 by the XML-escaped output, without `<run>` or `<output>` tags. Execution details
@@ -43,7 +43,7 @@ are not included. To list registered
 tools, create `commands/tools.toml` in either scope:
 
 ```toml
-version = 1
+
 description = "Available tools"
 expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
 ```

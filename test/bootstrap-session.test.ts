@@ -83,7 +83,7 @@ test("session snapshots and existing request replacements compose without changi
     assert.match(result.messages[0].content, /<\/bootstrap>$/);
     assert.equal(await readFile(join(getBootstrapDirectory(), "prompt.md"), "utf8"), "Tail");
     assert.equal(result.messages[0].toolsAdded, system.toolsAdded);
-    assert.match(result.messages[0].content, /<bootstrap version="1">[\s\S]*Session guidance[\s\S]*<\/bootstrap>/);
+    assert.match(result.messages[0].content, /<bootstrap>[\s\S]*Session guidance[\s\S]*<\/bootstrap>/);
     assert.equal(system.sections.tools, "<tools>Old tools</tools>Tail");
     assert.equal(result.messages[1].content, "Question");
     assert.deepEqual(h.messages, []);
@@ -103,7 +103,7 @@ test("session start snapshots once and request injection does not mutate history
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(compositions, 1);
   assert.deepEqual(h.messages, []);
-  assert.match(h.snapshot(), /<bootstrap version="1">/);
+  assert.match(h.snapshot(), /<bootstrap>/);
   const config = join(f.root, "config.toml");
   await writeFile(config, "");
   registerBootstrap(h.pi as never, config, h.snapshot);
@@ -152,7 +152,7 @@ test("empty composition sends no message and command failures notify without par
   await command(f.project, "bad.toml", executable("process.exit(7)"));
   await h.handlers.get("session_start")!({}, ctx);
   assert.deepEqual(notices.notifications.pop(), { message: "bad.toml returned error code 7.", level: undefined });
-  await command(f.project, "bad.toml", "version = 1\ndescription = \"Test command\"\nargv = []");
+  await command(f.project, "bad.toml", "description = \"Test command\"\nargv = []");
   await h.handlers.get("session_start")!({}, ctx);
   const failure = notices.notifications.pop()!;
   assert.match(failure.message, /bad.toml had an error:.*non-empty argv/);
@@ -218,10 +218,10 @@ test("slash command uses the same repository factory and offers only /bootstrap"
   assert.match(notices.editors[1].initial, /description = "Working tree status"/);
   const sources = await f.repository.list("global");
   const added = sources.find(s => s.type === "command")!;
-  assert.equal(await f.repository.read("global", added), 'version = 1\ndescription = "Test command"\nargv = ["git", "status"]\n');
+  assert.equal(await f.repository.read("global", added), 'description = "Test command"\nargv = ["git", "status"]\n');
   await run("list global", ctx);
   assert.match(notices.notifications.at(-1)!.message, /memory: New memory/);
-  assert.match(notices.notifications.at(-1)!.message, /command: version = 1/);
+  assert.match(notices.notifications.at(-1)!.message, /command: description/);
 });
 
 test("command defaults, filters, edits, deletion, cancellation and non-UI operation", async t => {
@@ -257,7 +257,7 @@ test("command defaults, filters, edits, deletion, cancellation and non-UI operat
 test("slash-created commands use renamed filenames and execute on the next session only", async t => {
   const f = await fixture(t);
   const h = harness(() => f.repository);
-  const notices = ui([executable('process.stdout.write("created")').replace(/^version = 1\n/, ""), executable('process.stdout.write("edited")')]);
+  const notices = ui([executable('process.stdout.write("created")').replace(/^/, ""), executable('process.stdout.write("edited")')]);
   const ctx = { cwd: f.projectRoot, hasUI: true, ui: notices.api };
   const run = h.commands.get("bootstrap")!.handler;
   await run("add command", ctx);
@@ -269,7 +269,7 @@ test("slash-created commands use renamed filenames and execute on the next sessi
   const original = h.snapshot();
   assert.match(original, /Test command\ncreated\n<\/command>/);
   await run(`edit ${source.id} command`, ctx);
-  assert.match(notices.editors[1].initial, /^version = 1/);
+  assert.match(notices.editors[1].initial, /^description/);
   assert.equal(h.snapshot(), original);
   await h.handlers.get("session_start")!({}, ctx);
   assert.match(h.snapshot(), /Test command\nedited\n<\/command>/);

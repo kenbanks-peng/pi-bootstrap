@@ -31,7 +31,6 @@ are supported. Existing configuration is never moved or rewritten.
 On session start, the global protocol is installed exclusively if missing:
 
 ```toml
-version = 1
 
 [[rule]]
 glob = "*.md"
@@ -58,12 +57,11 @@ Unmatched files, subdirectories and source symlinks are ignored. Root-level
 those basenames are ordinary selectable command files.
 
 Memories are complete strict UTF-8 text, without filenames. Commands are strict
-UTF-8 TOML with `version = 1`, a non-empty single-line `description`, and
+UTF-8 TOML with a non-empty single-line `description`, and
 exactly one of `argv` or `expression`. Missing, blank, non-string, or multiline
 descriptions are errors. Add this field to existing command files:
 
 ```toml
-version = 1
 description = "Working tree status"
 argv = ["git", "status", "--short"]
 cwd = "."
@@ -84,7 +82,6 @@ descendants. Review both global and project commands.
 Create a file such as `commands/tools.toml`:
 
 ```toml
-version = 1
 description = "Available tools"
 expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
 ```
@@ -126,7 +123,7 @@ state. Each `session_start` (startup, reload, new, resume or fork) first clears
 the previous snapshot, then composes fresh content from the current cwd:
 
 ```xml
-<bootstrap version="1">
+<bootstrap>
   <memory>User-authored guidance</memory>
   <command>
 Working tree status
@@ -193,8 +190,7 @@ reported rather than exposing bootstrap through a user-message fallback.
 - `edit <id> [memory|command]` and `delete <id> [memory|command]`.
 
 Add/edit use the UI editor and reject non-interactive mode. Cancellation changes
-nothing. Command addition supplies a description/argv/cwd template and prepends `version = 1`
-after editing. The template also shows an expression example; remove `argv` and
+nothing. Command addition supplies a description/argv/cwd template. The template also shows an expression example; remove `argv` and
 `cwd` to use it. Editing an existing command shows its complete TOML. List/delete
 work without interactive UI. Operations catch errors and notify the user.
 There are no model-callable management tools. Edits affect the next session

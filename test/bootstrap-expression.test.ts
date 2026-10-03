@@ -11,7 +11,7 @@ const data = {
   allTools: [{ name: "read", description: "<read>&", parameters: { type: "object" } }, { name: "bash" }],
   activeTools: ["read"],
 };
-const expression = (code: string) => `version = 1\ndescription = "Test command"\nexpression = ${JSON.stringify(code)}\n`;
+const expression = (code: string) => `description = "Test command"\nexpression = ${JSON.stringify(code)}\n`;
 
 test("expressions and argv are peers in both scopes, with descriptions and escaped output", async t => {
   const f = await fixture(t);
@@ -31,10 +31,10 @@ test("expressions and argv are peers in both scopes, with descriptions and escap
 test("command definitions require exactly one valid execution field", async t => {
   const f = await fixture(t);
   for (const [body, expected] of [
-    ['version = 1\ndescription = "Test command"', /exactly one/],
+    ['description = "Test command"', /exactly one/],
     [expression('"ok"') + 'argv = ["git"]\n', /exactly one/],
-    ["version = 1\ndescription = \"Test command\"\nexpression = 42", /non-empty string/],
-    ['version = 1\ndescription = "Test command"\nexpression = " "', /non-empty string/],
+    ["description = \"Test command\"\nexpression = 42", /non-empty string/],
+    ['description = "Test command"\nexpression = " "', /non-empty string/],
     [expression('"ok"') + 'cwd = "."\n', /cwd is only supported with argv/],
   ] as const) {
     await command(f.project, "case.toml", body);

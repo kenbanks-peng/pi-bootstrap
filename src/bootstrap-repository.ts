@@ -95,7 +95,7 @@ export class BootstrapRepository {
 
     return entries.length === 0
       ? ""
-      : `<bootstrap version="1">\n${entries.map(formatSessionEntry).join("\n")}\n</bootstrap>`;
+      : `<bootstrap>\n${entries.map(formatSessionEntry).join("\n")}\n</bootstrap>`;
   }
 
   private directoryFor(scope: BootstrapScope): string {

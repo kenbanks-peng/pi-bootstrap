@@ -164,7 +164,7 @@ test("lazy skill sections compose with request replacements and bootstrap, inclu
   const f = await fixture(t);
   const config = join(f.root, "skills-config.toml");
   await writeFile(config, '[system_prompt.rules]\nreplacement = "New rules"\n');
-  for (const snapshot of ["", '<bootstrap version="1">Memory</bootstrap>']) {
+  for (const snapshot of ["", '<bootstrap>Memory</bootstrap>']) {
     const h = harness();
     const options = h.start([skill("alpha", "Long description")]);
     registerBootstrap(h.pi as never, config, () => snapshot, h.transform);

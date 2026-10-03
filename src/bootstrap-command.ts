@@ -1,4 +1,4 @@
-import { BOOTSTRAP_VERSION } from "./bootstrap-protocol.js";
+
 import { BootstrapRepository, scopeLabel, type BootstrapScope, type BootstrapSource, type BootstrapSourceType } from "./bootstrap-repository.js";
 
 export interface BootstrapCommandUI {
@@ -10,7 +10,7 @@ export interface BootstrapCommandUI {
 const api = "/bootstrap list [global|project] [memory|command]\n/bootstrap add [global|project] [memory|command]\n/bootstrap edit <id> [memory|command]\n/bootstrap delete <id> [memory|command]";
 const usage = "Usage: /bootstrap list [global|project] [memory|command] | add [global|project] [memory|command] | edit <id> [memory|command] | delete <id> [memory|command]";
 const commandTemplate = 'description = "Working tree status"\n' + "# Use exactly one of argv or expression. Remove cwd for expressions.\nargv = [\"git\", \"status\", \"--short\"]\ncwd = \".\"\n# expression = 'ALL_TOOLS.map(t => t.name).join(\"\\n\")'\n";
-const commandVersion = `version = ${BOOTSTRAP_VERSION}\n`;
+
 
 export async function runBootstrapCommand(args: string, bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {
   const tokens = args.trim().split(/\s+/).filter(Boolean);
@@ -61,7 +61,7 @@ async function addBootstrap(arguments_: string[], bootstraps: BootstrapRepositor
     return;
   }
 
-  const id = await bootstraps.create(scope, type, type === "command" ? `${commandVersion}${content}` : content);
+  const id = await bootstraps.create(scope, type, content);
   ui.notify(`Added ${scopeLabel(scope)} ${type} Bootstrap "${id}".`);
 }
 

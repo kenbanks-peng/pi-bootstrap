@@ -46,7 +46,7 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   const f = await fixture(t);
   const marker = join(f.root, "executions");
   await memory(f.project, "guidance.md", "Only system <guidance>");
-  await command(f.project, "tools.toml", 'version = 1\ndescription = "Test command"\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
+  await command(f.project, "tools.toml", 'description = "Test command"\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
   await command(f.project, "once.toml", executable(`require('node:fs').appendFileSync(${JSON.stringify(marker)}, 'x'); process.stdout.write('Snapshot output')`));
   const h = harness(() => f.repository);
   const config = join(f.root, "config.toml");
@@ -78,14 +78,14 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.equal(response.stopReason, "error");
     assert.ok(payload, "provider must reach the HTTP request boundary");
     assert.equal(payload.input[0].role, "system");
-    assert.match(payload.input[0].content, /<bootstrap version="1">[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
+    assert.match(payload.input[0].content, /<bootstrap>[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
     assert.match(payload.input[0].content, /Test command\nRegistered tools: read\n<\/command>/);
     assert.match(payload.input[0].content, /<\/bootstrap>$/);
     assert.equal((payload.input[0].content.match(/<command>/g) ?? []).length, 2);
     assert.equal((payload.input[0].content.match(/<\/command>/g) ?? []).length, 2);
     assert.match(payload.input[0].content, /<command>\nTest command\nSnapshot output\n<\/command>/);
     assert.match(payload.input[0].content, /Read rules.md[\s\S]*<bootstrap/);
-    assert.equal(JSON.stringify(payload).split('<bootstrap version=').length - 1, 1);
+    assert.equal(JSON.stringify(payload).split('<bootstrap>').length - 1, 1);
     assert.deepEqual(payload.input.filter((m: any) => m.role === "user"), [{ role: "user", content: [{ type: "input_text", text: "Question" }] }]);
     assert.ok(payload.tools.some((tool: any) => tool.name === "read"));
     assert.deepEqual(history, before);
@@ -106,7 +106,7 @@ test("explicit bootstrap replacements and references are request-local and keep 
   await writeFile(config, '[system_prompt.bootstrap.memory]\nrefer = "See $link"\nlink = "memory.md"\n[system_prompt.preamble]\nreplacement = "New preamble"\n[system_prompt.postamble]\nreplacement = "New postamble"\n');
   const event = freeze({ messages: [{ role: "system", content: "Prompt", timestamp: 0 }] });
   const referenced = await h.handlers.get("context_with_system")!(event);
-  assert.match(referenced.messages[0].content, /<bootstrap version="1">\n<memory>\nSee memory.md\n<\/memory>\n<\/bootstrap>/);
+  assert.match(referenced.messages[0].content, /<bootstrap>\n<memory>\nSee memory.md\n<\/memory>\n<\/bootstrap>/);
   assert.equal(await readFile(join(f.root, "memory.md"), "utf8"), "\nOriginal memory\n");
   await writeFile(config, '[bootstrap.memory]\nreplacement = "Request-only"\n');
   const replaced = await h.handlers.get("context_with_system")!(event);
@@ -131,10 +131,10 @@ test("failed, empty and shutdown starts clear previous snapshots; reload runtime
   await protocol(f.project, "invalid =");
   await assert.rejects(h.handlers.get("session_start")!({}, ctx));
   assert.equal(h.snapshot(), "");
-  await protocol(f.project, 'version = 1\n[[rule]]\nglob = "absent.md"\naction = "memory"\n');
+  await protocol(f.project, '[[rule]]\nglob = "absent.md"\naction = "memory"\n');
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(h.snapshot(), "");
-  await protocol(f.project, 'version = 1\n[[rule]]\nglob = "*.md"\naction = "memory"\n');
+  await protocol(f.project, '[[rule]]\nglob = "*.md"\naction = "memory"\n');
   await reload.handlers.get("session_start")!({}, ctx);
   assert.match(reload.snapshot(), /Current/);
   await reload.handlers.get("session_shutdown")!({}, ctx);
@@ -180,7 +180,7 @@ test("string, empty and section-only system prompts inject without changing conv
   const config = join(f.root, "config.toml");
   await writeFile(config, "");
   const h = harness(() => f.repository);
-  registerBootstrap(h.pi as never, config, () => '<bootstrap version="1">Snapshot</bootstrap>');
+  registerBootstrap(h.pi as never, config, () => '<bootstrap>Snapshot</bootstrap>');
   for (const content of ["Plain", "", []]) {
     const messages = freeze([{ role: "system", content, sections: { rules: "<rules>Rules</rules>" }, timestamp: 0 }, { role: "user", content: "User", timestamp: 1 }]);
     const result = await h.handlers.get("context_with_system")!({ messages });

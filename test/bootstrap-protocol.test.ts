@@ -10,10 +10,10 @@ test("default protocol is installed exclusively, inherited, overridden and resto
   const f = await fixture(t);
   await memory(f.global, "global.md", "Global");
   await memory(f.project, "project.md", "Project");
-  assert.equal(await f.repository.compose(), '<bootstrap version="1">\n<memory>\nGlobal\n</memory>\n<memory>\nProject\n</memory>\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<bootstrap>\n<memory>\nGlobal\n</memory>\n<memory>\nProject\n</memory>\n</bootstrap>');
   assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), DEFAULT_PROTOCOL);
   assert.match(DEFAULT_PROTOCOL, /glob = "\*\.toml"/);
-  await protocol(f.project, 'version = 1\n[[rule]]\nglob = "only-*.md"\naction = "memory"\n');
+  await protocol(f.project, '[[rule]]\nglob = "only-*.md"\naction = "memory"\n');
   await memory(f.project, "only-one.md", "Selected");
   assert.match(await f.repository.compose(), /Selected/);
   assert.doesNotMatch(await f.repository.compose(), /Project/);
@@ -41,19 +41,19 @@ test("only direct regular files in action-specific folders are selected, sorted 
   await symlink(join(f.project, "memories", "a.md"), join(f.project, "memories", "linked.md"));
   await mkdir(join(f.project, "memories", "folder.md"));
   await writeFile(join(f.project, "memories", "folder.md", "hidden.md"), "Hidden");
-  assert.equal(await f.repository.compose(), '<bootstrap version="1">\n<memory>\n&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;\n</memory>\n<memory>\nZ\nlast\n</memory>\n</bootstrap>');
+  assert.equal(await f.repository.compose(), '<bootstrap>\n<memory>\n&lt;tag&gt;&amp;&lt;/memory&gt;&quot;&apos;\n</memory>\n<memory>\nZ\nlast\n</memory>\n</bootstrap>');
   await memory(f.project, "later.md", "Added directly");
   assert.match(await f.repository.compose(), /Added directly/);
 });
 
 test("rule order precedes filename order and overlap is scoped to the action folder", async t => {
   const f = await fixture(t);
-  await protocol(f.project, 'version = 1\n[[rule]]\nglob = "z.md"\naction = "memory"\n[[rule]]\nglob = "a.md"\naction = "memory"\n');
+  await protocol(f.project, '[[rule]]\nglob = "z.md"\naction = "memory"\n[[rule]]\nglob = "a.md"\naction = "memory"\n');
   await memory(f.project, "a.md", "A");
   await memory(f.project, "z.md", "Z");
   const output = await f.repository.compose();
   assert.ok(output.indexOf("\nZ\n") < output.indexOf("\nA\n"));
-  await protocol(f.project, 'version = 1\n[[rule]]\nglob = "*.toml"\naction = "memory"\n[[rule]]\nglob = "*.toml"\naction = "command"\n');
+  await protocol(f.project, '[[rule]]\nglob = "*.toml"\naction = "memory"\n[[rule]]\nglob = "*.toml"\naction = "command"\n');
   await memory(f.project, "same.toml", "Memory");
   await command(f.project, "same.toml", executable('process.stdout.write("Command")'));
   assert.match(await f.repository.compose(), /Memory[\s\S]*Test command\nCommand/);
@@ -61,7 +61,7 @@ test("rule order precedes filename order and overlap is scoped to the action fol
 
 test("command argv is literal, output preserves lines and XML cannot introduce markup", async t => {
   const f = await fixture(t);
-  await command(f.project, "command-test.toml", `version = 1\ndescription = "Test command"\nargv = ${JSON.stringify([process.execPath, "-e", "process.stdout.write(process.argv[1])", "literal; $HOME <tag>&\nnext"])}\ncwd = "."\n`);
+  await command(f.project, "command-test.toml", `description = "Test command"\nargv = ${JSON.stringify([process.execPath, "-e", "process.stdout.write(process.argv[1])", "literal; $HOME <tag>&\nnext"])}\ncwd = "."\n`);
   const output = await f.repository.compose();
   assert.doesNotMatch(output, /<run>|<output>|process\.stdout/);
   assert.match(output, /Test command\nliteral; \$HOME &lt;tag&gt;&amp;\nnext\n<\/command>/);
@@ -84,7 +84,7 @@ test("commands execute in scope, rule and filename order and overlap is prefligh
   await command(f.project, "command-a.toml", record("a"));
   await command(f.project, "command-b.toml", record("b"));
   await command(f.project, "command-z.toml", record("z"));
-  await protocol(f.project, 'version = 1\n[[rule]]\nglob = "command-z.toml"\naction = "command"\n[[rule]]\nglob = "command-a.toml"\naction = "command"\n[[rule]]\nglob = "command-b.toml"\naction = "command"\n');
+  await protocol(f.project, '[[rule]]\nglob = "command-z.toml"\naction = "command"\n[[rule]]\nglob = "command-a.toml"\naction = "command"\n[[rule]]\nglob = "command-b.toml"\naction = "command"\n');
   await f.repository.compose();
   assert.equal(await readFile(join(f.projectRoot, "order.txt"), "utf8"), "global\nz\na\nb\n");
   await rm(join(f.projectRoot, "order.txt"));
@@ -121,7 +121,7 @@ test("command timeout, output bound, invalid UTF-8, spawn errors and noisy stder
     await command(f.project, "case.toml", executable(code));
     await assert.rejects(f.repository.compose(), expected);
   }
-  await command(f.project, "case.toml", 'version = 1\ndescription = "Test command"\nargv = ["/nonexistent/bootstrap-executable"]\n');
+  await command(f.project, "case.toml", 'description = "Test command"\nargv = ["/nonexistent/bootstrap-executable"]\n');
   await assert.rejects(f.repository.compose(), /execution failed/);
   await command(f.project, "case.toml", executable('process.stderr.write("x".repeat(2000000), () => process.stdout.write("ok"))'));
   assert.match(await f.repository.compose(), /Test command\nok\n<\/command>/);
@@ -131,10 +131,9 @@ test("command definitions and cwd containment are validated", async t => {
   const f = await fixture(t);
   await symlink(f.global, join(f.projectRoot, "escape"));
   for (const [body, expected] of [
-    ['version =', /not valid TOML/],
-    ['version = 2\nargv = ["git"]', /version = 1/],
-    ['version = 1\ndescription = "Test command"\nargv = []', /non-empty argv/],
-    ['version = 1\ndescription = "Test command"\nargv = [2]', /non-empty argv/],
+    ['description =', /not valid TOML/],
+    ['description = "Test command"\nargv = []', /non-empty argv/],
+    ['description = "Test command"\nargv = [2]', /non-empty argv/],
     [executable("", ""), /invalid cwd/],
     [executable("", f.projectRoot), /cwd must be relative/],
     [executable("", "../outside"), /must not escape/],
@@ -146,18 +145,17 @@ test("command definitions and cwd containment are validated", async t => {
   }
 });
 
-test("invalid protocols, versions, globs, actions, overlap and UTF-8 fail explicitly", async t => {
+test("invalid protocols, globs, actions, overlap and UTF-8 fail explicitly", async t => {
   const f = await fixture(t);
   await memory(f.project, "guide.md", "ambiguous");
   for (const [text, expected] of [
-    ['version =', /not valid TOML/],
-    ['version = 2\n[[rule]]\nglob = "*.md"\naction = "memory"', /version = 1/],
-    ['version = 1\nrule = []', /one or more/],
+    ['description =', /not valid TOML/],
+    ['rule = []', /one or more/],
     ...["**/*.md", "../*.md", "a?.md", "[ab].md", "{a,b}.md", "", ".", "..", "a\\b"].map(glob => [
-      `version = 1\n[[rule]]\nglob = ${JSON.stringify(glob)}\naction = "memory"`, /unsupported direct-file glob/,
+      `[[rule]]\nglob = ${JSON.stringify(glob)}\naction = "memory"`, /unsupported direct-file glob/,
     ] as const),
-    ['version = 1\n[[rule]]\nglob = "*.md"\naction = "unknown"', /invalid action/],
-    ['version = 1\n[[rule]]\nglob = "*"\naction = "command"', /must select \*\.toml/],
+    ['[[rule]]\nglob = "*.md"\naction = "unknown"', /invalid action/],
+    ['[[rule]]\nglob = "*"\naction = "command"', /must select \*\.toml/],
     [memoryProtocol + '\n[[rule]]\nglob = "guide*"\naction = "memory"', /rules overlap on source "guide.md"/],
   ] as const) {
     await protocol(f.project, text);
