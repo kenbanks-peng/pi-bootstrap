@@ -1,4 +1,4 @@
 description = "Pi documentation reference"
-target = "system_prompt.docs"
+section = "system_prompt.docs"
 refer = "Pi documentation is at $link. Read it when you work on Pi."
 link = "links/pi-docs.md"

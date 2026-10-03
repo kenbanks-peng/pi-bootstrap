@@ -33,7 +33,7 @@ export async function actions(root: string, values: Record<string, Action>) {
   }
   for (const [index, [target, action]] of Object.entries(values).entries()) {
     await command(root, `request-${index}.toml`, stringify({
-      description: "Request action", target,
+      description: "Request action", section: target,
       ...(typeof action === "string" ? { replacement: action } : action),
     }));
   }

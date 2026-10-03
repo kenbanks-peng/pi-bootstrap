@@ -17,7 +17,7 @@ const commandTemplate = [
   '# For an expression, remove argv and cwd:',
   '# expression = \'ALL_TOOLS.map(t => t.name).join("\\n")\'',
   '# For request actions, remove argv and cwd. Description is not inserted.',
-  '# target = "system_prompt.tools"',
+  '# section = "system_prompt.tools"',
   '# replacement = "New tool instructions"',
   '# Or use refer and link instead of replacement:',
   '# refer = "Read $link"',

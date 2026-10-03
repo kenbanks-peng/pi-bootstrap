@@ -1,5 +1,5 @@
 description = "Available skill names:"
-section = "skills"
+section = "system_prompt.skills"
 expression = '''
 [
   ALL_SKILLS.map(s => s.name).join(", "),

@@ -27,8 +27,8 @@ class CommandExitError extends Error {
 
 export type BootstrapSessionEntry =
   | { type: "memory"; content: string }
-  | { type: "command"; description: string; section?: string; argv: [string, ...string[]]; output: string }
-  | { type: "command"; description: string; section?: string; expression: string; output: string; deferred?: true; sourceName?: string };
+  | { type: "command"; description: string; section?: string[]; argv: [string, ...string[]]; output: string }
+  | { type: "command"; description: string; section?: string[]; expression: string; output: string; deferred?: true; sourceName?: string };
 
 export const DEFAULT_PROTOCOL = `[[rule]]
 glob = "*.md"
@@ -49,12 +49,12 @@ export interface BootstrapProtocol {
   rule: BootstrapRule[];
 }
 
-type RequestSource = { description: string; target: string[]; action: Action };
+type RequestSource = { description: string; section: string[]; action: Action };
 
 type CommandSource =
   | RequestSource
-  | { description: string; section?: string; argv: [string, ...string[]]; cwd?: string }
-  | { description: string; section?: string; expression: string };
+  | { description: string; section?: string[]; argv: [string, ...string[]]; cwd?: string }
+  | { description: string; section?: string[]; expression: string };
 
 const protocolFilename = "protocol.toml";
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -113,10 +113,10 @@ export async function resolveProtocolActions(sourceRoot: string, scopeLabel: str
     for (const filename of filenames) {
       const path = join(sourceRoot, "commands", filename);
       const source = parseCommandSource(await readUtf8(path, `${scopeLabel} command source "${filename}"`), filename, scopeLabel);
-      if (!("target" in source)) continue;
-      const key = JSON.stringify(source.target);
+      if (!("action" in source)) continue;
+      const key = JSON.stringify(source.section);
       if (actions.has(key)) {
-        throw new Error(`${scopeLabel} conflicting actions for ${source.target.join(".")}: "${owners.get(key)}" and "${filename}".`);
+        throw new Error(`${scopeLabel} conflicting actions for ${source.section.join(".")}: "${owners.get(key)}" and "${filename}".`);
       }
       owners.set(key, filename);
       actions.set(key, source.action);
@@ -195,12 +195,13 @@ async function runCommandSource(sourcePath: string, projectRoot: string, scopeLa
   const sourceName = basename(sourcePath);
   try {
     const source = parseCommandSource(await readUtf8(sourcePath, `${scopeLabel} command source "${sourceName}"`), sourceName, scopeLabel);
-    if ("target" in source) return undefined;
+    if ("action" in source) return undefined;
     if ("expression" in source) {
       if (!expressionContext) throw new Error("Expression commands require a Pi session context.");
       // Skill metadata arrives with before_agent_start. Preserve the source now.
       const deferred = expressionContext.allSkills === undefined &&
-        (source.section === "skills" || source.expression.includes("ALL_SKILLS") || source.expression.includes("getSkills"));
+        ((source.section?.[0]?.replaceAll("_", "-") === "system-prompt" && source.section[1] === "skills") ||
+          source.expression.includes("ALL_SKILLS") || source.expression.includes("getSkills"));
       return { type: "command", description: source.description, ...(source.section === undefined ? {} : { section: source.section }), expression: source.expression,
         output: deferred ? "" : await evaluateExpression(source.expression, expressionContext, sourceName, COMMAND_TIMEOUT_MS, COMMAND_OUTPUT_LIMIT_BYTES),
         ...(deferred ? { deferred: true as const, sourceName } : {}) };
@@ -235,36 +236,36 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (actions.length !== 1) {
     throw new Error(`${label} must contain exactly one of argv, expression, replacement, or refer.`);
   }
+  if ("target" in value) throw new Error(`${label} target is not supported; use section.`);
+  const path = typeof value.section === "string" ? value.section.split(".") : value.section;
+  if (value.section !== undefined && (!Array.isArray(path) || !path.length ||
+    !path.every(part => typeof part === "string" && /^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(part)))) {
+    throw new Error(`${label} section must be a tag path or a non-empty array of tag names.`);
+  }
+  const section = path as string[] | undefined;
   if ("replacement" in value || "refer" in value) {
-    const target = typeof value.target === "string" ? value.target.split(".") : value.target;
-    if (!Array.isArray(target) || !target.length ||
-      !target.every(part => typeof part === "string" && /^[A-Za-z_][A-Za-z0-9_.:-]*$/.test(part))) {
-      throw new Error(`${label} target must be a tag path or a non-empty array of tag names.`);
-    }
-    const allowed = new Set(["description", "target", actions[0], ...(actions[0] === "refer" ? ["link"] : [])]);
+    if (!section) throw new Error(`${label} section is required for replacement or refer.`);
+    const allowed = new Set(["description", "section", actions[0], ...(actions[0] === "refer" ? ["link"] : [])]);
     for (const key of Object.keys(value)) {
       if (!allowed.has(key)) throw new Error(`${label} does not support "${key}" with ${actions[0]}.`);
     }
     if ("replacement" in value) {
       if (typeof value.replacement !== "string") throw new Error(`${label} replacement must be a string.`);
-      return { description: value.description, target, action: value.replacement };
+      return { description: value.description, section, action: value.replacement };
     }
     if (typeof value.refer !== "string" || typeof value.link !== "string" || !value.link.trim()) {
       throw new Error(`${label} refer requires a string and a non-empty link.`);
     }
-    return { description: value.description, target, action: { refer: value.refer, link: value.link } };
+    return { description: value.description, section, action: { refer: value.refer, link: value.link } };
   }
-  if ("target" in value || "link" in value) throw new Error(`${label} target and link require replacement or refer.`);
-  if (value.section !== undefined && (typeof value.section !== "string" || !/^[a-z][a-z0-9_-]*$/.test(value.section) || value.section === "bootstrap")) {
-    throw new Error(`${label} section must be a lowercase section name other than bootstrap.`);
-  }
-  const section = value.section === undefined ? {} : { section: value.section as string };
+  if ("link" in value) throw new Error(`${label} link requires refer.`);
+  const destination = section === undefined ? {} : { section };
   if ("expression" in value) {
     if (typeof value.expression !== "string" || value.expression.trim().length === 0) {
       throw new Error(`${label} expression must be a non-empty string.`);
     }
     if ("cwd" in value) throw new Error(`${label} cwd is only supported with argv.`);
-    return { description: value.description, ...section, expression: value.expression };
+    return { description: value.description, ...destination, expression: value.expression };
   }
   if (!Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
     throw new Error(`${label} must contain a non-empty argv string array.`);
@@ -272,7 +273,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (value.cwd !== undefined && (typeof value.cwd !== "string" || value.cwd.length === 0)) {
     throw new Error(`${scopeLabel} command source "${sourceName}" has an invalid cwd.`);
   }
-  return { description: value.description, ...section, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
+  return { description: value.description, ...destination, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
 }
 
 async function commandCwd(cwd: string | undefined, projectRoot: string, sourceName: string, scopeLabel: string): Promise<string> {

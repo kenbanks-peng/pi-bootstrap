@@ -24,17 +24,28 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
     if (Object.keys(sections).length && event.messages[0]?.role !== "system") {
       throw new Error("Section injection requires a leading system message");
     }
-    const prepared = transformSkills(event.messages).map((message, index) => {
-      if (message.role !== "system" || !Object.keys(sections).length) return message;
-      const patches = Object.fromEntries(Object.keys(sections)
-        .filter(name => index === 0 || name in (message.sections ?? {}))
-        .map(name => [name, sections[name]]));
-      return { ...message, sections: { ...message.sections, ...patches } };
-    });
+    const patches: Record<string, string> = {};
+    const generated = new Map<string, string>();
+    for (const [key, body] of Object.entries(sections)) {
+      const path = JSON.parse(key) as string[];
+      const name = path[1];
+      if (path.length === 2 && path[0].replaceAll("_", "-") === "system-prompt" &&
+        !["preamble", "postamble", "bootstrap"].includes(name)) {
+        patches[name] = `<${name}>\n${body}\n</${name}>`;
+      } else generated.set(key, body);
+    }
+    const prepared = replaceMessages(transformSkills(event.messages).map((message, index) => {
+      if (message.role !== "system" || !Object.keys(patches).length) return message;
+      const current = Object.fromEntries(Object.entries(patches)
+        .filter(([name]) => index === 0 || name in (message.sections ?? {})));
+      return { ...message, sections: { ...message.sections, ...current } };
+    }), generated);
+
     const messages = replaceMessages(prepared, replacements, saveReference);
     // Bootstrap has no independent system preamble/postamble. Explicit bootstrap
     // paths still work, but broad prompt-edge rules cannot eat this snapshot.
-    const bootstraps = replaceTags(snapshot(), replacements, ["system-prompt"], [], saveReference);
+    const generatedBootstrap = replaceTags(snapshot(), generated, ["system-prompt"], []);
+    const bootstraps = replaceTags(generatedBootstrap, replacements, ["system-prompt"], [], saveReference);
     for (const [target, text] of references) {
       await mkdir(dirname(target), { recursive: true });
       await writeFile(target, text, "utf8");

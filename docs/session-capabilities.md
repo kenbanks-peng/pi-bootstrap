@@ -100,7 +100,7 @@ The extension supplies these read-only values:
 
 Tool values are snapshots taken when this extension's `session_start` handler runs.
 Skill values come from Pi's first `before_agent_start` event. Expressions with
-`section = "skills"`, or containing `ALL_SKILLS` or `getSkills`, are saved at
+`section = "system_prompt.skills"`, or containing `ALL_SKILLS` or `getSkills`, are saved at
 session start and evaluated once at that event. They do not rerun on later requests.
 Tools registered later are included after the next session start or reload.
 Registered metadata can include inactive or hidden tools; this `ALL_TOOLS` alias
@@ -123,9 +123,12 @@ reports the source filename and error. Neither execution method runs per request
 
 ### Prompt sections
 
-A command can set `section = "skills"` (or another lowercase section name).
-Names must match `[a-z][a-z0-9_-]*`; `bootstrap` is reserved. Omit `section` to
-use the normal bootstrap output. Both execution methods support this field.
+All commands use a `section` tag path, for example
+`section = "system_prompt.skills"`. Arrays preserve literal dots in tag names.
+Omit `section` on executable commands to use normal bootstrap output.
+Direct system paths create or replace named sections. Nested, unprefixed, and
+edge paths transform matching existing request text without creating missing
+ancestry. Both execution methods support this field.
 Commands for the same section are joined in source order, with blank lines.
 Their escaped description and output replace that request-copy section, including
 historical section patches, before replacement/reference rules run. They are not
@@ -137,8 +140,8 @@ skill-list text. The `skill_search` tool stays registered.
 
 Replacement and reference files use the same protocol selection and management
 commands. They do not contribute descriptions or output to the session snapshot.
-They require a `target` path and either `replacement`, or `refer` with `link`.
-They cannot contain `argv`, `expression`, `section`, or `cwd`.
+They require a `section` path and either `replacement`, or `refer` with `link`.
+They cannot contain `argv`, `expression`, or `cwd`.
 
 The request handler reads selected command definitions again without executing
 commands or expressions. Project actions override global actions with the same
@@ -209,8 +212,8 @@ deltas receive bootstrap at the end of the assembled prompt. Empty snapshots
 leave the original section and content layout unchanged.
 
 Broad system preamble/postamble replacements and references process the original
-prompt, not bootstrap. Explicit `target = "system_prompt.bootstrap"` or
-`target = "bootstrap"` actions can replace/reference the request copy. Tag matching and escaping remain unchanged. Request actions refresh on each
+prompt, not bootstrap. Explicit `section = "system_prompt.bootstrap"` or
+`section = "bootstrap"` actions can replace/reference the request copy. Tag matching and escaping remain unchanged. Request actions refresh on each
 request; session output remains fixed until a new snapshot.
 The original snapshot and conversation history remain immutable. A nonempty
 snapshot requires Pi's leading system message; malformed transcripts are
@@ -235,7 +238,7 @@ the next request.
 
 ## Verification and boundaries
 
-Validated with `npm test` (**98 passed, 0 failed**), `npm run typecheck`, and
+Validated with `npm test` (**101 passed, 0 failed**), `npm run typecheck`, and
 `git diff --check`. API evidence: Pi 1.0.0 extension event declarations,
 `core/messages.js`, pi-ai `utils/text.js`, `utils/transcript.js`, and
 `api/openai-responses-shared.js`; cross-checked against Context7

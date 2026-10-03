@@ -162,7 +162,7 @@ test("lazy skill sections compose with request replacements and bootstrap, inclu
   for (const snapshot of ["", '<bootstrap>Memory</bootstrap>']) {
     const h = harness();
     const options = h.start([skill("alpha", "Long description")]);
-    registerBootstrap(h.pi as never, () => f.repository, () => snapshot, h.transform, () => ({ skills: "<skills>Available skill names: alpha</skills>" }));
+    registerBootstrap(h.pi as never, () => f.repository, () => snapshot, h.transform, () => ({ [JSON.stringify(["system_prompt", "skills"])]: "Available skill names: alpha" }));
     const messages = [
       { role: "system", content: "", sections: { rules: "<rules>Old rules</rules>", skills: "<skills>Long description /skills/alpha/SKILL.md</skills>" }, toolsAdded: [{ name: "read" }] },
       { role: "system", content: "", sections: { skills: "<skills>\n" + (options.sections as Record<string, string>).skills + "\n</skills>" } },

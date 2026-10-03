@@ -158,15 +158,16 @@ export function formatSnapshot(entries: BootstrapSessionEntry[]): BootstrapSnaps
   for (const entry of entries) {
     if (entry.type === "command" && "deferred" in entry && entry.deferred) continue;
     if (entry.type === "command" && entry.section !== undefined) {
-      const items = groups.get(entry.section) ?? [];
+      const key = JSON.stringify(entry.section);
+      const items = groups.get(key) ?? [];
       items.push(formatSessionEntry(entry));
-      groups.set(entry.section, items);
+      groups.set(key, items);
     } else ordinary.push(entry);
   }
   return {
     entries,
     bootstrap: ordinary.length ? `<bootstrap>\n${ordinary.map(formatSessionEntry).join("\n\n")}\n</bootstrap>` : "",
-    sections: Object.fromEntries([...groups].map(([name, items]) => [name, `<${name}>\n${items.join("\n\n")}\n</${name}>`])),
+    sections: Object.fromEntries([...groups].map(([path, items]) => [path, items.join("\n\n")])),
   };
 }
 

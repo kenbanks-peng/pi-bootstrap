@@ -17,10 +17,10 @@ test("command replacement actions are request-local and refresh without a sessio
   const f = await fixture(t);
   const run = hook(f.repository, f.projectRoot);
   const event = { messages: [{ role: "system", content: "<tools>Original</tools><rules>Rules</rules>" }] };
-  await command(f.global, "tools.toml", 'description = "Tools"\ntarget = "system_prompt.tools"\nreplacement = "New"');
+  await command(f.global, "tools.toml", 'description = "Tools"\nsection = "system_prompt.tools"\nreplacement = "New"');
   assert.equal(await f.repository.compose(), "");
   assert.equal((await run(event)).messages[0].content, "<tools>\nNew\n</tools><rules>Rules</rules>");
-  await command(f.global, "tools.toml", 'description = "Tools"\ntarget = "system_prompt.tools"\nreplacement = ""');
+  await command(f.global, "tools.toml", 'description = "Tools"\nsection = "system_prompt.tools"\nreplacement = ""');
   assert.equal((await run(event)).messages[0].content, "<rules>Rules</rules>");
   await rm(join(f.global, "commands", "tools.toml"));
   assert.deepEqual((await run(event)).messages, event.messages);
@@ -75,7 +75,7 @@ test("project targets override global targets; duplicates within one scope fail 
   await actions(f.project, {});
   assert.equal((await run(event)).messages[0].content, "<docs>\nGlobal global.md\n</docs>");
   await rm(join(f.global, "global.md"));
-  await command(f.global, "duplicate.toml", 'description = "Duplicate"\ntarget = ["system_prompt", "docs"]\nreplacement = "Other"');
+  await command(f.global, "duplicate.toml", 'description = "Duplicate"\nsection = ["system_prompt", "docs"]\nreplacement = "Other"');
   await assert.rejects(run(event), /Global conflicting actions.*request-0.toml.*duplicate.toml|Global conflicting actions.*duplicate.toml.*request-0.toml/);
   await assert.rejects(readFile(join(f.global, "global.md")), { code: "ENOENT" });
 });
@@ -84,13 +84,13 @@ test("request action validation rejects mixed actions, invalid fields and malfor
   const f = await fixture(t);
   const run = hook(f.repository, f.projectRoot);
   for (const body of [
-    'target = "docs"\nreplacement = "Text"',
-    'description = ""\ntarget = "docs"\nreplacement = "Text"',
-    'description = "Line\\nbreak"\ntarget = "docs"\nreplacement = "Text"',
-    'description = "Action"\ntarget = "docs"',
+    'section = "docs"\nreplacement = "Text"',
+    'description = ""\nsection = "docs"\nreplacement = "Text"',
+    'description = "Line\\nbreak"\nsection = "docs"\nreplacement = "Text"',
+    'description = "Action"\nsection = "docs"',
     'description = "Action"\nreplacement = "Text"',
     ...['""', '"one..two"', '".one"', '"one."', '"one two"', '42', '[]', '["one", 2]'].map(target =>
-      'description = "Action"\ntarget = ' + target + '\nreplacement = "Text"'),
+      'description = "Action"\nsection = ' + target + '\nreplacement = "Text"'),
     ...[
       'replacement = 42',
       'refer = "Read"',
@@ -105,8 +105,8 @@ test("request action validation rejects mixed actions, invalid fields and malfor
       'replacement = "Text"\ncwd = "."',
       'replacement = "Text"\nlink = "docs.md"',
       'replacement = "Text"\nunknown = "typo"',
-      'argv = ["echo"]',
-    ].map(fields => 'description = "Action"\ntarget = "docs"\n' + fields),
+      'replacement = "Text"\ntarget = "docs"',
+    ].map(fields => 'description = "Action"\nsection = "docs"\n' + fields),
     '[invalid',
   ]) {
     await command(f.global, "bad.toml", body);
@@ -117,7 +117,7 @@ test("request action validation rejects mixed actions, invalid fields and malfor
 test("target arrays preserve literal dots and parent actions win over child actions", async t => {
   const f = await fixture(t);
   const run = hook(f.repository, f.projectRoot);
-  await command(f.global, "literal.toml", 'description = "Literal"\ntarget = ["one.two"]\nreplacement = "Literal"');
+  await command(f.global, "literal.toml", 'description = "Literal"\nsection = ["one.two"]\nreplacement = "Literal"');
   await actions(f.global, { "one.two": "Child", one: "Parent" });
   const result = await run({ messages: [{ role: "user", content: "<one.two>Old</one.two><one><two>Old</two></one>" }] });
   assert.equal(result.messages[0].content, "<one.two>\nLiteral\n</one.two><one>\nParent\n</one>");
@@ -166,8 +166,8 @@ test("/bootstrap manages action files and changes take effect on the next reques
   const f = await fixture(t);
   const run = hook(f.repository, f.projectRoot);
   const values = [
-    'description = "Replace docs"\ntarget = "docs"\nreplacement = "First"',
-    'description = "Reference docs"\ntarget = "docs"\nrefer = "Read $link"\nlink = "docs.md"',
+    'description = "Replace docs"\nsection = "docs"\nreplacement = "First"',
+    'description = "Reference docs"\nsection = "docs"\nrefer = "Read $link"\nlink = "docs.md"',
   ];
   const notices: string[] = [];
   const ui = {

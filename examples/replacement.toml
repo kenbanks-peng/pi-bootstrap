@@ -1,5 +1,5 @@
 description = "Tool discovery instructions"
-target = "system_prompt.tools"
+section = "system_prompt.tools"
 replacement = '''
 Use tool discovery to find the required tools.
 Read each tool definition before use.

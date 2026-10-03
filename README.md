@@ -24,7 +24,7 @@ compose fresh content; empty/failed starts and shutdown clear it. Nothing is
 persisted into conversation history, and executable commands do not rerun per request.
 
 Request replacements/references run before injection. Explicit
-`target = "system_prompt.bootstrap"` (or `target = "bootstrap"`) actions can transform
+`section = "system_prompt.bootstrap"` (or `section = "bootstrap"`) actions can transform
 the request copy; broad system preamble/postamble rules cannot remove bootstrap.
 Memory and executable command edits affect the next session snapshot.
 Replacement and reference edits affect the next request.
@@ -80,17 +80,20 @@ Run `/reload` after installing this change.
 
 ## Command-defined prompt sections
 
-Set `section = "skills"` in a command file to replace the system prompt's
+Set `section = "system_prompt.skills"` in a command file to replace the system prompt's
 `<skills>` section instead of adding the item to `<bootstrap>`.
-Both `argv` and `expression` commands support sections. Section names must
-start with a lowercase letter and contain only lowercase letters, digits,
-underscores, or hyphens. `bootstrap` is reserved; omit `section` to use it.
+Both `argv` and `expression` commands use the same `section` path format as
+replacement and reference actions. Omit `section` to add output to bootstrap.
+A direct path such as `system_prompt.skills` creates or replaces that system
+section. Nested paths and unprefixed paths transform matching existing tags;
+they do not create missing tag ancestry. Edge paths select preamble or postamble
+text. Arrays preserve literal dots in tag names.
 
 Commands for the same section are joined with blank lines in source order,
 global before project. The description and output are XML-escaped. Section
 commands replace existing and historical request-copy sections, without changing
 stored history. Replacement and reference actions such as
-`target = "system_prompt.skills"` run after section injection.
+`section = "system_prompt.skills"` run after section injection.
 
 ## Lazy skill discovery
 
@@ -100,7 +103,7 @@ in the global or project configuration directory:
 
 ```toml
 description = "Available skill names:"
-section = "skills"
+section = "system_prompt.skills"
 expression = '''
 [
   ALL_SKILLS.map(s => s.name).join(", "),
@@ -143,7 +146,7 @@ instructions, and there is no separate skill-loading tool.
   so an old full catalog does not remain in the outgoing transcript. Stored
   history, tool declarations, and skill resource files stay unchanged.
 - Skill transformations run before the configured request replacements.
-  An action with `target = "system_prompt.skills"` therefore receives the command output.
+  An action with `section = "system_prompt.skills"` therefore receives the command output.
 
 This reduces prompt size. It does not remove Pi's startup skill scan or skill
 instructions already read into conversation history.
@@ -163,8 +166,8 @@ Each file requires a non-empty, single-line `description` and exactly one of:
 | `replacement` | Replace selected request text | Every request |
 | `refer` | Save selected text and insert a reference | Every matching request |
 
-Replacement and reference actions also require `target`. They do not accept
-`section`, `cwd`, or execution fields. Their descriptions are management labels,
+Replacement and reference actions also require `section`. They do not accept
+`cwd` or execution fields. Their descriptions are management labels,
 not inserted prompt text. Unknown fields in these actions are errors.
 
 ### Replace text
@@ -173,7 +176,7 @@ For example, `commands/tools.toml`:
 
 ```toml
 description = "Tool discovery instructions"
-target = "system_prompt.tools"
+section = "system_prompt.tools"
 replacement = """
 Use tool discovery to find the required tools.
 Read each tool definition before use.
@@ -189,7 +192,7 @@ Use an empty replacement to **remove the complete selected tag**:
 
 ```toml
 description = "Remove the rules section"
-target = "system_prompt.rules"
+section = "system_prompt.rules"
 replacement = ""
 ```
 
@@ -202,7 +205,7 @@ For example, `commands/docs.toml`:
 
 ```toml
 description = "Pi documentation reference"
-target = "system_prompt.docs"
+section = "system_prompt.docs"
 refer = "Pi documentation is at $link. Read it when you work on Pi."
 link = "links/pi-docs.md"
 ```
@@ -225,16 +228,16 @@ exact configured link string. See the [reference example](examples/reference.tom
 
 ### Targets and precedence
 
-`target` is a dot-separated path of complete, case-sensitive tag ancestry:
+`section` is a dot-separated path of complete, case-sensitive tag ancestry:
 
 ```toml
 description = "Nested replacement"
-target = "one.two"
+section = "one.two"
 replacement = "New content"
 ```
 
 This changes `<one><two>Old</two></one>`, but not a root `<two>`.
-Use an array for literal dots in a tag name: `target = ["one.two"]`.
+Use an array for literal dots in a tag name: `section = ["one.two"]`.
 
 - `system_prompt` selects Pi's implicit system-prompt container, without
   adding an outer tag. For example, `system_prompt.one.two` selects a nested
@@ -248,8 +251,8 @@ Use an array for literal dots in a tag name: `target = ["one.two"]`.
 - Parent actions take precedence over child actions. System-specific actions
   take precedence over unprefixed actions. Exact-name paths take precedence
   over underscore fallbacks.
-- `target = "abc.preamble"` selects text before the first child tag.
-  `target = "abc.postamble"` selects text after the last child tag.
+- `section = "abc.preamble"` selects text before the first child tag.
+  `section = "abc.postamble"` selects text after the last child tag.
   These suffixes are reserved at any depth. With no child tags, either suffix
   selects the complete body. Empty edge regions accept inserted text.
   An empty replacement removes only the selected edge region.
@@ -280,14 +283,16 @@ require a new session snapshot, such as `/reload`.
 there are no default replacement actions. To migrate:
 
 1. Create one command file for each active table in the old `config.toml`.
-2. Add a description and move the table path to `target`.
+2. Add a description and move the table path to `section`.
 3. Copy its `replacement`, or its `refer` and `link` fields.
 4. Skip empty tables. Check that the protocol selects the new files.
 5. Remove unnecessary section commands that the replacements would overwrite.
 6. Reload the updated extension. Then remove or archive the old config.
 
 Relative link destinations remain unchanged for global actions. The extension
-does not migrate user files automatically.
+does not migrate user files automatically. The `target` field is not supported;
+use `section` for every command destination, including executable commands.
+For example, change `section = "skills"` to `section = "system_prompt.skills"`.
 
 ## Load
 

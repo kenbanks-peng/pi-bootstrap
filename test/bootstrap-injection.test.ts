@@ -46,7 +46,7 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   const f = await fixture(t);
   const marker = join(f.root, "executions");
   await memory(f.project, "guidance.md", "Only system <guidance>");
-  await command(f.project, "skills.toml", "description = \"Skills:\"\nsection = \"skills\"\nexpression = 'ALL_SKILLS.map(s => s.name).join(\", \")'");
+  await command(f.project, "skills.toml", "description = \"Skills:\"\nsection = \"system_prompt.skills\"\nexpression = 'ALL_SKILLS.map(s => s.name).join(\", \")'");
   await command(f.project, "tools.toml", 'description = "Test command"\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
   await command(f.project, "once.toml", executable(`require('node:fs').appendFileSync(${JSON.stringify(marker)}, 'x'); process.stdout.write('Snapshot output')`));
   const h = harness(() => f.repository);
