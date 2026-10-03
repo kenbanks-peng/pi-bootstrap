@@ -1,63 +1,69 @@
 # pi-bootstrap
 
-Replace tagged bodies in Pi's outgoing request with TOML values. No model calls are made.
+Replace tagged text in Pi requests with values from `config.toml`.
 
-## Request hierarchy
+## Configuration
 
-[docs/pi-baseline.md](docs/pi-baseline.md) is the reference layout:
-
-```xml
-<request>
-  <system-prompt>
-    <tools>Tools guidance</tools>
-    <docs>Documentation</docs>
-  </system-prompt>
-  <tools>Provider tool declarations</tools>
-  <messages>
-    <message role="user">User text</message>
-  </messages>
-</request>
-```
-
-Configuration starts at the children of `request`. Thus, docs use:
+On the first request, the extension copies [default.toml](default.toml) to
+`~/.pi/agent/extensions/pi-bootstrap/config.toml` if that file is missing.
+Existing config files stay unchanged. Edit `config.toml` to set replacements.
+If `PI_CODING_AGENT_DIR` is set, use that directory instead of `~/.pi/agent`.
 
 ```toml
-[system-prompt.docs]
-replacement = "Use the installed Pi documentation."
+[one]
+replacement = "New content"
 ```
 
-Use `[system-prompt.tools]` for tools guidance. The peer `[tools]` contains structured declarations, not guidance. Text replacements there are rejected; tool names, schemas, and execution remain unchanged.
+Changes `<one>Old content</one>` to `<one>New content</one>`.
 
-Pi supplies system text without the capture's outer `system-prompt` tag. The adapter restores that ancestry for matching. It also supplies `messages.message` for conversation text. These containers are never inserted into outgoing text.
+For a nested tag:
 
-Within each container, paths are generic. For system text `<one><two>Old</two></one>`, use `[system-prompt.one.two]`. For the same tags in a conversation message, use `[messages.message.one.two]`. There is no fixed list of child tags or nesting depths.
+```toml
+[one.two]
+replacement = "New content"
+```
 
-## Use
+Changes `<one><two>Old content</two></one>` to
+`<one><two>New content</two></one>`.
 
-Add the absolute path to `index.ts` to the `extensions` array in your Pi settings. Run `/reload`, or start a new session.
+For tools guidance in the system prompt:
 
-On the next model request, the extension creates `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. [default.toml](default.toml) contains comments only. Discovery adds empty tables for actual tag paths, with their request containers. Existing config files are not overwritten.
+```toml
+[system_prompt.tools]
+replacement = "TOOLS REPLACEMENT TEXT"
+```
 
-Add a nonempty string `replacement` to a discovered table. Save changes between requests. Run `/bootstrap` to inspect errors, missing replacements, untagged text, and text sizes.
+Pi stores system text without an outer tag. The extension supplies `system-prompt`
+as its parent for matching, without adding it to the outgoing text.
+`system_prompt` selects this parent through the generic underscore fallback.
+The same rule applies to arbitrary nested tags: `[system_prompt.one.two]`.
+Tool declarations stay unchanged.
 
-## Rules
+- Paths match complete, case-sensitive tag ancestry.
+  Each segment uses its exact name first. If that name is absent under the selected
+  parent, `_` is changed to `-` as a fallback. For example, `[abc_def.ghi_jkl]`
+  can select `<abc-def><ghi-jkl>…</ghi-jkl></abc-def>`.
+  If both names exist, only the exact name is selected.
+  System-specific paths take precedence over unprefixed paths such as `[one.two]`.
+- Replacement strings are inserted exactly. An empty string removes the body.
+- Tags, attributes, and text outside the selected body stay unchanged.
+- Repeated matches are replaced. If both parent and child have replacements, the parent wins.
+- Tags inside Markdown code fences are ignored. Self-closing tags have no body.
+- All message text is processed, including system sections and text blocks.
+  Other data and stored history stay unchanged.
+- The config is read for each request. A missing config is created from `default.toml`.
+  Invalid config causes a handler error; no partial result is returned.
+  Unmatched tag-like text, such as `Map<string>`, stays unchanged.
 
-- Match the complete path, including the request container. Names are case-sensitive. `system-prompt` and `system_prompt` are different names.
-- Scan every message role, string content, text blocks, and string section values. Section storage keys do not add another path segment.
-- Preserve tags, attributes, surrounding text, images, tool declarations, and stored history.
-- Apply repeated matches. Reject active parent/child replacements that overlap.
-- Keep untagged text unchanged. Ignore tags inside Markdown code fences.
-- Malformed tags or invalid configuration stop all replacements for the request.
-- Select tagged bodies inside transport containers; replacing an entire transport container with prose is not supported.
+## Load
 
-## Existing configurations
-
-For this baseline, change `[docs]` or `[system_prompt.docs]` to `[system-prompt.docs]`. Change a guidance replacement under `[tools]` to `[system-prompt.tools]`.
-
-There is no automatic conversion. Use the hierarchy in [docs/pi-baseline.md](docs/pi-baseline.md), not field names or capture metadata. The event remains `context_with_system`; no `event` setting is needed.
-
-See [docs/MECHANISMS.md](docs/MECHANISMS.md) for the full contract.
+Add the absolute path to `index.ts` to the `extensions` array in your Pi settings.
+Run `/reload`.
 
 ## Development
 
-Install dependencies with `npm install`. Run `npm test` and `npm run typecheck`. Pi supplies the extension API at runtime.
+```sh
+npm install
+npm test
+npm run typecheck
+```
