@@ -7,6 +7,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseReplacements, replaceMessages, replaceTags } from "./src/replace.ts";
 import { getBootstrapDirectory } from "./src/bootstrap-paths.ts";
 import { registerBootstrapSession } from "./src/bootstrap-session.ts";
+import { registerToolGuidance } from "./src/bootstrap-guidance.ts";
 import { registerLazySkills, type SkillPromptTransform } from "./src/bootstrap-skills.ts";
 
 export function getConfigPath(): string {
@@ -14,6 +15,7 @@ export function getConfigPath(): string {
 }
 
 export default function bootstrap(pi: ExtensionAPI) {
+  registerToolGuidance(pi);
   const snapshot = registerBootstrapSession(pi);
   const transformSkills = registerLazySkills(pi);
   registerBootstrap(pi, getConfigPath(), snapshot, transformSkills);

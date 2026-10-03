@@ -60,6 +60,24 @@ files. Run `/reload` after you change sources or the protocol.
 See [session configuration and capability parity](docs/session-capabilities.md)
 for protocol examples, execution limits, lifecycle, and migration decisions.
 
+## Tool guidance
+
+The agent can retrieve a configured tool's current `promptGuidelines` metadata:
+
+```js
+const result = await tools.getToolGuidance({ name: "read" });
+text(result);
+```
+
+This codemode call returns only guidance text, with guidelines separated by
+newlines. The tool is also directly available to the model. Names must match
+exactly; inactive tools are included. Missing metadata returns an empty string. Unknown names cause an error.
+Each call reads Pi's current registry, not the session snapshot. Tool descriptions,
+global prompt rules, and request-time guidance changes are not included.
+This lookup does not change or remove the system prompt's `<rules>` section.
+
+Run `/reload` after installing this change.
+
 ## Lazy skill discovery
 
 The system prompt keeps an alphabetical list of skill names, without their

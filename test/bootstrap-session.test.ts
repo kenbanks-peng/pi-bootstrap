@@ -57,7 +57,7 @@ test("full extension registers both existing transformation and session capabili
   h.commands.clear();
   bootstrap(h.pi as never);
   assert.deepEqual([...h.handlers.keys()], ["session_shutdown", "session_start", "before_agent_start", "context_with_system"]);
-  assert.deepEqual([...h.tools.keys()], ["skill_search"]);
+  assert.deepEqual([...h.tools.keys()], ["getToolGuidance", "skill_search"]);
   assert.deepEqual([...h.commands.keys()], ["bootstrap"]);
   assert.match(h.commands.get("bootstrap")!.description, /protocol.toml/);
   assert.deepEqual(h.messages, []);
