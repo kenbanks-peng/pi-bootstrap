@@ -1,6 +1,7 @@
 # pi-bootstrap
 
-Replace tagged text in Pi requests with values from `config.toml`.
+Replace tagged text in Pi requests, or save it to a file and insert a reference,
+with actions from `config.toml`.
 
 ## Configuration
 
@@ -81,6 +82,32 @@ Tool declarations stay unchanged.
 - The config is read for each request. A missing config is created from `default.toml`.
   Invalid config causes a handler error; no partial result is returned.
   Unmatched tag-like text, such as `Map<string>`, stays unchanged.
+
+## Save text and insert a reference
+
+Use `refer` and `link` instead of `replacement`:
+
+```toml
+[system_prompt.docs]
+refer = "Pi documentation can be found at $link. Read it only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI."
+link = "~/.pi/agents/extensions/pi-docs.md"
+```
+
+The extension saves the original `<docs>` body to the link file. It then replaces
+the body with the `refer` text. The outer tags stay unchanged. Each `$link` in
+the reference becomes the exact configured link string.
+
+- The saved text includes whitespace and child tags, but not the outer tags.
+- `~/` uses your home directory for file writes. Relative links use the config
+  directory. Absolute links use the specified path.
+- Missing directories are created. Existing files are overwritten on each matching
+  request. If multiple matches use the same file, the last match supplies its text.
+- No match means no file write. Parent actions take precedence over child actions.
+- References use the same path matching and edge selection rules as replacements.
+- `refer` requires a string `link` that is not empty or only whitespace.
+  Do not combine `refer` with `replacement` in the same table.
+- Config and file-write errors cause a handler error; no transformed result is returned.
+  Files already written before an error are not rolled back.
 
 ## Load
 

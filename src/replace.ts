@@ -4,27 +4,40 @@ type Table = Record<string, unknown>;
 const isTable = (value: unknown): value is Table =>
   value !== null && typeof value === "object" && !Array.isArray(value);
 
-export function parseReplacements(toml: string): Map<string, string> {
-  const replacements = new Map<string, string>();
+export interface ReferAction {
+  refer: string;
+  link: string;
+}
+
+type Action = string | ReferAction;
+export type SaveReference = (link: string, text: string) => void;
+
+export function parseReplacements(toml: string): Map<string, Action> {
+  const replacements = new Map<string, Action>();
   const visit = (table: Table, path: string[]) => {
-    for (const [name, value] of Object.entries(table)) {
-      if (isTable(value)) visit(value, [...path, name]);
-      else if (name === "replacement" && path.length && typeof value === "string")
-        replacements.set(JSON.stringify(path), value);
-      else throw new Error([...path, name].join(".") + ": expected a replacement string or table");
+    const fields = Object.entries(table).filter(([, value]) => !isTable(value));
+    if (fields.length) {
+      if (path.length && fields.length === 1 && typeof table.replacement === "string")
+        replacements.set(JSON.stringify(path), table.replacement);
+      else if (path.length && fields.length === 2 && typeof table.refer === "string" &&
+        typeof table.link === "string" && table.link.trim())
+        replacements.set(JSON.stringify(path), { refer: table.refer, link: table.link });
+      else throw new Error(path.join(".") + ": expected replacement, or refer with a non-empty link");
     }
+    for (const [name, value] of Object.entries(table))
+      if (isTable(value)) visit(value, [...path, name]);
   };
   visit(parse(toml), []);
   return replacements;
 }
 
-function resolvePaths(replacements: Map<string, string>, paths: string[][]): Map<string, string> {
+function resolvePaths(replacements: ReadonlyMap<string, Action>, paths: string[][]): Map<string, Action> {
   const available = new Set<string>();
   for (const path of paths)
     for (let length = 1; length <= path.length; length++)
       available.add(JSON.stringify(path.slice(0, length)));
 
-  const resolved = new Map<string, string>();
+  const resolved = new Map<string, Action>();
   const priorities = new Map<string, number>();
   for (const [key, value] of replacements) {
     const path: string[] = [];
@@ -49,8 +62,9 @@ function resolvePaths(replacements: Map<string, string>, paths: string[][]): Map
   return resolved;
 }
 
-export function replaceTags(text: string, replacements: Map<string, string>, parent: string[] = [],
-  implicitEdges: readonly ("preamble" | "postamble")[] = ["preamble", "postamble"]): string {
+export function replaceTags(text: string, replacements: ReadonlyMap<string, Action>, parent: string[] = [],
+  implicitEdges: readonly ("preamble" | "postamble")[] = ["preamble", "postamble"],
+  saveReference?: SaveReference): string {
   if (!replacements.size) return text;
   const tokens: { name: string; closing: boolean; selfClosing: boolean; start: number; end: number }[] = [];
   const regions: { start: number; end: number; bodyStart: number; bodyEnd: number; path: string[];
@@ -134,7 +148,14 @@ export function replaceTags(text: string, replacements: Map<string, string>, par
     const value = (reserved ? undefined : scoped.get(JSON.stringify([...parent, ...edit.path]))) ??
       (edit.special && edit.path.length === 1 ? undefined : direct.get(JSON.stringify(edit.path)));
     if (value === undefined) continue;
-    result += text.slice(at, edit.bodyStart) + value + text.slice(edit.bodyEnd, edit.end);
+    let replacement: string;
+    if (typeof value === "string") replacement = value;
+    else {
+      if (!saveReference) throw new Error("refer action requires a reference writer");
+      saveReference(value.link, text.slice(edit.bodyStart, edit.bodyEnd));
+      replacement = value.refer.replaceAll("$link", () => value.link);
+    }
+    result += text.slice(at, edit.bodyStart) + replacement + text.slice(edit.bodyEnd, edit.end);
     at = edit.end;
   }
   return result + text.slice(at);
@@ -146,7 +167,8 @@ interface Message {
   sections?: Record<string, string | null>;
 }
 
-export function replaceMessages<T extends Message>(messages: T[], replacements: Map<string, string>): T[] {
+export function replaceMessages<T extends Message>(messages: T[], replacements: ReadonlyMap<string, Action>,
+  saveReference?: SaveReference): T[] {
   // Section messages can be patches. Find the final section's last writer,
   // rather than treating every patch or section as a complete system prompt.
   const sections = new Map<string, number>();
@@ -164,7 +186,7 @@ export function replaceMessages<T extends Message>(messages: T[], replacements: 
     // Pi stores the system prompt body without its outer container tag.
     const parent = message.role === "system" ? ["system-prompt"] : [];
     const replace = (text: string, edges: readonly ("preamble" | "postamble")[] =
-      message.sections ? [] : ["preamble", "postamble"]) => replaceTags(text, replacements, parent, edges);
+      message.sections ? [] : ["preamble", "postamble"]) => replaceTags(text, replacements, parent, edges, saveReference);
     if (typeof message.content === "string") next.content = replace(message.content);
     else if (Array.isArray(message.content)) {
       const textIndices = message.content.flatMap((item, at) =>

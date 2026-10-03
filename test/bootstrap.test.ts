@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
-import { tmpdir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -301,6 +301,91 @@ test("system_prompt paths select system text without changing tools or conversat
   assert.deepEqual(result[2].content, [{ type: "text", text: "<one><two>New nested text</two></one>" }]);
   assert.equal(result[3].content, messages[3].content);
   assert.deepEqual(messages, original);
+});
+
+test("refer validates its fields and rejects mixed actions", () => {
+  for (const fields of [
+    'refer = "Read $link"', 'link = "docs.md"', 'refer = 3\nlink = "docs.md"',
+    'refer = "Read"\nlink = ""', 'refer = "Read"\nlink = 3',
+    'refer = "Read"\nlink = "docs.md"\nreplacement = "New"',
+    'refer = "Read"\nlink = "docs.md"\nunknown = "x"',
+  ]) assert.throws(() => parseReplacements("[docs]\n" + fields));
+});
+
+test("refer captures exact original bodies and follows replacement precedence", () => {
+  const saved: [string, string][] = [];
+  const config = parseReplacements(
+    '[system_prompt.docs]\nrefer = "Read $link and $link"\nlink = "~/docs/$&.md"\n' +
+    '[system_prompt.docs.child]\nrefer = "Child"\nlink = "child.md"');
+  const messages = [{ role: "system", sections: { docs: '<docs id="a">\n<child>Original</child>\n</docs>' } }];
+  const before = structuredClone(messages);
+  const result = replaceMessages(messages, config, (link, text) => saved.push([link, text]));
+  assert.equal(result[0].sections.docs, '<docs id="a">Read ~/docs/$&.md and ~/docs/$&.md</docs>');
+  assert.deepEqual(saved, [["~/docs/$&.md", "\n<child>Original</child>\n"]]);
+  assert.deepEqual(messages, before);
+  assert.throws(() => replaceMessages(messages, config), /reference writer/);
+  assert.equal(replaceTags("<other>Text</other>", config), "<other>Text</other>");
+});
+
+test("refer supports repeated matches, body edges, and fenced examples", () => {
+  const saved: string[] = [];
+  const config = parseReplacements('[abc.preamble]\nrefer = "Read $link"\nlink = "start.md"');
+  assert.equal(replaceTags("<abc>Before<child>C</child>After</abc><abc>Again</abc>", config,
+    [], undefined, (_link, text) => saved.push(text)),
+    "<abc>Read start.md<child>C</child>After</abc><abc>Read start.md</abc>");
+  assert.deepEqual(saved, ["Before", "Again"]);
+  saved.length = 0;
+  const fenced = "\`\`\`\n<abc>Example</abc>\n\`\`\`";
+  assert.equal(replaceTags(fenced, config, [], undefined, (_link, text) => saved.push(text)), fenced);
+  assert.deepEqual(saved, []);
+});
+
+test("the hook saves refer files, refreshes them, and propagates write failures", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "pi-bootstrap-refer-"));
+  const path = join(dir, "config.toml");
+  let run!: (event: any) => Promise<any>;
+  registerBootstrap({
+    on: (_name: string, handler: typeof run) => { run = handler; },
+  } as unknown as ExtensionAPI, path);
+  try {
+    await writeFile(path, '[system_prompt.docs]\nrefer = "Read $link"\nlink = "nested/docs.md"');
+    for (const body of ["\nOriginal docs\n", "Updated docs", ""]) {
+      const event = { messages: [{ role: "system", sections: { docs: "<docs>" + body + "</docs>" } }] };
+      const result = await run(event);
+      assert.equal(result.messages[0].sections.docs, "<docs>Read nested/docs.md</docs>");
+      assert.equal(await readFile(join(dir, "nested/docs.md"), "utf8"), body);
+      assert.equal(event.messages[0].sections.docs, "<docs>" + body + "</docs>");
+    }
+    await run({ messages: [{ role: "system", content: "<docs>First</docs><docs>Last</docs>" }] });
+    assert.equal(await readFile(join(dir, "nested/docs.md"), "utf8"), "Last");
+    await rm(join(dir, "nested"), { recursive: true });
+    await run({ messages: [{ role: "user", content: "<docs>Not system docs</docs>" }] });
+    assert.deepEqual(await readdir(dir), ["config.toml"]);
+    await writeFile(path, '[docs]\nrefer = "Read $link"\nlink = ' + JSON.stringify(join(dir, "absolute.md")));
+    await run({ messages: [{ role: "user", content: [{ type: "text", text: "<docs>Absolute</docs>" }] }] });
+    assert.equal(await readFile(join(dir, "absolute.md"), "utf8"), "Absolute");
+    await writeFile(path, '[docs]\nrefer = "Read $link"\nlink = "absolute.md/child.md"');
+    await assert.rejects(run({ messages: [{ role: "system", content: "<docs>Fail</docs>" }] }));
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("the hook expands home links only for file writes", async () => {
+  const dir = await mkdtemp(join(homedir(), ".pi-bootstrap-test-"));
+  let run!: (event: any) => Promise<any>;
+  registerBootstrap({
+    on: (_name: string, handler: typeof run) => { run = handler; },
+  } as unknown as ExtensionAPI, join(dir, "config.toml"));
+  const link = "~/" + dir.slice(homedir().length + 1) + "/docs.md";
+  try {
+    await writeFile(join(dir, "config.toml"), '[docs]\nrefer = "Read $link"\nlink = ' + JSON.stringify(link));
+    const result = await run({ messages: [{ role: "system", content: "<docs>Home docs</docs>" }] });
+    assert.equal(result.messages[0].content, "<docs>Read " + link + "</docs>");
+    assert.equal(await readFile(join(dir, "docs.md"), "utf8"), "Home docs");
+  } finally {
+    await rm(dir, { recursive: true, force: true });
+  }
 });
 
 test("the hook creates a default config, preserves edits, and registers no UI", async () => {

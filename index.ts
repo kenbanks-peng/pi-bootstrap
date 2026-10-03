@@ -1,7 +1,7 @@
 import { constants } from "node:fs";
-import { copyFile, mkdir, readFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, writeFile } from "node:fs/promises";
 import { homedir } from "node:os";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseReplacements, replaceMessages } from "./src/replace.ts";
@@ -30,6 +30,16 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
       }
       config = await readFile(path, "utf8");
     }
-    return { messages: replaceMessages(event.messages, parseReplacements(config)) };
+    const references = new Map<string, string>();
+    const messages = replaceMessages(event.messages, parseReplacements(config), (link, text) => {
+      const target = link === "~" ? homedir() : link.startsWith("~/")
+        ? join(homedir(), link.slice(2)) : resolve(dirname(path), link);
+      references.set(target, text);
+    });
+    for (const [target, text] of references) {
+      await mkdir(dirname(target), { recursive: true });
+      await writeFile(target, text, "utf8");
+    }
+    return { messages };
   });
 }
