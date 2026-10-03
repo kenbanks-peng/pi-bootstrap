@@ -15,8 +15,8 @@ Global configuration lives under `~/.config/pi/agent/extensions/pi-bootstrap/`
 
 Project sources use `.agents/bootstrap/` with the same session layout. Global
 sources precede project sources; a project `protocol.toml` overrides the global
-policy for that project. Session sources are snapshotted on `session_start`, not
-on every request. Commands execute with your permissions: review them before use.
+policy for that project. Session sources are saved on `session_start`, not
+on every request. Skill expressions run once before the first agent run, when Pi supplies skill metadata. Commands execute with your permissions: review them before use.
 
 Each outgoing system prompt receives `<bootstrap>…</bootstrap>`
 at the end of its system-prompt body, after all current prompt sections—not a
@@ -78,10 +78,50 @@ This lookup does not change or remove the system prompt's `<rules>` section.
 
 Run `/reload` after installing this change.
 
+## Command-defined prompt sections
+
+Set `section = "skills"` in a command file to replace the system prompt's
+`<skills>` section instead of adding the item to `<bootstrap>`.
+Both `argv` and `expression` commands support sections. Section names must
+start with a lowercase letter and contain only lowercase letters, digits,
+underscores, or hyphens. `bootstrap` is reserved; omit `section` to use it.
+
+Commands for the same section are joined with blank lines in source order,
+global before project. The description and output are XML-escaped. Section
+commands replace existing and historical request-copy sections, without changing
+stored history. Replacement and reference rules such as
+`[system_prompt.skills]` run after section injection.
+
 ## Lazy skill discovery
 
-The system prompt keeps an alphabetical list of skill names, without their
-descriptions or paths. Before specialized work, the model uses the directly
+The skill list and instructions now come from a command file, not extension code.
+Copy [examples/skills.toml](examples/skills.toml) to `commands/skills.toml`
+in the global or project configuration directory:
+
+```toml
+description = "Available skill names:"
+section = "skills"
+expression = '''
+[
+  ALL_SKILLS.map(s => s.name).join(", "),
+  "Before specialized work, use skill_search to get descriptions and paths.",
+  "Read the selected SKILL.md. Resolve supporting paths against baseDir."
+].join("\\n")
+'''
+```
+
+`ALL_SKILLS` and `pi.getSkills()` provide the same frozen metadata array:
+`name`, `description`, `filePath`, and `baseDir`, sorted by name.
+Duplicate names and disabled skills are excluded.
+
+Pi supplies this metadata before the first agent run. Expressions targeting
+`skills`, or containing `ALL_SKILLS` or `getSkills`, are saved at session start
+and evaluated once before that run. Tool metadata still comes from session start.
+Other commands run at session start. No commands rerun per request.
+Run `/reload` after changes.
+
+Without a section command, the extension removes Pi's full skill catalog and
+does not insert a skill list. Before specialized work, the model uses the directly
 available `skill_search` tool to find the relevant instructions:
 
 ```json
@@ -98,13 +138,12 @@ instructions, and there is no separate skill-loading tool.
   keywords. Search returns up to five results by default; `limit` accepts 1–20.
 - Skills with `disable-model-invocation: true` are absent from the name list and
   search. Explicit `/skill:name` commands continue to work.
-- Each agent run refreshes the catalog from Pi's current metadata. Session start
-  and shutdown clear it. Run `/reload` after skill changes.
-- Request copies of earlier system skill sections also receive the compact list,
+- Each agent run refreshes the search catalog from Pi's current metadata. The command output stays fixed for the session. Session start and shutdown clear both.
+- Request copies of earlier system skill sections receive the command output,
   so an old full catalog does not remain in the outgoing transcript. Stored
   history, tool declarations, and skill resource files stay unchanged.
 - Skill transformations run before the configured request replacements.
-  A replacement for `[system_prompt.skills]` therefore receives the compact list.
+  A replacement for `[system_prompt.skills]` therefore receives the command output.
 
 This reduces prompt size. It does not remove Pi's startup skill scan or skill
 instructions already read into conversation history.

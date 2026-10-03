@@ -1,0 +1,9 @@
+description = "Available skill names:"
+section = "skills"
+expression = '''
+[
+  ALL_SKILLS.map(s => s.name).join(", "),
+  "Before specialized work, use skill_search with a skill name or task keywords to get descriptions and paths.",
+  "Read the selected SKILL.md before you proceed. Resolve supporting file paths against the returned baseDir."
+].join("\n")
+'''

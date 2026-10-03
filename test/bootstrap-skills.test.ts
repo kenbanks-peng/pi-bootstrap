@@ -45,16 +45,14 @@ test("registration is direct, read-only, and does not read skill files", async (
   assert.deepEqual((await h.search("uninitialized")).details, { matches: [], total: 0 });
 });
 
-test("prompt keeps sorted names but no descriptions or paths; resource metadata stays unchanged", () => {
+test("prompt text is command-owned; resource metadata stays unchanged", () => {
   const h = harness();
   const skills = [skill("zebra", "Private zebra description"), skill("alpha", "Private alpha description"), skill("manual", "Manual only", true)];
   const before = structuredClone(skills);
   const options = h.start(skills);
   assert.deepEqual(options.skills, []);
   const prompt = (options.sections as Record<string, string>).skills;
-  assert.match(prompt, /Available skill names: alpha, zebra/);
-  assert.match(prompt, /skill_search/);
-  assert.match(prompt, /Read the selected SKILL.md/);
+  assert.equal(prompt, "");
   assert.doesNotMatch(prompt, /Private|\/skills\/|manual/);
   assert.equal(options.sections.policy, "Keep policy");
   assert.deepEqual(skills, before); // Pi can still resolve explicit /skill:name commands.
@@ -151,8 +149,8 @@ test("request transform removes historical full catalogs without changing messag
   assert.deepEqual(messages, before);
   const first = result[0];
   assert.ok(first.role === "system");
-  assert.match(first.sections!.skills!, /Available skill names: a&lt;&amp;&gt;, alpha/);
-  assert.doesNotMatch(first.sections!.skills!, /Full description|location|\/skills\//);
+  assert.equal(first.sections!.skills, null);
+  assert.equal(first.sections!.skills, null);
   assert.equal(first.sections!.rules, "Rules");
   assert.equal(first.toolsAdded, messages[0].toolsAdded);
   assert.equal(result[2], messages[2]);
@@ -167,7 +165,7 @@ test("lazy skill sections compose with request replacements and bootstrap, inclu
   for (const snapshot of ["", '<bootstrap>Memory</bootstrap>']) {
     const h = harness();
     const options = h.start([skill("alpha", "Long description")]);
-    registerBootstrap(h.pi as never, config, () => snapshot, h.transform);
+    registerBootstrap(h.pi as never, config, () => snapshot, h.transform, () => ({ skills: "<skills>Available skill names: alpha</skills>" }));
     const messages = [
       { role: "system", content: "", sections: { rules: "<rules>Old rules</rules>", skills: "<skills>Long description /skills/alpha/SKILL.md</skills>" }, toolsAdded: [{ name: "read" }] },
       { role: "system", content: "", sections: { skills: "<skills>\n" + (options.sections as Record<string, string>).skills + "\n</skills>" } },

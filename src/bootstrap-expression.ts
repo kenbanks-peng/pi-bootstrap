@@ -4,6 +4,7 @@ import { Worker } from "node:worker_threads";
 export interface BootstrapExpressionContext {
   allTools: readonly unknown[];
   activeTools: readonly string[];
+  allSkills?: readonly import("./bootstrap-skills.js").SkillMetadata[];
 }
 
 // Plain JavaScript lets the worker run without a TypeScript loader.
@@ -23,8 +24,10 @@ try {
     '}' +
     'freeze(snapshot);' +
     'const ALL_TOOLS = snapshot.allTools;' +
+    'const ALL_SKILLS = snapshot.allSkills || Object.freeze([]);' +
     'const pi = Object.freeze({' +
       'getAllTools: Object.freeze(() => ALL_TOOLS),' +
+      'getSkills: Object.freeze(() => ALL_SKILLS),' +
       'getActiveTools: Object.freeze(() => snapshot.activeTools),' +
     '});' +
     '(' + workerData.expression + '\\n)',

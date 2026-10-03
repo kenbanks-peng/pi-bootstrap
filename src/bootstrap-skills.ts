@@ -1,11 +1,19 @@
 import { Type } from "typebox";
 import type { ContextWithSystemEvent, ExtensionAPI, Skill } from "@earendil-works/pi-coding-agent";
 
-type SkillMetadata = Pick<Skill, "name" | "description" | "filePath" | "baseDir">;
+export type SkillMetadata = Pick<Skill, "name" | "description" | "filePath" | "baseDir">;
 export type SkillPromptTransform = (messages: ContextWithSystemEvent["messages"]) => ContextWithSystemEvent["messages"];
 
 const tokens = (text: string): string[] => text.toLowerCase().match(/[\p{L}\p{N}]+/gu) ?? [];
-const escapeXml = (text: string) => text.replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+export function skillCatalog(skills: readonly Skill[]): SkillMetadata[] {
+  const unique = new Map<string, SkillMetadata>();
+  for (const skill of skills) {
+    if (skill.disableModelInvocation || unique.has(skill.name)) continue;
+    const { name, description, filePath, baseDir } = skill;
+    unique.set(name, { name, description, filePath, baseDir });
+  }
+  return [...unique.values()].sort((a, b) => a.name.localeCompare(b.name));
+}
 
 function score(skill: SkillMetadata, query: string, terms: string[]): number {
   const name = skill.name.toLowerCase();
@@ -20,32 +28,20 @@ function score(skill: SkillMetadata, query: string, terms: string[]): number {
   return rank;
 }
 
-/** Keep names in the prompt; disclose descriptions and paths only through search. */
+/** Search discovered metadata; command files own the skill prompt text. */
 export function registerLazySkills(pi: ExtensionAPI): SkillPromptTransform {
   let catalog: SkillMetadata[] = [];
-  let prompt = "";
-  const clear = () => { catalog = []; prompt = ""; };
+  const clear = () => { catalog = []; };
   pi.on("session_start", clear);
   pi.on("session_shutdown", clear);
 
   pi.on("before_agent_start", event => {
     const options = event.systemPromptOptions;
-    const unique = new Map<string, SkillMetadata>();
-    for (const skill of options.skills) {
-      if (skill.disableModelInvocation || unique.has(skill.name)) continue;
-      const { name, description, filePath, baseDir } = skill;
-      unique.set(name, { name, description, filePath, baseDir });
-    }
-    catalog = [...unique.values()].sort((a, b) => a.name.localeCompare(b.name));
-    prompt = catalog.length ? [
-      "Available skill names: " + catalog.map(skill => escapeXml(skill.name)).join(", "),
-      "Before specialized work, use skill_search with a skill name or task keywords to get descriptions and paths.",
-      "Read the selected SKILL.md before you proceed. Resolve supporting file paths against the returned baseDir.",
-    ].join("\n") : "";
+    catalog = skillCatalog(options.skills);
     // Pi supplies fresh resource metadata for each run. Do not alter the resources
     // themselves: explicit /skill:name commands must continue to work.
     options.skills = [];
-    options.sections.skills = prompt;
+    options.sections.skills = "";
   });
 
   pi.registerTool({
@@ -75,14 +71,13 @@ export function registerLazySkills(pi: ExtensionAPI): SkillPromptTransform {
     },
   });
 
-  // A prompt patch alone leaves the original full catalog in earlier system
-  // messages. Rewrite their skill sections on the request copy too, including
-  // when the bootstrap snapshot is empty. Never change stored history.
+  // Remove full catalogs from earlier request-copy system sections. The
+  // configured section command supplies the replacement. Never change history.
   return messages => messages.map(message => {
     if (message.role !== "system" || !message.sections || typeof message.sections.skills !== "string") return message;
     return {
       ...message,
-      sections: { ...message.sections, skills: prompt ? "<skills>\n" + prompt + "\n</skills>" : null },
+      sections: { ...message.sections, skills: null },
     };
   });
 }

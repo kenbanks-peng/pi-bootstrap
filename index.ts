@@ -18,11 +18,12 @@ export default function bootstrap(pi: ExtensionAPI) {
   registerToolGuidance(pi);
   const snapshot = registerBootstrapSession(pi);
   const transformSkills = registerLazySkills(pi);
-  registerBootstrap(pi, getConfigPath(), snapshot, transformSkills);
+  registerBootstrap(pi, getConfigPath(), snapshot, transformSkills, snapshot.sections);
 }
 
 export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snapshot: () => string = () => "",
-  transformSkills: SkillPromptTransform = messages => messages) {
+  transformSkills: SkillPromptTransform = messages => messages,
+  snapshotSections: () => Record<string, string> = () => ({})) {
   pi.on("context_with_system", async event => {
     let config: string;
     try {
@@ -44,7 +45,18 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snap
         ? join(homedir(), link.slice(2)) : resolve(dirname(path), link);
       references.set(target, text);
     };
-    const messages = replaceMessages(transformSkills(event.messages), replacements, saveReference);
+    const sections = snapshotSections();
+    if (Object.keys(sections).length && event.messages[0]?.role !== "system") {
+      throw new Error("Section injection requires a leading system message");
+    }
+    const prepared = transformSkills(event.messages).map((message, index) => {
+      if (message.role !== "system" || !Object.keys(sections).length) return message;
+      const patches = Object.fromEntries(Object.keys(sections)
+        .filter(name => index === 0 || name in (message.sections ?? {}))
+        .map(name => [name, sections[name]]));
+      return { ...message, sections: { ...message.sections, ...patches } };
+    });
+    const messages = replaceMessages(prepared, replacements, saveReference);
     // Bootstrap has no independent system preamble/postamble. Explicit bootstrap
     // paths still work, but broad prompt-edge rules cannot eat this snapshot.
     const bootstraps = replaceTags(snapshot(), replacements, ["system-prompt"], [], saveReference);

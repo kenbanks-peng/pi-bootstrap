@@ -46,17 +46,19 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   const f = await fixture(t);
   const marker = join(f.root, "executions");
   await memory(f.project, "guidance.md", "Only system <guidance>");
+  await command(f.project, "skills.toml", "description = \"Skills:\"\nsection = \"skills\"\nexpression = 'ALL_SKILLS.map(s => s.name).join(\", \")'");
   await command(f.project, "tools.toml", 'description = "Test command"\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
   await command(f.project, "once.toml", executable(`require('node:fs').appendFileSync(${JSON.stringify(marker)}, 'x'); process.stdout.write('Snapshot output')`));
   const h = harness(() => f.repository);
   const config = join(f.root, "config.toml");
   await writeFile(config, '[system_prompt.preamble]\nreplacement = "Replaced"\n[system_prompt.rules]\nrefer = "Read $link"\nlink = "rules.md"\n[system_prompt.postamble]\nreplacement = "Tail"\n');
-  registerBootstrap(h.pi as never, config, h.snapshot);
+  registerBootstrap(h.pi as never, config, h.snapshot, messages => messages, h.snapshot.sections);
   await h.handlers.get("session_start")!({}, context(f.projectRoot));
+  await h.handlers.get("before_agent_start")!({ systemPromptOptions: { skills: [{ name: "alpha", description: "Private description", filePath: "/alpha/SKILL.md", baseDir: "/alpha" }] } }, context(f.projectRoot));
   const history = freeze([
-    { role: "system", content: [{ type: "text", text: "Original" }], sections: { rules: "<rules>Keep me</rules>" }, toolsAdded: [{ name: "read", description: "Read", parameters: { type: "object", properties: {} } }], timestamp: 0 },
+    { role: "system", content: [{ type: "text", text: "Original" }], sections: { rules: "<rules>Keep me</rules>", skills: "<skills>Old catalog</skills>" }, toolsAdded: [{ name: "read", description: "Read", parameters: { type: "object", properties: {} } }], timestamp: 0 },
     { role: "user", content: [{ type: "text", text: "Question" }], timestamp: 1 },
-    { role: "system", content: "", sections: { rules: "<rules>Updated rules</rules>" }, timestamp: 2 },
+    { role: "system", content: "", sections: { rules: "<rules>Updated rules</rules>", skills: "<skills>Historical catalog</skills>" }, timestamp: 2 },
   ]);
   const before = structuredClone(history);
   for (const supportsMidConvoSystemMessages of [false, true]) {
@@ -80,6 +82,9 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.equal(payload.input[0].role, "system");
     assert.match(payload.input[0].content, /<bootstrap>[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
     assert.match(payload.input[0].content, /Test command\nRegistered tools: read/);
+    assert.match(payload.input[0].content, /<skills>\nSkills:\nalpha\n<\/skills>/);
+    assert.doesNotMatch(payload.input[0].content, /Old catalog|Historical catalog|Private description|\/alpha\/SKILL.md/);
+    assert.equal(payload.input[0].content.split("<skills>").length - 1, 1);
     assert.match(payload.input[0].content, /<\/bootstrap>$/);
     assert.doesNotMatch(payload.input[0].content, /<\/?(?:memory|command)>/);
     assert.match(payload.input[0].content, /Test command\nSnapshot output/);
@@ -158,7 +163,7 @@ test("switching cwd replaces rather than accumulates session snapshots", async t
 
 test("late composition cannot repopulate shutdown or superseded session state", async () => {
   const pending: Array<(value: string) => void> = [];
-  const h = harness(() => ({ compose: () => new Promise<string>(resolve => pending.push(resolve)) }) as never);
+  const h = harness(() => ({ composeSnapshot: () => new Promise(resolve => pending.push(value => resolve({ bootstrap: value, sections: {}, entries: [] }))) }) as never);
   const first = h.handlers.get("session_start")!({}, context("first"));
   const second = h.handlers.get("session_start")!({}, context("second"));
   pending[1]("Second");

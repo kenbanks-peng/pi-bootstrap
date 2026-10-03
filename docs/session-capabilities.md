@@ -95,8 +95,13 @@ The extension supplies these read-only values:
 - `ALL_TOOLS`: JSON-copied tool metadata from `pi.getAllTools()`.
 - `pi.getAllTools()`: returns the same frozen array.
 - `pi.getActiveTools()`: returns frozen active tool names.
+- `ALL_SKILLS` and `pi.getSkills()`: return frozen skill metadata, sorted by name,
+  with duplicates and disabled skills excluded.
 
-These are snapshots taken when this extension's `session_start` handler runs.
+Tool values are snapshots taken when this extension's `session_start` handler runs.
+Skill values come from Pi's first `before_agent_start` event. Expressions with
+`section = "skills"`, or containing `ALL_SKILLS` or `getSkills`, are saved at
+session start and evaluated once at that event. They do not rerun on later requests.
 Tools registered later are included after the next session start or reload.
 Registered metadata can include inactive or hidden tools; this `ALL_TOOLS` alias
 does not reproduce codemode's visibility rules. JSON serialization preserves
@@ -115,6 +120,18 @@ handling. Each command item contains the XML-escaped description on one line,
 then the XML-escaped output without `<run>` or `<output>` tags. Execution details
 are not included. Failed evaluation clears the session snapshot and
 reports the source filename and error. Neither execution method runs per request.
+
+### Prompt sections
+
+A command can set `section = "skills"` (or another lowercase section name).
+Names must match `[a-z][a-z0-9_-]*`; `bootstrap` is reserved. Omit `section` to
+use the normal bootstrap output. Both execution methods support this field.
+Commands for the same section are joined in source order, with blank lines.
+Their escaped description and output replace that request-copy section, including
+historical section patches, before replacement/reference rules run. They are not
+also inserted into bootstrap. See `examples/skills.toml` for a skill-list command.
+Without this command, the extension removes full skill catalogs but supplies no
+skill-list text. The `skill_search` tool stays registered.
 
 ## Snapshot lifecycle
 
@@ -195,7 +212,7 @@ snapshot, not the current one.
 
 ## Verification and boundaries
 
-Validated with `npm test` (**84 passed, 0 failed**), `npm run typecheck`, and
+Validated with `npm test` (**93 passed, 0 failed**), `npm run typecheck`, and
 `git diff --check`. API evidence: Pi 1.0.0 extension event declarations,
 `core/messages.js`, pi-ai `utils/text.js`, `utils/transcript.js`, and
 `api/openai-responses-shared.js`; cross-checked against Context7

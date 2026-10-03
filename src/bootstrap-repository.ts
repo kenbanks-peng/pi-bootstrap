@@ -4,6 +4,12 @@ import { dirname, join } from "node:path";
 import { installDefaultProtocol, loadProtocol, resolveProtocolMemories } from "./bootstrap-protocol.js";
 import type { BootstrapExpressionContext, BootstrapSessionEntry } from "./bootstrap-protocol.js";
 
+export interface BootstrapSnapshot {
+  bootstrap: string;
+  sections: Record<string, string>;
+  entries: BootstrapSessionEntry[];
+}
+
 export type BootstrapScope = "global" | "project";
 export type BootstrapSourceType = "memory" | "command";
 
@@ -81,6 +87,10 @@ export class BootstrapRepository {
   }
 
   async compose(expressionContext?: BootstrapExpressionContext): Promise<string> {
+    return (await this.composeSnapshot(expressionContext)).bootstrap;
+  }
+
+  async composeSnapshot(expressionContext?: BootstrapExpressionContext): Promise<BootstrapSnapshot> {
     const globalDirectory = this.directoryFor("global");
     await installDefaultProtocol(globalDirectory);
     const globalProtocol = await loadProtocol(globalDirectory, "Global");
@@ -93,9 +103,7 @@ export class BootstrapRepository {
     const project = await resolveProtocolMemories(projectDirectory, "Project", projectProtocol ?? globalProtocol, projectRoot, expressionContext);
     const entries = [...global, ...project];
 
-    return entries.length === 0
-      ? ""
-      : `<bootstrap>\n${entries.map(formatSessionEntry).join("\n\n")}\n</bootstrap>`;
+    return formatSnapshot(entries);
   }
 
   private directoryFor(scope: BootstrapScope): string {
@@ -116,6 +124,24 @@ export class BootstrapRepository {
       throw new Error(`Invalid Bootstrap ID "${id}". Use letters, digits, hyphens, or underscores.`);
     }
   }
+}
+
+export function formatSnapshot(entries: BootstrapSessionEntry[]): BootstrapSnapshot {
+  const ordinary: BootstrapSessionEntry[] = [];
+  const groups = new Map<string, string[]>();
+  for (const entry of entries) {
+    if (entry.type === "command" && "deferred" in entry && entry.deferred) continue;
+    if (entry.type === "command" && entry.section !== undefined) {
+      const items = groups.get(entry.section) ?? [];
+      items.push(formatSessionEntry(entry));
+      groups.set(entry.section, items);
+    } else ordinary.push(entry);
+  }
+  return {
+    entries,
+    bootstrap: ordinary.length ? `<bootstrap>\n${ordinary.map(formatSessionEntry).join("\n\n")}\n</bootstrap>` : "",
+    sections: Object.fromEntries([...groups].map(([name, items]) => [name, `<${name}>\n${items.join("\n\n")}\n</${name}>`])),
+  };
 }
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {

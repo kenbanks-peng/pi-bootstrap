@@ -26,8 +26,8 @@ class CommandExitError extends Error {
 
 export type BootstrapSessionEntry =
   | { type: "memory"; content: string }
-  | { type: "command"; description: string; argv: [string, ...string[]]; output: string }
-  | { type: "command"; description: string; expression: string; output: string };
+  | { type: "command"; description: string; section?: string; argv: [string, ...string[]]; output: string }
+  | { type: "command"; description: string; section?: string; expression: string; output: string; deferred?: true; sourceName?: string };
 
 export const DEFAULT_PROTOCOL = `[[rule]]
 glob = "*.md"
@@ -49,8 +49,8 @@ export interface BootstrapProtocol {
 }
 
 type CommandSource =
-  | { description: string; argv: [string, ...string[]]; cwd?: string }
-  | { description: string; expression: string };
+  | { description: string; section?: string; argv: [string, ...string[]]; cwd?: string }
+  | { description: string; section?: string; expression: string };
 
 const protocolFilename = "protocol.toml";
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -167,12 +167,17 @@ async function runCommandSource(sourcePath: string, projectRoot: string, scopeLa
     const source = parseCommandSource(await readUtf8(sourcePath, `${scopeLabel} command source "${sourceName}"`), sourceName, scopeLabel);
     if ("expression" in source) {
       if (!expressionContext) throw new Error("Expression commands require a Pi session context.");
-      return { type: "command", description: source.description, expression: source.expression, output: await evaluateExpression(source.expression, expressionContext, sourceName, COMMAND_TIMEOUT_MS, COMMAND_OUTPUT_LIMIT_BYTES) };
+      // Skill metadata arrives with before_agent_start. Preserve the source now.
+      const deferred = expressionContext.allSkills === undefined &&
+        (source.section === "skills" || source.expression.includes("ALL_SKILLS") || source.expression.includes("getSkills"));
+      return { type: "command", description: source.description, ...(source.section === undefined ? {} : { section: source.section }), expression: source.expression,
+        output: deferred ? "" : await evaluateExpression(source.expression, expressionContext, sourceName, COMMAND_TIMEOUT_MS, COMMAND_OUTPUT_LIMIT_BYTES),
+        ...(deferred ? { deferred: true as const, sourceName } : {}) };
     }
     const cwd = await commandCwd(source.cwd, projectRoot, sourceName, scopeLabel);
     const output = await execute(source.argv, cwd, sourceName, scopeLabel);
     try {
-      return { type: "command", description: source.description, argv: source.argv, output: utf8.decode(output) };
+      return { type: "command", description: source.description, ...(source.section === undefined ? {} : { section: source.section }), argv: source.argv, output: utf8.decode(output) };
     } catch {
       throw new Error(`${scopeLabel} command source "${sourceName}" produced invalid UTF-8 stdout.`);
     }
@@ -195,6 +200,10 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (typeof value.description !== "string" || value.description.trim().length === 0 || /[\r\n]/.test(value.description)) {
     throw new Error(`${label} description must be a non-empty single-line string.`);
   }
+  if (value.section !== undefined && (typeof value.section !== "string" || !/^[a-z][a-z0-9_-]*$/.test(value.section) || value.section === "bootstrap")) {
+    throw new Error(`${label} section must be a lowercase section name other than bootstrap.`);
+  }
+  const section = value.section === undefined ? {} : { section: value.section as string };
   if (("argv" in value) === ("expression" in value)) {
     throw new Error(`${label} must contain exactly one of argv or expression.`);
   }
@@ -203,7 +212,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
       throw new Error(`${label} expression must be a non-empty string.`);
     }
     if ("cwd" in value) throw new Error(`${label} cwd is only supported with argv.`);
-    return { description: value.description, expression: value.expression };
+    return { description: value.description, ...section, expression: value.expression };
   }
   if (!Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
     throw new Error(`${label} must contain a non-empty argv string array.`);
@@ -211,7 +220,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (value.cwd !== undefined && (typeof value.cwd !== "string" || value.cwd.length === 0)) {
     throw new Error(`${scopeLabel} command source "${sourceName}" has an invalid cwd.`);
   }
-  return { description: value.description, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
+  return { description: value.description, ...section, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
 }
 
 async function commandCwd(cwd: string | undefined, projectRoot: string, sourceName: string, scopeLabel: string): Promise<string> {
