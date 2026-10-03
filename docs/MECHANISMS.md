@@ -2,67 +2,78 @@
 
 ## Source and integration
 
-The extension reads the complete transcript from Pi's `context_with_system` event. It changes outgoing system text only. Tool declarations, tool access, resource files, stored messages, conversation messages, and null section deletions remain unchanged.
+The extension reads the complete transcript at Pi's `context_with_system` event. It scans string content, text blocks, and string values in structured sections, in every message role. Each text container is parsed independently; a tag path cannot span messages or blocks.
 
-`docs/pi-baseline.md` is a historical capture of the older layout, not runtime input.
+Changes affect outgoing text only. Tool declarations, executable tools, images, non-text blocks, resource files, stored messages, unrelated fields, and null section deletions remain unchanged.
 
-## Configuration
+[pi-baseline.md](pi-baseline.md) is the reference request hierarchy and an integration-test fixture. The file is not loaded at runtime. Configuration starts at the children of its `request` container.
 
-Configuration contains direct system replacement tables and a reserved tools table:
+## Literal paths
+
+A scope combines its request-container ancestry with the literal nested tag path. `src/pi-context.ts` maps system content and system section values to `system-prompt`, and conversation text to `messages.message`. `src/prompt.ts` accepts that parent path without knowing any Pi section names. It has no fixed list of child tags and no scope aliases.
 
 ```toml
-[system_prompt.preamble]
-
-[system_prompt.tools]
-replacement = "TOOLS REPLACEMENT TEXT"
-
-[system_prompt.rules]
-
-[system_prompt.docs]
-
-[system_prompt.skills]
-
-[system_prompt.cwd]
-
-[system_prompt.prime]
-
-[tools]
+[system-prompt.one.two]
+replacement = "New text."
 ```
 
-An absent replacement keeps the original text. A replacement must be a nonempty string. The extension reads configuration on every request and adds empty tables for discovered system content. An empty `[system_prompt]` enables system discovery. Omit that scope to disable discovery.
+This selects the body of `<two>` in system text `<one><two>Old text.</two></one>`. The baseline shows that text inside `<system-prompt>`. It does not select a standalone `<two>`, `<other><two>`, or the same tags in a conversation message. For conversation text, use `[messages.message.one.two]`.
 
-Do not set `kind`, `role`, `version`, or `mechanisms`. The separate `[tools]` table is reserved and must remain empty. Tool declarations are outside the system prompt and remain unchanged. `system_prompt.tools` controls only the text inside the system `<tools>` tag.
+The path includes the complete ancestry beneath the request root, including the transport container. The adapter supplies that container even when Pi stores only its body. Any nesting depth uses the same rule. Matching is case-sensitive. Inline tags and multiline bodies use the same rules. Attributes do not change the path.
 
-## System context
+Structured section names are storage fields, not implicit tags. A section field named `anything` with value `<one><two>Old</two></one>` in a system message has scope `system-prompt.one.two`. Untagged values have no scope, even in a field named `preamble`.
 
-All system sections use outer tags. Their stable keys are `system_prompt.<tag>`, including `preamble` and `prime`. Nested memories, commands, and skill fields belong to their outer section.
+Within transport containers, names such as `tools`, `prime`, and `preamble` are ordinary tags. At the request root, `tools` is the separate structured declaration collection shown in the baseline. Prose replacements there are rejected; they never fall back to system guidance. Use `[system-prompt.tools]` for that guidance. `system_prompt` does not match `system-prompt`.
 
-Structured section values contain their tags. Flat and structured context use the same replacement keys. Section replacements change the body only and keep tags, attributes, and surrounding text. Repeated sections receive the same replacement. Unknown text remains unchanged and is reported.
+The transport containers themselves (`system-prompt`, `messages`, and `messages.message`) are not single tagged text bodies in Pi storage. Replacements directly on those containers are rejected with an explicit error. Select a tagged body inside them instead. This avoids duplicating a whole-container replacement across stored sections or text blocks.
 
-Untagged text before the first section and Pi's untagged structured `preamble` field also use `system_prompt.preamble`. A flat system prompt with no tags is all preamble.
+## Configuration and discovery
 
-## Conversation messages
+The default contains comments only. It does not change text.
 
-Conversation messages are outside the system prompt. The extension does not scan, discover, or replace their content. Tagged user envelopes, text blocks, images, and malformed tag examples remain unchanged. There is no `message` configuration scope.
+The extension reads config on every request. Discovery creates empty tables for paired tag paths, including nested paths and empty bodies. It retains existing comments and formatting. Existing files are not replaced with the default.
 
-## Parsing and failures
+A string field named `replacement` supplies the body replacement for its table. It must contain non-whitespace text. Other values must be nested tables. A nested table named `replacement` is a literal child tag scope, not a replacement value:
 
-Tags are XML-like context tags, not HTML. Parsing tracks nested tags and ignores backtick and tilde code fences. Safe names use lowercase letters, digits, underscores, and hyphens.
+```toml
+[system-prompt.one.replacement]
+replacement = "New text."
+```
 
-Invalid TOML, unsupported fields, unsafe names, invalid replacements, and malformed system tags stop all replacements for the request. The original request remains unchanged.
+This selects `<one><replacement>Old</replacement></one>` within the system prompt. TOML cannot represent both a scalar replacement and a child table with that same key in one parent.
 
-Discovery retains existing comments and formatting. Writes use a lock, a temporary file, and a source comparison. Save editor changes between requests. Remove a leftover lock only after all Pi processes that use the config have stopped.
+Missing replacements keep original bodies. Discovery does not depend on config scope names being present. Config tables without a matching tag do not change the request.
 
-Run `/bootstrap` to inspect missing replacements, unidentified system text, errors, and transcript text sizes. Sizes are bytes, not provider token counts.
+## Replacement rules
+
+Only the selected tag's body is changed. Opening and closing tags, attributes, and surrounding bytes remain unchanged. Existing leading and trailing line breaks inside the body are retained, including CRLF. Inline bodies do not receive new line breaks.
+
+Repeated paths receive the same replacement. Writes run from the last offset to the first. Input messages are not mutated; unrelated objects keep their identity.
+
+Active replacements for a parent and its descendant in the same text are an error. The request stays unchanged. An empty parent table is not an active replacement and does not conflict with a child replacement. Matching parent and descendant paths in separate text containers do not overlap.
+
+## Parser and failures
+
+The parser recognizes XML-like paired tags, not complete XML or HTML documents. Names start with a letter or underscore; subsequent characters can include letters, digits, underscores, hyphens, periods, and colons. Quote TOML path segments that contain periods. The names `__proto__`, `prototype`, and `constructor` are rejected for object safety.
+
+Backtick and tilde Markdown code fences are ignored. Put literal malformed tag examples in fenced blocks if they must not be parsed. Tags are parsed within one line; bodies can span lines. Self-closing tags have no body and are not replacement scopes.
+
+Invalid TOML, invalid table types, invalid replacements, unsafe names, unbalanced tags in any scanned text, and overlapping active replacements stop all replacements for the request. Parsing and overlap checks run before config discovery writes.
+
+Untagged text is retained and reported. It is not assigned a synthetic scope. The Pi adapter preserves the baseline request containers as path metadata, without writing wrapper tags into the outgoing text. Other capture fields such as headers, params, and response are outside transcript text. Provider tool declarations are structured data, not text-tag bodies.
+
+Writes use a lock, a temporary file, and a source comparison. Save editor changes between requests. Remove a leftover lock only after all Pi processes that use the config have stopped.
+
+Run `/bootstrap` to inspect errors, missing replacements, untagged text, and transcript text sizes. Sizes are bytes, not provider token counts.
 
 ## Convert older configuration
 
 1. Keep a copy of the old config.
-2. Start from `default.toml`.
-3. Move replacements from `system_prompt.sections.<tag>` to `system_prompt.<tag>`.
-4. Keep the `system_prompt.preamble` replacement.
-5. If appropriate, move the old prime-envelope replacement to `system_prompt.prime`. It now affects the system `<prime>` body, not a user message.
-6. Remove `message`, `bootstrap`, format metadata, and old mechanism settings. Keep `[tools]` empty.
-7. Submit a request and inspect `/bootstrap`.
+2. Start from [../default.toml](../default.toml).
+3. Submit a request to discover actual tag paths.
+4. Move replacement values to the full request paths. For docs in the baseline, use `[system-prompt.docs]`, not `[docs]` or `[system_prompt.docs]`.
+5. Move system guidance replacements from `[tools]` to `[system-prompt.tools]`. Keep the system container prefix. Raw preamble text has no synthetic replacement scope.
+6. Do not activate both a parent and a descendant replacement for the same text.
+7. Submit another request and inspect `/bootstrap`.
 
-There is no automatic conversion. Existing config files are not overwritten.
+There is no automatic conversion or backward-compatibility alias.

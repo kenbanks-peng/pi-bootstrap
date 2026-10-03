@@ -6,25 +6,36 @@ export interface TranscriptMessage {
   sections?: Record<string, string | null>;
 }
 export interface Unidentified { location: string; text: string }
-interface Region { tag: string; start: number; bodyStart: number; bodyEnd: number; end: number }
+interface Region {
+  path: string[];
+  tag: string;
+  start: number;
+  bodyStart: number;
+  bodyEnd: number;
+  end: number;
+}
 interface Binding extends Source {
   index: number;
-  field: "content" | "sections";
+  field: "content" | "sections" | "blocks";
   section?: string;
+  block?: number;
   start: number;
   end: number;
-  tagged: boolean;
 }
-interface Configuration { system: boolean }
-const safeName = /^[a-z][a-z0-9_-]*$/;
+const safeName = /^[A-Za-z_][A-Za-z0-9_.:-]*$/;
 const unsafe = new Set(["__proto__", "prototype", "constructor"]);
 const object = (value: unknown): value is Table =>
   !!value && typeof value === "object" && !Array.isArray(value);
+const key = (path: string[]) => JSON.stringify(path);
 
-/** Pi uses XML-like line tags, not HTML documents. Keep all source bytes and offsets. */
+function checkName(name: string): void {
+  if (!safeName.test(name) || unsafe.has(name)) throw new Error("Unsafe context tag: " + name);
+}
+
+/** Parse nested XML-like tags, including inline tags, without changing source bytes. */
 export function taggedRegions(text: string): Region[] {
   const regions: Region[] = [];
-  const stack: { tag: string; start: number; bodyStart: number }[] = [];
+  const stack: { path: string[]; tag: string; start: number; bodyStart: number }[] = [];
   let fence: { char: string; size: number } | undefined;
   for (const line of text.matchAll(/[^\n]*(?:\n|$)/g)) {
     if (!line[0]) continue;
@@ -37,129 +48,122 @@ export function taggedRegions(text: string): Region[] {
       continue;
     }
     if (fence) continue;
-    // Outer sections occupy a full line. Nested fields can open and close inline,
-    // as the memory, name, description, run, and output fields do in the baseline.
-    const tokens = [...raw.matchAll(/<(\/?)([a-z][a-z0-9_-]*)(?:\s+[^<>]*)?>/g)];
-    for (const match of tokens) {
-      if (!stack.length && raw.trim() !== match[0]) continue;
+    for (const match of raw.matchAll(/<(\/?)([A-Za-z_][A-Za-z0-9_.:-]*)(?=[\s/>])((?:[^<>"']|"[^"]*"|'[^']*')*)>/g)) {
       const tag = match[2];
-      if (!match[1]) {
-        stack.push({ tag, start: line.index! + match.index!, bodyStart: line.index! + match.index! + match[0].length });
-      } else {
+      checkName(tag);
+      const start = line.index! + match.index!;
+      if (match[1]) {
         const opened = stack.pop();
         if (!opened || opened.tag !== tag) throw new Error("Unbalanced context tag: " + tag);
-        if (!stack.length) regions.push({ ...opened, bodyEnd: line.index!, end: line.index! + raw.length });
+        regions.push({ ...opened, bodyEnd: start, end: start + match[0].length });
+      } else if (!/\/\s*$/.test(match[3])) {
+        stack.push({
+          path: [...(stack.at(-1)?.path ?? []), tag], tag, start,
+          bodyStart: start + match[0].length,
+        });
       }
     }
   }
   if (stack.length) throw new Error("Unclosed context tag: " + stack.at(-1)!.tag);
-  return regions;
+  return regions.sort((a, b) => a.start - b.start);
 }
 
-function configuration(data: Table): Configuration {
-  const fields = (table: Table, allowed: string[], location: string) => {
-    for (const key of Object.keys(table))
-      if (!allowed.includes(key)) throw new Error(location + key + ": unsupported field");
-  };
-  const entry = (value: unknown, location: string) => {
-    if (!object(value)) throw new Error(location + ": use a table");
-    fields(value, ["replacement"], location + ".");
-    if (value.replacement !== undefined &&
-      (typeof value.replacement !== "string" || !value.replacement.trim()))
-      throw new Error(location + ": replacement must be a nonempty string");
-  };
-  const entries = (table: Table, location: string) => {
-    for (const [tag, value] of Object.entries(table)) {
-      if (!safeName.test(tag) || unsafe.has(tag)) throw new Error(location + tag + ": unsafe tag name");
-      entry(value, location + tag);
+/** Every table path is a literal tag path. There are no scope aliases. */
+function configuration(data: Table): Set<string> {
+  const replacements = new Set<string>();
+  const visit = (table: Table, path: string[]) => {
+    for (const [name, value] of Object.entries(table)) {
+      if (name === "replacement" && !object(value) && path.length) {
+        if (typeof value !== "string" || !value.trim())
+          throw new Error(path.join(".") + ": replacement must be a nonempty string");
+        replacements.add(key(path));
+      } else {
+        checkName(name);
+        if (!object(value)) throw new Error([...path, name].join(".") + ": use a table");
+        visit(value, [...path, name]);
+      }
     }
   };
-  fields(data, ["system_prompt", "tools"], "");
-  const system = data.system_prompt;
-  if (system !== undefined) {
-    if (!object(system)) throw new Error("system_prompt: use a table");
-    entries(system, "system_prompt.");
-  }
-  if (data.tools !== undefined) {
-    if (!object(data.tools)) throw new Error("tools: use a table");
-    fields(data.tools, [], "tools.");
-  }
-  return { system: system !== undefined };
+  visit(data, []);
+  return replacements;
 }
 
-/** Discover and replace existing context text only. No resource or tool metadata is changed. */
+/** Change tagged bodies in outgoing text only. Do not change tools or stored messages. */
 export class Mechanisms {
-  private readonly configuration: Configuration;
+  private readonly replacements: Set<string>;
   private bindings: Binding[] = [];
   unidentified: Unidentified[] = [];
-  constructor(data: Table) { this.configuration = configuration(data); }
+  constructor(data: Table) { this.replacements = configuration(data); }
 
-  discover(messages: TranscriptMessage[]): Source[] {
+  discover(messages: TranscriptMessage[], containerPath: (message: TranscriptMessage) => string[] = () => []): Source[] {
     this.bindings = [];
     this.unidentified = [];
-    const system = this.configuration.system;
-    const unknown = (location: string, text: string) => {
-      if (text.trim()) this.unidentified.push({ location, text });
-    };
-    const bind = (index: number, field: Binding["field"], section: string | undefined,
-      path: string[], text: string, start: number, end: number, tagged = false) => {
-      if (!text.slice(start, end).trim()) return;
-      this.bindings.push({ index, field, section, path, original: text.slice(start, end), start, end, tagged });
-    };
-    const scanSystem = (text: string, index: number, section?: string) => {
-      const field = section === undefined ? "content" : "sections";
-      const location = "messages." + index + "." + field + (section === undefined ? "" : "." + section);
-      if (!system) { unknown(location, text); return; }
+    const scan = (text: string, index: number, field: Binding["field"], section?: string, block?: number) => {
+      const location = "messages." + index + "." + field +
+        (section === undefined ? "" : "." + section) + (block === undefined ? "" : "." + block);
       const regions = taggedRegions(text);
-      if (section === "preamble" && !regions.length) {
-        bind(index, field, section, ["system_prompt", "preamble"], text, 0, text.length);
-        return;
+      const parent = containerPath(messages[index]);
+      parent.forEach(checkName);
+      const bindings = regions.map(region => ({
+        index, field, section, block, path: [...parent, ...region.path],
+        original: text.slice(region.bodyStart, region.bodyEnd),
+        start: region.bodyStart, end: region.bodyEnd,
+      }));
+      // Detect active ancestor/descendant replacements before discovery can write config.
+      const active = bindings.filter(binding => this.replacements.has(key(binding.path)));
+      for (let i = 0; i < active.length; i++) {
+        for (let j = i + 1; j < active.length; j++) {
+          const a = active[i], b = active[j];
+          if (a.start <= b.start && b.end <= a.end)
+            throw new Error("Overlapping replacements: " + a.path.join(".") + " and " + b.path.join(".") + " in " + location);
+        }
       }
-      const prefixEnd = regions[0]?.start ?? text.length;
-      const prefix = text.slice(0, prefixEnd);
-      if (section === undefined) {
-        const end = prefix.trimEnd().length;
-        bind(index, field, section, ["system_prompt", "preamble"], text, 0, end);
-      } else unknown(location, prefix);
-      let at = prefixEnd;
-      for (const region of regions) {
-        unknown(location + " at offset " + at, text.slice(at, region.start));
-        if (unsafe.has(region.tag)) throw new Error("Unsafe context tag: " + region.tag);
-        bind(index, field, section, ["system_prompt", region.tag],
-          text, region.bodyStart, region.bodyEnd, true);
+      this.bindings.push(...bindings);
+      // Only text outside outer tags is unidentified; nested bodies are already scoped.
+      let at = 0;
+      for (const region of regions.filter(region => region.path.length === 1)) {
+        const outside = text.slice(at, region.start);
+        if (outside.trim()) this.unidentified.push({ location: location + " at offset " + at, text: outside });
         at = region.end;
       }
-      unknown(location + " at offset " + at, text.slice(at));
+      const outside = text.slice(at);
+      if (outside.trim()) this.unidentified.push({ location: location + " at offset " + at, text: outside });
     };
     messages.forEach((message, index) => {
-      if (message.role === "system") {
-        if (typeof message.content === "string" && message.content) scanSystem(message.content, index);
-        else if (message.content) unknown("messages." + index + ".content", JSON.stringify(message.content));
-        for (const [name, text] of Object.entries(message.sections ?? {}))
-          if (text !== null) scanSystem(text, index, name);
-      }
+      if (typeof message.content === "string") scan(message.content, index, "content");
+      else if (Array.isArray(message.content)) message.content.forEach((block, at) => {
+        if (object(block) && block.type === "text" && typeof block.text === "string")
+          scan(block.text, index, "blocks", undefined, at);
+      });
+      for (const [name, text] of Object.entries(message.sections ?? {}))
+        if (typeof text === "string") scan(text, index, "sections", name);
     });
-    return [...new Map(this.bindings.map(({ path, original }) => [JSON.stringify(path), { path, original }])).values()];
+    return [...new Map(this.bindings.map(({ path, original }) => [key(path), { path, original }])).values()];
   }
 
   applyTranscript<T extends TranscriptMessage>(messages: T[], lookup: Lookup): T[] {
     if (!lookup.valid) return messages;
     const result = [...messages];
-    // Offset writes run backwards; source messages and all unrelated objects retain their identity.
+    // Non-overlapping writes run backwards so original offsets stay valid.
     for (const binding of [...this.bindings].sort((a, b) => b.start - a.start)) {
       const replacement = lookup.replacement(binding.path);
       if (replacement === undefined) continue;
       const original = result[binding.index];
-      const text = binding.field === "sections" ? original.sections![binding.section!]! : original.content as string;
-      // Section bodies include the line breaks inside their tags.
-      const body = binding.tagged
-        ? (text.slice(binding.start, binding.end).startsWith("\r\n") ? "\r\n" : "\n") + replacement +
-          (text.slice(binding.start, binding.end).endsWith("\r\n") ? "\r\n" : "\n")
-        : replacement;
-      const changed = text.slice(0, binding.start) + body + text.slice(binding.end);
+      const blocks = original.content as Table[];
+      const text = binding.field === "sections" ? original.sections![binding.section!]! :
+        binding.field === "blocks" ? blocks[binding.block!].text as string : original.content as string;
+      const source = text.slice(binding.start, binding.end);
+      const leading = source.startsWith("\r\n") ? "\r\n" : source.startsWith("\n") ? "\n" : "";
+      const trailing = source.endsWith("\r\n") ? "\r\n" : source.endsWith("\n") ? "\n" : "";
+      const changed = text.slice(0, binding.start) + leading + replacement + trailing + text.slice(binding.end);
       if (changed === text) continue;
-      if (binding.field === "sections") result[binding.index] = { ...original, sections: { ...original.sections, [binding.section!]: changed } };
-      else result[binding.index] = { ...original, content: changed };
+      if (binding.field === "sections")
+        result[binding.index] = { ...original, sections: { ...original.sections, [binding.section!]: changed } };
+      else if (binding.field === "blocks") {
+        const content = [...blocks];
+        content[binding.block!] = { ...content[binding.block!], text: changed };
+        result[binding.index] = { ...original, content };
+      } else result[binding.index] = { ...original, content: changed };
     }
     return result.every((message, i) => message === messages[i]) ? messages : result;
   }

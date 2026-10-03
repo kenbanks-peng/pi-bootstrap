@@ -1,16 +1,6 @@
-[system_prompt.preamble]
-
-[system_prompt.tools]
-replacement = "TOOLS REPLACEMENT TEXT"
-
-[system_prompt.rules]
-
-[system_prompt.docs]
-
-[system_prompt.skills]
-
-[system_prompt.cwd]
-
-[system_prompt.prime]
-
-[tools]
+# Paths start inside the request container shown in docs/pi-baseline.md.
+# [system-prompt.docs] selects docs inside the system prompt.
+# [system-prompt.tools] selects guidance, not the peer tools declarations.
+# [messages.message.one.two] selects two inside one in conversation text.
+# Add a nonempty replacement string to a discovered table.
+# Discovery retains the request-container ancestry and adds empty tables.

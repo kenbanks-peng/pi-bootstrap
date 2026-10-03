@@ -1,29 +1,62 @@
 # pi-bootstrap
 
-Reprocess the current Pi bootstrap context with tag-based TOML replacements. No model calls are made.
+Replace tagged bodies in Pi's outgoing request with TOML values. No model calls are made.
+
+## Request hierarchy
+
+[docs/pi-baseline.md](docs/pi-baseline.md) is the reference layout:
+
+```xml
+<request>
+  <system-prompt>
+    <tools>Tools guidance</tools>
+    <docs>Documentation</docs>
+  </system-prompt>
+  <tools>Provider tool declarations</tools>
+  <messages>
+    <message role="user">User text</message>
+  </messages>
+</request>
+```
+
+Configuration starts at the children of `request`. Thus, docs use:
+
+```toml
+[system-prompt.docs]
+replacement = "Use the installed Pi documentation."
+```
+
+Use `[system-prompt.tools]` for tools guidance. The peer `[tools]` contains structured declarations, not guidance. Text replacements there are rejected; tool names, schemas, and execution remain unchanged.
+
+Pi supplies system text without the capture's outer `system-prompt` tag. The adapter restores that ancestry for matching. It also supplies `messages.message` for conversation text. These containers are never inserted into outgoing text.
+
+Within each container, paths are generic. For system text `<one><two>Old</two></one>`, use `[system-prompt.one.two]`. For the same tags in a conversation message, use `[messages.message.one.two]`. There is no fixed list of child tags or nesting depths.
 
 ## Use
 
 Add the absolute path to `index.ts` to the `extensions` array in your Pi settings. Run `/reload`, or start a new session.
 
-On the next model request, the extension copies [default.toml](default.toml) to `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. The default contains direct system tables for `preamble`, `tools`, `rules`, `docs`, `skills`, `cwd`, and `prime`, plus a separate empty `[tools]` table. Discovery adds empty tables for other system tags it finds.
+On the next model request, the extension creates `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap/config.toml`, or `~/.pi/agent/extensions/pi-bootstrap/config.toml` by default. [default.toml](default.toml) contains comments only. Discovery adds empty tables for actual tag paths, with their request containers. Existing config files are not overwritten.
 
-Add a nonempty string `replacement` to a discovered table:
+Add a nonempty string `replacement` to a discovered table. Save changes between requests. Run `/bootstrap` to inspect errors, missing replacements, untagged text, and text sizes.
 
-```toml
-[system_prompt.docs]
-replacement = "Use the installed Pi documentation."
-```
+## Rules
 
-An absent replacement keeps the original text. Save changes between requests. Run `/bootstrap` to see missing replacements, unidentified system text, errors, and text sizes.
+- Match the complete path, including the request container. Names are case-sensitive. `system-prompt` and `system_prompt` are different names.
+- Scan every message role, string content, text blocks, and string section values. Section storage keys do not add another path segment.
+- Preserve tags, attributes, surrounding text, images, tool declarations, and stored history.
+- Apply repeated matches. Reject active parent/child replacements that overlap.
+- Keep untagged text unchanged. Ignore tags inside Markdown code fences.
+- Malformed tags or invalid configuration stop all replacements for the request.
+- Select tagged bodies inside transport containers; replacing an entire transport container with prose is not supported.
 
-## Scope
+## Existing configurations
 
-System section tags identify context. New tagged system sections are discovered automatically. Nested tags stay inside their parent section. `prime` is a system section. The capture in [docs/pi-baseline.md](docs/pi-baseline.md) records the older layout.
+For this baseline, change `[docs]` or `[system_prompt.docs]` to `[system-prompt.docs]`. Change a guidance replacement under `[tools]` to `[system-prompt.tools]`.
 
-Changes apply to the outgoing request only. Tool declarations, tool access, skill files, and stored session history remain unchanged. Conversation messages are not scanned or changed, including tagged user messages. The separate `[tools]` table is reserved and must remain empty; it does not control the system `<tools>` text. The default enables only the tools text replacement. Remove its `replacement` value to keep that section unchanged. Existing config files are not overwritten.
+There is no automatic conversion. Use the hierarchy in [docs/pi-baseline.md](docs/pi-baseline.md), not field names or capture metadata. The event remains `context_with_system`; no `event` setting is needed.
 
-System sections, including `<preamble>` and `<prime>`, use direct `system_prompt.<tag>` replacement tables. Untagged opening text and Pi’s untagged structured preamble also use `system_prompt.preamble`. Configuration does not declare `kind` or `role`. Older `system_prompt.sections` and `message` configurations are rejected without changes. See [docs/MECHANISMS.md](docs/MECHANISMS.md) for the replacement contract and conversion steps.
+See [docs/MECHANISMS.md](docs/MECHANISMS.md) for the full contract.
 
 ## Development
 

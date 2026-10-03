@@ -1,249 +1,285 @@
 import assert from "node:assert/strict";
-import { readFile, writeFile, mkdtemp, rm } from "node:fs/promises";
+import { readFile, writeFile, mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, dirname } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
 import { test } from "node:test";
 import { parse } from "smol-toml";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { registerBootstrap } from "../index.ts";
-import { type Table } from "../src/lookup.ts";
+import { Lookup } from "../src/lookup.ts";
 import { Mechanisms, taggedRegions, type TranscriptMessage } from "../src/prompt.ts";
-
-const defaultTemplate = await readFile(new URL("../default.toml", import.meta.url), "utf8");
-const defaults = "[system_prompt]\n\n[tools]\n";
-const config = () => parse(defaultTemplate) as Table;
-const replacement = (tag: string, text: unknown) =>
-  "\n[system_prompt." + tag + "]\nreplacement = " + JSON.stringify(text) + "\n";
-const tags = ["preamble", "tools", "rules", "docs", "skills", "cwd", "prime"];
-const prime = '<prime>\n<memory>Keep instructions.</memory>\n<command>\n<run>pwd</run>\n</command>\n</prime>';
-const prompt = [
-  "<preamble>\nYou are a coding assistant.\n</preamble>",
-  "<tools>\nTool guidance.\n</tools>",
-  "<rules>\nRules.\n</rules>",
-  "<docs>\nDocumentation.\n</docs>",
-  "<skills>\n<available_skills>\n<skill>\n<name>test</name>\n</skill>\n</available_skills>\n</skills>",
-  "<cwd>\n/project\n</cwd>",
-  prime,
-].join("\n\n");
 
 async function fixture(text?: string) {
   const dir = await mkdtemp(join(tmpdir(), "pi-context-"));
   const path = join(dir, "config.toml");
   if (text !== undefined) await writeFile(path, text);
-  const handlers = new Map<string, Function>();
-  let command: any;
-  const notifications: string[] = [];
-  const ctx = { hasUI: true, ui: {
-    notify: (text: string) => notifications.push(text),
-    setStatus: () => {},
-    select: async (text: string) => text,
-  } };
-  registerBootstrap({
-    on: (name: string, handler: Function) => handlers.set(name, handler),
-    registerCommand: (_name: string, value: any) => { command = value; },
-  } as unknown as ExtensionAPI, path);
+  // Test the generic matcher without Pi transport containers. The baseline suite
+  // exercises registerBootstrap with real system-prompt/messages ancestry.
+  const lookup = new Lookup(path);
+  let engine: Mechanisms | undefined;
   return {
-    path, notifications,
-    request: async <T extends TranscriptMessage>(messages: T[]): Promise<T[]> =>
-      (await handlers.get("context_with_system")!({ messages }, ctx)).messages,
-    show: async () => {
-      let report = "";
-      ctx.ui.select = async (text: string) => { report = text; return text; };
-      await command.handler("", ctx);
-      return report;
+    path,
+    request: async <T extends TranscriptMessage>(messages: T[]): Promise<T[]> => {
+      const candidate: { engine?: Mechanisms } = {};
+      await lookup.refresh(data => {
+        candidate.engine = new Mechanisms(data);
+        return candidate.engine.discover(messages);
+      }, await readFile(new URL("../default.toml", import.meta.url), "utf8"));
+      engine = candidate.engine;
+      return lookup.valid && engine ? engine.applyTranscript(messages, lookup) : messages;
     },
+    show: async () => [
+      lookup.report.error ? "Error: " + lookup.report.error : "",
+      ...lookup.report.missing, ...(engine?.unidentified.map(u => u.text) ?? []),
+    ].join("\n"),
     cleanup: () => rm(dir, { recursive: true, force: true }),
   };
 }
 
-test("default config matches the new section layout exactly", () => {
-  const data = config() as any;
-  assert.deepEqual(Object.keys(data), ["system_prompt", "tools"]);
-  assert.deepEqual(Object.keys(data.system_prompt), tags);
-  assert.deepEqual(Object.keys(data.tools), []);
-  for (const tag of tags)
-    assert.deepEqual({ ...data.system_prompt[tag] }, tag === "tools" ? { replacement: "TOOLS REPLACEMENT TEXT" } : {});
-});
-
-test("tagged discovery includes preamble and prime but not nested fields or messages", () => {
-  const engine = new Mechanisms(config());
-  const sources = engine.discover([
-    { role: "system", content: prompt },
-    { role: "user", content: prime },
-    { role: "assistant", content: "<rules>\nUnclosed example" },
-  ]);
-  assert.deepEqual(sources.map(s => s.path.join(".")), tags.map(tag => "system_prompt." + tag));
+test("configuration and discovery have no fixed scope names or aliases", () => {
+  const text = "<one><two>text</two></one><other><two>different</two></other>";
+  const engine = new Mechanisms({ one: { two: { replacement: "New" } } });
+  assert.deepEqual(engine.discover([{ role: "user", content: text }]).map(s => s.path),
+    [["one"], ["one", "two"], ["other"], ["other", "two"]]);
   assert.deepEqual(engine.unidentified, []);
-  assert.ok(sources.find(s => s.path.at(-1) === "skills")!.original.includes("<available_skills>"));
-  assert.ok(sources.find(s => s.path.at(-1) === "prime")!.original.includes("<memory>"));
 });
 
-test("default replacement changes only system tools text and keeps tool declarations", async () => {
+test("a path must match the entire ancestry, not a suffix", async () => {
+  const f = await fixture('[one.two]\nreplacement = "New"\n');
+  try {
+    const text = "<one><two>old</two></one><other><two>keep</two></other><two>keep</two>";
+    const result = await f.request([{ role: "system", content: text }]);
+    assert.equal(result[0].content, text.replace(">old<", ">New<"));
+  } finally { await f.cleanup(); }
+});
+
+test("arbitrary names and arbitrary nesting depths use the same matching rules", async () => {
+  const f = await fixture('[Alpha."beta-tag".gamma.delta]\nreplacement = "New"\n');
+  try {
+    const text = '<Alpha><beta-tag source="x > y"><gamma><delta>Old</delta></gamma></beta-tag></Alpha>';
+    const result = await f.request([{ role: "assistant", content: text }]);
+    assert.equal(result[0].content, text.replace("Old", "New"));
+  } finally { await f.cleanup(); }
+});
+
+test("discovery preserves comments, creates nested tables once, and reloads replacements", async () => {
+  const f = await fixture("# Keep this comment\n");
+  try {
+    const messages = [{ role: "toolResult", content: "<one><two>Old</two></one>" }];
+    assert.equal(await f.request(messages), messages);
+    const discovered = await readFile(f.path, "utf8");
+    assert.ok(discovered.startsWith("# Keep this comment\n"));
+    assert.deepEqual({ ...(parse(discovered) as any).one.two }, {});
+    const mtime = (await stat(f.path)).mtimeMs;
+    assert.equal(await f.request(messages), messages);
+    assert.equal((await stat(f.path)).mtimeMs, mtime);
+    assert.ok((await f.show()).includes("one.two"));
+    for (const value of ["New", "Updated"]) {
+      await writeFile(f.path, '[one.two]\nreplacement = "' + value + '"\n');
+      assert.equal((await f.request(messages))[0].content, messages[0].content.replace("Old", value));
+    }
+  } finally { await f.cleanup(); }
+});
+
+test("default config contains no fixed scopes or active replacements", async () => {
   const f = await fixture();
   try {
-    const tools = [{ name: "read", parameters: {} }];
-    const messages = [{ role: "system", content: prompt, toolsAdded: tools }, { role: "user", content: prime }];
-    const result = await f.request(messages);
-    assert.equal(result[0].content, prompt.replace("Tool guidance.", "TOOLS REPLACEMENT TEXT"));
-    assert.equal(result[0].toolsAdded, tools);
-    assert.equal(result[1], messages[1]);
-    assert.equal(messages[0].content, prompt);
-    assert.equal(await readFile(f.path, "utf8"), defaultTemplate);
-    assert.ok((await f.show()).includes("Context hook:"));
+    const messages = [{ role: "system", content: "<new_scope>Keep</new_scope>" }];
+    assert.equal(await f.request(messages), messages);
+    const template = await readFile(new URL("../default.toml", import.meta.url), "utf8");
+    assert.deepEqual(Object.keys(parse(template)), []);
+    assert.deepEqual(Object.keys(parse(await readFile(f.path, "utf8"))), ["new_scope"]);
   } finally { await f.cleanup(); }
 });
 
-test("all tagged sections use direct keys and retain wrappers and source bytes", async () => {
-  const f = await fixture(defaults + tags.map(tag => replacement(tag, "New " + tag)).join(""));
+test("text block edits preserve images, unrelated blocks, tool metadata, and input identity", async () => {
+  const f = await fixture('[one.two]\nreplacement = "New"\n');
   try {
-    const text = prompt.replace("<prime>", '<prime version="1">').replaceAll("\n", "\r\n");
-    const messages = [{ role: "system", content: text }];
-    const snapshot = structuredClone(messages);
+    const image = { type: "image", data: "abc", mimeType: "image/png" };
+    const untouched = { type: "text", text: "Ordinary prose." };
+    const content = [image, untouched, { type: "text", text: "<one><two>Old</two></one>" }, null];
+    const toolsAdded = [{ name: "read", description: "Read", parameters: {} }];
+    const toolsRemoved = ["old"];
+    const messages = [{ role: "user", content, toolsAdded, toolsRemoved }];
     const result = await f.request(messages);
-    const regions = taggedRegions(result[0].content);
-    for (const region of regions)
-      assert.equal(result[0].content.slice(region.bodyStart, region.bodyEnd), "\r\nNew " + region.tag + "\r\n");
-    assert.ok(result[0].content.includes('<prime version="1">'));
-    assert.deepEqual(messages, snapshot);
-    assert.deepEqual(await f.request(result), result);
+    const changed = result[0].content as any[];
+    assert.equal(changed[0], image);
+    assert.equal(changed[1], untouched);
+    assert.equal(changed[2].text, "<one><two>New</two></one>");
+    assert.equal(changed[3], null);
+    assert.equal(result[0].toolsAdded, toolsAdded);
+    assert.equal(result[0].toolsRemoved, toolsRemoved);
+    assert.equal((content[2] as any).text, "<one><two>Old</two></one>");
   } finally { await f.cleanup(); }
 });
 
-test("structured tagged sections and deltas use the same direct keys", async () => {
-  const f = await fixture(defaults + replacement("preamble", "New preamble") + replacement("prime", "New prime"));
+test("structured fields are text containers, not implicit tag path segments", async () => {
+  const f = await fixture('[one.two]\nreplacement = "New"\n[preamble]\nreplacement = "Not an alias"\n');
   try {
-    const messages: TranscriptMessage[] = [
-      { role: "system", content: "", sections: { preamble: "<preamble>\nOld\n</preamble>", prime, docs: null } },
-      { role: "system", content: "", sections: { prime, preamble: null } },
-    ];
+    const messages: TranscriptMessage[] = [{
+      role: "system", content: "", sections: {
+        arbitrary: "<one><two>Old</two></one>", preamble: "Raw preamble", removed: null,
+      },
+    }];
     const result = await f.request(messages);
-    assert.equal(result[0].sections!.preamble, "<preamble>\nNew preamble\n</preamble>");
-    assert.equal(result[0].sections!.prime, "<prime>\nNew prime\n</prime>");
-    assert.equal(result[1].sections!.prime, "<prime>\nNew prime\n</prime>");
-    assert.equal(result[0].sections!.docs, null);
-    assert.equal(result[1].sections!.preamble, null);
-    assert.equal(messages[0].sections!.prime, prime);
+    assert.equal(result[0].sections!.arbitrary, "<one><two>New</two></one>");
+    assert.equal(result[0].sections!.preamble, "Raw preamble");
+    assert.equal(result[0].sections!.removed, null);
+    assert.equal(messages[0].sections!.arbitrary, "<one><two>Old</two></one>");
   } finally { await f.cleanup(); }
 });
 
-test("real Pi structured sections and raw preamble still work", async () => {
+test("real Pi sections use their literal tags, with no preamble special case", async () => {
   const host = fileURLToPath(import.meta.resolve("@earendil-works/pi-coding-agent"));
   const { buildSystemPromptSections } = await import(pathToFileURL(join(dirname(host), "core/system-prompt.js")).href);
   const sections = buildSystemPromptSections({ cwd: "/project", selectedTools: [] });
-  const f = await fixture(defaults + replacement("preamble", "Short preamble.") + replacement("rules", "Short rules."));
+  const f = await fixture('[rules]\nreplacement = "New rules."\n');
   try {
     const result = await f.request([{ role: "system", content: "", sections }]);
-    assert.equal(result[0].sections.preamble, "Short preamble.");
-    assert.equal(result[0].sections.rules, "<rules>\nShort rules.\n</rules>");
-    assert.ok(sections.preamble.startsWith("You are"));
-    const flat = await f.request([{ role: "system", content: "Old preamble\n\n<rules>\nOld\n</rules>" }]);
-    assert.equal(flat[0].content, "Short preamble.\n\n<rules>\nShort rules.\n</rules>");
+    assert.equal(result[0].sections.rules, "<rules>\nNew rules.\n</rules>");
+    assert.equal(result[0].sections.preamble, sections.preamble);
   } finally { await f.cleanup(); }
 });
 
-test("new tags are discovered once and config reloads on every request", async () => {
-  const f = await fixture(defaults);
+test("parent replacements work when no child replacement is active", async () => {
+  const f = await fixture('[one]\nreplacement = "Whole body"\n[one.two]\n');
   try {
-    const text = '<project_context>\n<project_instructions path="/repo/AGENTS.md">\nInstructions\n</project_instructions>\n</project_context>\n\n<addendum>\nExtra\n</addendum>';
+    const result = await f.request([{ role: "system", content: "<one><two>Old</two></one>" }]);
+    assert.equal(result[0].content, "<one>Whole body</one>");
+  } finally { await f.cleanup(); }
+});
+
+test("active ancestor and descendant replacements fail closed before config writes", async () => {
+  const config = '[one]\nreplacement = "Parent"\n[one.two]\nreplacement = "Child"\n[other]\nreplacement = "Other"\n';
+  const f = await fixture(config);
+  try {
+    const messages = [{ role: "system", content: "<one><two>Old</two></one><other>Old</other>" }];
+    assert.equal(await f.request(messages), messages);
+    assert.equal(await readFile(f.path, "utf8"), config);
+    assert.ok((await f.show()).includes("Overlapping replacements: one and one.two"));
+  } finally { await f.cleanup(); }
+});
+
+test("multiple sibling and repeated replacements keep original offsets and CRLF wrappers", async () => {
+  const f = await fixture('[one.two]\nreplacement = "Longer replacement"\n[one.three]\nreplacement = "New"\n');
+  try {
+    const text = '<one>\r\n<two attr="x">\r\nOld\r\n</two>\r\n<three>Old</three><two>Old</two>\r\n</one>';
     const messages = [{ role: "system", content: text }];
-    assert.equal(await f.request(messages), messages);
-    const discovered = await readFile(f.path, "utf8");
-    const data = parse(discovered) as any;
-    assert.deepEqual(Object.keys(data.system_prompt), ["project_context", "addendum"]);
-    await f.request(messages);
-    assert.equal(await readFile(f.path, "utf8"), discovered);
-    assert.equal(f.notifications.length, 1);
-    await writeFile(f.path, defaults + replacement("addendum", "New"));
-    assert.equal((await f.request(messages))[0].content, text.replace("Extra", "New"));
-    await writeFile(f.path, defaults);
-    assert.equal(await f.request(messages), messages);
-  } finally { await f.cleanup(); }
-});
-
-test("conversation messages and their text and image blocks are never scanned or changed", async () => {
-  const f = await fixture(defaults + replacement("prime", "New prime"));
-  try {
-    const image = { type: "image", data: "abc", mimeType: "image/png" };
-    const messages = [
-      { role: "system", content: prime },
-      { role: "user", content: prime },
-      { role: "user", content: '<prime_session version="1">\nOld\n</prime_session>' },
-      { role: "assistant", content: prime },
-      { role: "toolResult", content: "<constructor>\nBroken" },
-      { role: "user", content: "<prime>\nUnclosed" },
-      { role: "user", content: [image, { type: "text", text: prime }] },
-    ];
     const result = await f.request(messages);
-    assert.equal(result[0].content, "<prime>\nNew prime\n</prime>");
-    for (let i = 1; i < messages.length; i++) assert.equal(result[i], messages[i]);
-    assert.equal((parse(await readFile(f.path, "utf8")) as any).message, undefined);
+    assert.equal(result[0].content, text.replaceAll('<two>Old</two>', '<two>Longer replacement</two>')
+      .replace('\r\nOld\r\n', '\r\nLonger replacement\r\n').replace('<three>Old</three>', '<three>New</three>'));
+    assert.deepEqual(await f.request(result), result);
+    assert.equal(messages[0].content, text);
   } finally { await f.cleanup(); }
 });
 
-test("tag parser respects nesting, attributes, code fences, and closing-tag errors", () => {
-  const text = '<skills>\n<available_skills>\n<skill>\n<name>x</name>\n</skill>\n</available_skills>\n```xml\n</skills>\n<fake>\n```\n</skills>';
-  assert.deepEqual(taggedRegions(text).map(r => r.tag), ["skills"]);
-  for (const broken of ["<rules>\nText", "<rules>\n</docs>", "</rules>"])
+test("empty paired tag bodies can be replaced; self-closing tags have no body", async () => {
+  const f = await fixture('[one.two]\nreplacement = "New"\n');
+  try {
+    const text = "<one><two></two><empty /></one>";
+    assert.equal((await f.request([{ role: "user", content: text }]))[0].content,
+      "<one><two>New</two><empty /></one>");
+  } finally { await f.cleanup(); }
+});
+
+test("tag parser ignores fenced examples and tracks inline and multiline nested tags", () => {
+  const text = '<one>\n<two>inline</two>\n```xml\n</one>\n<fake>\n```\n~~~xml\n<fake>\n~~~\n</one>';
+  assert.deepEqual(taggedRegions(text).map(r => r.path), [["one"], ["one", "two"]]);
+  for (const broken of ["<one>Unclosed", "<one></two>", "</one>"])
     assert.throws(() => taggedRegions(broken), /context tag/);
 });
 
-test("invalid and old configuration is rejected without changes or writes", async () => {
-  for (const text of [
-    "[broken",
-    'version = 1\n[mechanisms]\n',
-    "[system_prompt.sections.docs]\n",
-    "[message.prime_session]\n",
-    defaults + replacement("unobserved", ""),
-    defaults + replacement("unobserved", 12),
-    "[tools]\nreplacement = \"Unsupported\"\n",
-  ]) {
-    const f = await fixture(text);
+test("untagged text has no synthetic scope and is retained and reported", async () => {
+  const f = await fixture('[preamble]\nreplacement = "Not applied"\n[one]\nreplacement = "New"\n');
+  try {
+    const text = "Prefix\n<one>Old</one>\nSuffix";
+    assert.equal((await f.request([{ role: "user", content: text }]))[0].content, text.replace("Old", "New"));
+    const report = await f.show();
+    assert.ok(report.includes("Prefix"));
+    assert.ok(report.includes("Suffix"));
+    assert.ok(!(parse(await readFile(f.path, "utf8")) as any).system_prompt);
+  } finally { await f.cleanup(); }
+});
+
+test("former alias names are ordinary literal tags with no precedence rules", async () => {
+  const f = await fixture('[tools]\nreplacement = "Top"\n[system_prompt.tools]\nreplacement = "Nested"\n');
+  try {
+    const text = "<tools>Old</tools><system_prompt><tools>Old</tools></system_prompt>";
+    assert.equal((await f.request([{ role: "system", content: text }]))[0].content,
+      "<tools>Top</tools><system_prompt><tools>Nested</tools></system_prompt>");
+  } finally { await f.cleanup(); }
+});
+
+test("a tag named replacement can be represented by a nested table", async () => {
+  const f = await fixture('[one.replacement]\nreplacement = "New"\n');
+  try {
+    const text = "<one><replacement>Old</replacement></one>";
+    assert.equal((await f.request([{ role: "system", content: text }]))[0].content,
+      "<one><replacement>New</replacement></one>");
+  } finally { await f.cleanup(); }
+});
+
+test("invalid configuration and malformed tags in any text container stop the entire request", async () => {
+  for (const config of ["[broken", '[one]\nreplacement = ""\n', "[one]\nreplacement = 12\n", "one = 12\n"]) {
+    const f = await fixture(config);
     try {
-      const messages = [{ role: "system", content: prompt }];
+      const messages = [{ role: "system", content: "<one>Old</one>" }];
       assert.equal(await f.request(messages), messages);
-      assert.equal(await readFile(f.path, "utf8"), text);
+      assert.equal(await readFile(f.path, "utf8"), config);
       assert.ok((await f.show()).includes("Error:"));
+    } finally { await f.cleanup(); }
+  }
+  for (const malformed of [
+    { role: "user", content: "<broken>" },
+    { role: "toolResult", content: [{ type: "text", text: "<broken>" }] },
+    { role: "system", sections: { arbitrary: "<broken>" } },
+  ]) {
+    const f = await fixture('[one]\nreplacement = "New"\n');
+    try {
+      const messages: TranscriptMessage[] = [{ role: "system", content: "<one>Old</one>" }, malformed];
+      assert.equal(await f.request(messages), messages);
+      assert.ok((await f.show()).includes("Unclosed context tag"));
     } finally { await f.cleanup(); }
   }
 });
 
-test("malformed system context stops all replacements", async () => {
-  const f = await fixture(defaults + replacement("preamble", "New"));
+test("overlap checks are local to each text container, including individual blocks", async () => {
+  const f = await fixture('[one]\nreplacement = "Parent"\n[one.two]\nreplacement = "Child"\n');
   try {
-    const messages = [{ role: "system", content: "Old\n<rules>\nBroken" }];
+    const messages = [
+      { role: "system", content: "<one>Old</one>" },
+      { role: "user", content: [{ type: "text", text: "<one><two>Old</two></one>" }] },
+    ];
+    // Both scopes in the second container still overlap and must be rejected.
     assert.equal(await f.request(messages), messages);
-    assert.ok((await f.show()).includes("Unclosed context tag"));
+    // The same path can occur in separate containers without a false self-conflict.
+    await writeFile(f.path, '[one.two]\nreplacement = "Child"\n');
+    const independent = [
+      { role: "system", content: "<one><two>Old</two></one>" },
+      { role: "user", content: [{ type: "text", text: "<one><two>Old</two></one>" },
+        { type: "text", text: "<one><two>Old</two></one>" }] },
+    ];
+    const result = await f.request(independent);
+    assert.equal(result[0].content, "<one><two>Child</two></one>");
+    const blocks = result[1].content as { type: string; text: string }[];
+    assert.ok(blocks.every(block => block.text === "<one><two>Child</two></one>"));
   } finally { await f.cleanup(); }
 });
 
-test("absent system scope leaves text unchanged and reports it", async () => {
-  const f = await fixture("[tools]\n");
+test("quoted TOML segments match periods in tag names literally", async () => {
+  const f = await fixture('["one.two".three]\nreplacement = "New"\n');
   try {
-    const messages = [{ role: "system", content: prompt }];
-    assert.equal(await f.request(messages), messages);
-    assert.ok((await f.show()).includes("UNIDENTIFIED"));
-    assert.equal((parse(await readFile(f.path, "utf8")) as any).system_prompt, undefined);
+    const text = "<one.two><three>Old</three></one.two><one><two><three>Keep</three></two></one>";
+    assert.equal((await f.request([{ role: "user", content: text }]))[0].content, text.replace("Old", "New"));
   } finally { await f.cleanup(); }
 });
 
-test("wrong types, unsupported fields, and unsafe names are rejected", () => {
+test("invalid table types and unsafe names remain rejected at every depth", () => {
   for (const data of [
-    { system_prompt: "text" },
-    { system_prompt: { preamble: "text" } },
-    { system_prompt: { preamble: { kind: "preamble" } } },
-    { system_prompt: { constructor: {} } },
-    { system_prompt: { "bad.tag": {} } },
-    { tools: [] },
-    { message: {} },
+    { one: "text" }, { one: [] }, { one: { two: { replacement: [] } } },
+    { one: { two: { replacement: "  " } } }, { one: { constructor: {} } },
+    { "bad name": {} },
   ]) assert.throws(() => new Mechanisms(data));
-  assert.throws(() => new Mechanisms(config()).discover([
-    { role: "system", content: "<constructor>\ntext\n</constructor>" },
+  assert.throws(() => new Mechanisms({}).discover([
+    { role: "user", content: "<one><constructor>text</constructor></one>" },
   ]), /Unsafe/);
-});
-
-test("unwrapped structured text is retained and reported", () => {
-  const engine = new Mechanisms(config());
-  assert.deepEqual(engine.discover([{ role: "system", sections: { custom: "Opaque text" } }]), []);
-  assert.ok(engine.unidentified.some(u => u.text === "Opaque text"));
 });

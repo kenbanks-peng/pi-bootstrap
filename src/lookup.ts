@@ -10,6 +10,7 @@ function tableAt(root: Table, path: string[]): Table | undefined {
   let value: unknown = root;
   for (const key of path) {
     if (!value || typeof value !== "object" || Array.isArray(value)) return;
+    if (!Object.hasOwn(value, key)) return;
     value = (value as Table)[key];
   }
   return value && typeof value === "object" && !Array.isArray(value) ? value as Table : undefined;
@@ -71,7 +72,8 @@ export class Lookup {
           next = addFields(next, source.path, "", false);
           data = parse(next) as Table;
         } else {
-          if (entry.replacement !== undefined && typeof entry.replacement !== "string")
+          if (entry.replacement !== undefined && typeof entry.replacement !== "string" &&
+            !(entry.replacement && typeof entry.replacement === "object" && !Array.isArray(entry.replacement)))
             throw new Error(source.path.join(".") + ": replacement must be a string");
           if (typeof entry.replacement === "string" && !entry.replacement.trim())
             throw new Error(source.path.join(".") + ": empty replacements are not supported");
@@ -99,7 +101,7 @@ export class Lookup {
       for (const source of sources) {
         const entry = tableAt(data, source.path)!;
         const label = source.path.join(".");
-        if (entry.replacement === undefined) this.report.missing.push(label);
+        if (typeof entry.replacement !== "string") this.report.missing.push(label);
       }
     } catch (error) {
       this.data = {};
@@ -122,6 +124,7 @@ export class Lookup {
   /** Select by stable path only. Source prose is not an identifier. */
   replacement(path: string[]): string | undefined {
     if (!this.valid) return;
-    return tableAt(this.data, path)?.replacement as string | undefined;
+    const value = tableAt(this.data, path)?.replacement;
+    return typeof value === "string" ? value : undefined;
   }
 }

@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { performance } from "node:perf_hooks";
 import type { ExtensionAPI, ExtensionContext } from "@earendil-works/pi-coding-agent";
 import { Lookup } from "./src/lookup.ts";
-import { Mechanisms, type TranscriptMessage } from "./src/prompt.ts";
+import { type TranscriptMessage } from "./src/prompt.ts";
+import { PiContext } from "./src/pi-context.ts";
 
 export function getConfigPath(): string {
   return join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".pi", "agent"), "extensions", "pi-bootstrap", "config.toml");
@@ -15,14 +16,15 @@ const safeText = (text: string) => text.replace(/[\u0000-\u0008\u000b-\u001f\u00
   char => "\\u" + char.charCodeAt(0).toString(16).padStart(4, "0"));
 const textBytes = (messages: TranscriptMessage[]) => messages.reduce((total, message) => {
   const content = typeof message.content === "string" ? message.content :
-    Array.isArray(message.content) ? message.content.map(block => block.type === "text" ? block.text : "").join("") : "";
+    Array.isArray(message.content) ? message.content.map(block =>
+      block && block.type === "text" && typeof block.text === "string" ? block.text : "").join("") : "";
   return total + Buffer.byteLength(content) +
     Object.values(message.sections ?? {}).reduce((sum, value) => sum + Buffer.byteLength(value ?? ""), 0);
 }, 0);
 
 export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
   const lookup = new Lookup(path);
-  let mechanisms: Mechanisms | undefined;
+  let mechanisms: PiContext | undefined;
   let notification = "";
   let metrics = "No request measured.";
   const notify = (ctx: ExtensionContext) => {
@@ -35,7 +37,7 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
     notification = key;
     if (lookup.report.error) ctx.ui.notify("pi-bootstrap: " + lookup.report.error + ". No replacements applied.", "warning");
     else if (unknown.length) ctx.ui.notify(
-      "pi-bootstrap: Unidentified system context remains unchanged. Use /bootstrap.", "warning");
+      "pi-bootstrap: Untagged context text remains unchanged. Use /bootstrap.", "warning");
     else if (lookup.report.missing.length)
       ctx.ui.notify("pi-bootstrap: " + lookup.report.missing.length + " entries have no replacement. Use /bootstrap.", "info");
   };
@@ -46,9 +48,9 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath()) {
     mechanisms = undefined;
     try {
       const defaults = await readFile(new URL("./default.toml", import.meta.url), "utf8");
-      const candidate: { engine?: Mechanisms } = {};
+      const candidate: { engine?: PiContext } = {};
       await lookup.refresh(data => {
-        candidate.engine = new Mechanisms(data);
+        candidate.engine = new PiContext(data);
         return candidate.engine.discover(event.messages);
       }, defaults);
       mechanisms = candidate.engine;

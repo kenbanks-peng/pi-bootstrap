@@ -96,12 +96,7 @@ test("the extension creates config in the global Pi extension directory", async 
     await handlers.get("context_with_system")!({ messages: [{ role: "system", content: "Preamble" }] }, { hasUI: false });
     const text = await readFile(config, "utf8");
     const data = parse(text) as any;
-    assert.equal(data.system_prompt.kind, undefined);
-    assert.equal(data.message, undefined);
-    assert.deepEqual(Object.keys(data.tools), []);
-    assert.equal(data.version, undefined);
-    assert.equal(data.mechanisms, undefined);
-    assert.equal(data.bootstrap, undefined);
+    assert.deepEqual(Object.keys(data), []);
     assert.ok(!text.includes("source_hash"));
     delete process.env.PI_CODING_AGENT_DIR;
     assert.equal(getConfigPath(), join(homedir(), ".pi", "agent", "extensions", "pi-bootstrap", "config.toml"));

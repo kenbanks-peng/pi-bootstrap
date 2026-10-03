@@ -1,18 +1,22 @@
 # Bootstrap context breakdown
 
-The current system prompt uses tagged sections. [pi-baseline.md](pi-baseline.md) is a historical capture of the older layout.
+[pi-baseline.md](pi-baseline.md) is the reference for the request hierarchy. Configuration starts inside its `request` container.
 
-| Area | Processing |
+| Baseline content | Scope or behavior |
 | --- | --- |
-| System `preamble` | `system_prompt.preamble` |
-| System `tools`, `rules`, `docs`, `skills`, `cwd` | `system_prompt.<tag>` |
-| System `prime` | `system_prompt.prime` |
-| Nested skill fields, memories, and commands | Kept inside the parent section |
-| New tagged system sections | Discovered as `system_prompt.<tag>` |
-| Provider tool declarations outside the system prompt | Unchanged; `[tools]` is reserved and empty |
-| Conversation messages, including tagged user envelopes | Not scanned or changed |
-| HTTP metadata and capture wrappers | Not runtime input |
+| `system-prompt > docs` | `[system-prompt.docs]` |
+| `system-prompt > tools` | `[system-prompt.tools]` — guidance |
+| `system-prompt > skills > available_skills > skill > description` | `[system-prompt.skills.available_skills.skill.description]` |
+| `system-prompt > one > two` | `[system-prompt.one.two]` — arbitrary nested tags |
+| `messages > message > session_state > session_mode` | `[messages.message.session_state.session_mode]` |
+| Peer `tools` | Structured declarations; prose replacement rejected |
+| Raw preamble or other untagged text | Unchanged and reported |
+| Images, non-text blocks, null section deletions | Unchanged |
+| Stored history and resource files | Unchanged |
+| Capture metadata, headers, params, response | Outside transcript text; not scanned |
 
-The extension uses one complete-transcript hook and changes only system text in the outgoing request. It does not change prompt-building options, tool access, resource files, or stored session history.
+`src/pi-context.ts` maps Pi transport fields to the baseline containers. Pi's system content and system section values have the parent path `system-prompt`. All conversation text has the parent path `messages.message`. The adapter does not add tags to the outgoing request.
 
-See [MECHANISMS.md](MECHANISMS.md) for the configuration and replacement contract.
+`src/prompt.ts` is the generic matcher. It combines the supplied parent path with the literal nested tags. It has no list of section names and no tools/docs/preamble special cases.
+
+The extension runs at `context_with_system`. Active parent/child replacements that overlap cause an error. See [MECHANISMS.md](MECHANISMS.md) for the full contract.
