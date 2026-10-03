@@ -60,6 +60,8 @@ Two rules selecting the same file in the same action folder are rejected before
 that scope executes. The same basename in different folders is not an overlap.
 Unmatched files, child directories and source-file symlinks are ignored.
 Root-level `config.toml` and `protocol.toml` are never command sources.
+Inside `commands/`, those basenames are ordinary selectable command files;
+only the root-level protocol controls selection.
 
 Memory content is complete, strict UTF-8, without its filename. Command sources
 are strict UTF-8 TOML:
@@ -149,7 +151,7 @@ the same repository factory as startup; stderr is drained so a verbose command
 cannot deadlock on its pipe. The dependency lockfile now includes the previously
 omitted declared Pi peer, enabling ordinary `npm ci`.
 
-## Verification
+## Implementation verification
 
 - `npm ci --ignore-scripts`: passes after refreshing the incomplete lockfile;
   installs 155 packages. npm reports the transitive advisory noted below.
@@ -162,13 +164,75 @@ omitted declared Pi peer, enabling ordinary `npm ci`.
 Lifecycle/UI tests use Pi API doubles plus real temporary filesystem and child
 processes; no interactive TUI or model-provider session was launched.
 
+## Independent verification and fixes
+
+Audited implementation `7d024de49d6a61b4e706f567778f3fc30512b8cc`
+against source `bc18712f619f286e83693df0aa292ddb229fd641` independently:
+compared all four source modules (including a branding-normalized diff), read
+both source test files, and inspected the embedded runtime and tests rather
+than relying on the inventory above. Slash-command dispatch is identical after
+renaming; lifecycle retains hidden snapshots, stable context ordering, fresh
+session-start composition and the source's command-error notification behavior.
+The repository/protocol differences implement the new folders, filenames and
+parser, with stderr draining and shared startup/command repository construction.
+The existing replacement implementation, default TOML and all 33 original tests
+are byte-unchanged from before the embedding commit.
+
+Two defects were reproduced with failing regression tests before fixing:
+
+- **Incomplete folder migration:** protocol scanning still excluded the basename
+  `protocol.toml` inside `commands/`. Repository list/read/edit accepted that
+  command, but composition silently omitted it. Removed the inherited root-file
+  exclusion from action-folder scanning. Regression covers `protocol.toml` and
+  `config.toml` commands, including edits, in both scopes; the existing root-file
+  exclusion test remains green.
+- **Overbroad cwd containment check (also present in the source):** a contained
+  directory named `..cache` was mistaken for parent traversal. Containment now
+  checks an actual `..` path component, not a string prefix. Regression covers
+  both the direct directory and a contained symlink to it; existing absolute,
+  parent-escape and outside-symlink rejection tests remain green.
+
+Additional regressions verify actual command side-effect ordering (scope, rule,
+then filename), overlap rejection before any command in that scope executes,
+and `/bootstrap add/edit/delete` through session injection using generated
+`command-<id>.toml` files. They also prove edits do not mutate the old snapshot.
+
+Independent validation in this worktree:
+
+- Initial test invocation could not load `smol-toml` because this fresh worktree
+  had no installed dependencies. `npm ci --ignore-scripts` then succeeded,
+  adding 155 packages with no manifest/lockfile changes (one known high advisory).
+- Targeted pre-fix regression run: 2 tests, 0 passed, 2 failed, exit 1 (omitted
+  command output and erroneous cwd escape rejection).
+- Final `npm test`: **60 passed, 0 failed, 0 skipped/cancelled**, exit 0
+  (33 original tests, 27 session/protocol tests).
+- `npm run typecheck`: exit 0. `git diff --check`: exit 0.
+- Case-insensitive runtime branding scan over `index.ts` and `src/*.ts`: no
+  old-brand identifiers or strings.
+
+No interactive Pi/model-provider session was launched; lifecycle integration is
+validated with API doubles, real temporary files and real child processes.
+Source checkout, live configuration and Aven state were read-only. Dependency
+upgrades remain explicitly deferred; this audit does not remediate that advisory.
+
 ## Deployment observations
 
 The installed layout inspected read-only already uses `command-<id>.toml`, but
 its `protocol.toml` still has `glob = "*.command.toml"`. That rule does not select
-the renamed files. The user must change it to `*.toml` to enable those commands;
-this extension preserves existing protocols and does not silently translate
-legacy globs. Neither the external source checkout nor live user configuration
+the renamed files. Independent read-only inspection confirmed one renamed command file and four
+renamed memory files. The exact required deployment edit is in
+`~/.config/pi/agent/extensions/pi-bootstrap/protocol.toml`, in the rule whose
+`action = "command"`:
+
+```diff
+-glob = "*.command.toml"
++glob = "*.toml"
+```
+
+This change is required to enable the installed command. Fresh installations
+already get `*.toml`; the regression for an existing legacy glob proves it
+selects nothing until explicitly corrected. This extension preserves existing
+protocols and does not silently translate legacy globs. Neither the external source checkout nor live user configuration
 was modified during implementation.
 
 Dependency audit reports a transitive high-severity `brace-expansion` advisory

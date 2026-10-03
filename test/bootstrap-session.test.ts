@@ -238,6 +238,30 @@ test("command defaults, filters, edits, deletion, cancellation and non-UI operat
   assert.match(notices.notifications.at(-1)!.message, /does not exist/);
 });
 
+test("slash-created commands use renamed filenames and execute on the next session only", async t => {
+  const f = await fixture(t);
+  const h = harness(() => f.repository);
+  const notices = ui([executable('process.stdout.write("created")').replace(/^version = 1\n/, ""), executable('process.stdout.write("edited")')]);
+  const ctx = { cwd: f.projectRoot, hasUI: true, ui: notices.api };
+  const run = h.commands.get("bootstrap")!.handler;
+  await run("add command", ctx);
+  const [source] = await f.repository.list("project");
+  assert.match(source.id, /^command-[0-9a-f]{8}$/);
+  assert.deepEqual(await readdir(join(f.project, "commands")), [`${source.id}.toml`]);
+  assert.equal(h.messages.length, 0);
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.match(h.messages[0].content, /<output>created<\/output>/);
+  await run(`edit ${source.id} command`, ctx);
+  assert.match(notices.editors[1].initial, /^version = 1/);
+  assert.equal(h.messages.length, 1);
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.match(h.messages[1].content, /<output>edited<\/output>/);
+  assert.match(h.messages[0].content, /<output>created<\/output>/);
+  await run(`delete ${source.id} command`, ctx);
+  await h.handlers.get("session_start")!({}, ctx);
+  assert.equal(h.messages.length, 2);
+});
+
 test("command argument validation and ambiguous IDs never mutate files", async t => {
   const f = await fixture(t);
   await memory(f.global, "same.md", "Global");

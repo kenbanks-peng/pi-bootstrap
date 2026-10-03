@@ -1,7 +1,7 @@
 import { parse } from "smol-toml";
 import { mkdir, readdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { spawn } from "node:child_process";
-import { basename, isAbsolute, join, relative, resolve } from "node:path";
+import { basename, isAbsolute, join, relative, resolve, sep } from "node:path";
 
 export const COMMAND_TIMEOUT_MS = 1_000;
 export const COMMAND_OUTPUT_LIMIT_BYTES = 1_048_576;
@@ -132,7 +132,7 @@ async function listDirectFiles(sourceRoot: string, scopeLabel: string): Promise<
   try {
     const entries = await readdir(sourceRoot, { withFileTypes: true });
     return entries
-      .filter((entry) => entry.isFile() && entry.name !== protocolFilename)
+      .filter((entry) => entry.isFile())
       .map((entry) => entry.name)
       .sort();
   } catch (error) {
@@ -216,7 +216,7 @@ async function commandCwd(cwd: string | undefined, projectRoot: string, sourceNa
 
 function isContained(root: string, candidate: string): boolean {
   const path = relative(root, candidate);
-  return path === "" || (!path.startsWith("..") && !isAbsolute(path));
+  return path === "" || (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path));
 }
 
 async function execute(argv: [string, ...string[]], cwd: string, sourceName: string, scopeLabel: string): Promise<Buffer> {
