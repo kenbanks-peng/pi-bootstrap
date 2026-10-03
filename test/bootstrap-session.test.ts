@@ -13,15 +13,20 @@ function harness(repositoryFor?: Parameters<typeof registerBootstrapSession>[1])
   const handlers = new Map<string, (...args: any[]) => any>();
   const commands = new Map<string, { description: string; handler: (...args: any[]) => any }>();
   const messages: any[] = [];
+  const tools = new Map<string, any>();
   const pi = {
-    on: (name: string, handler: (...args: any[]) => any) => handlers.set(name, handler),
+    on: (name: string, handler: (...args: any[]) => any) => {
+      const previous = handlers.get(name);
+      handlers.set(name, previous ? async (...args: any[]) => { await previous(...args); return handler(...args); } : handler);
+    },
+    registerTool: (spec: any) => tools.set(spec.name, spec),
     registerCommand: (name: string, spec: any) => commands.set(name, spec),
     sendMessage: (message: any) => messages.push(message),
     getAllTools: () => [{ name: "read", description: "Read files" }],
     getActiveTools: () => ["read"],
   };
   const snapshot = registerBootstrapSession(pi as never, repositoryFor);
-  return { handlers, commands, messages, pi, snapshot };
+  return { handlers, commands, messages, tools, pi, snapshot };
 }
 
 function ui(values: Array<string | undefined> = []) {
@@ -51,7 +56,8 @@ test("full extension registers both existing transformation and session capabili
   h.handlers.clear();
   h.commands.clear();
   bootstrap(h.pi as never);
-  assert.deepEqual([...h.handlers.keys()], ["session_shutdown", "session_start", "context_with_system"]);
+  assert.deepEqual([...h.handlers.keys()], ["session_shutdown", "session_start", "before_agent_start", "context_with_system"]);
+  assert.deepEqual([...h.tools.keys()], ["skill_search"]);
   assert.deepEqual([...h.commands.keys()], ["bootstrap"]);
   assert.match(h.commands.get("bootstrap")!.description, /protocol.toml/);
   assert.deepEqual(h.messages, []);

@@ -57,6 +57,37 @@ files. Run `/reload` after you change sources or the protocol.
 See [session configuration and capability parity](docs/session-capabilities.md)
 for protocol examples, execution limits, lifecycle, and migration decisions.
 
+## Lazy skill discovery
+
+The system prompt keeps an alphabetical list of skill names, without their
+descriptions or paths. Before specialized work, the model uses the directly
+available `skill_search` tool to find the relevant instructions:
+
+```json
+{ "query": "code review", "limit": 5 }
+```
+
+Search returns each matching skill's `name`, `description`, `filePath`, and
+`baseDir`. The model then uses `read` to load the selected `SKILL.md`. Supporting
+file paths are relative to `baseDir`. Search does not load or execute skill
+instructions, and there is no separate skill-loading tool.
+
+- Search uses Pi's discovered skill metadata; it does not scan directories again.
+- Exact names rank first. Other results use case-insensitive name and description
+  keywords. Search returns up to five results by default; `limit` accepts 1–20.
+- Skills with `disable-model-invocation: true` are absent from the name list and
+  search. Explicit `/skill:name` commands continue to work.
+- Each agent run refreshes the catalog from Pi's current metadata. Session start
+  and shutdown clear it. Run `/reload` after skill changes.
+- Request copies of earlier system skill sections also receive the compact list,
+  so an old full catalog does not remain in the outgoing transcript. Stored
+  history, tool declarations, and skill resource files stay unchanged.
+- Skill transformations run before the configured request replacements.
+  A replacement for `[system_prompt.skills]` therefore receives the compact list.
+
+This reduces prompt size. It does not remove Pi's startup skill scan or skill
+instructions already read into conversation history.
+
 ## Configuration
 
 On the first request, the extension copies [default.toml](default.toml) to

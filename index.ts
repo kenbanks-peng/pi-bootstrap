@@ -7,6 +7,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { parseReplacements, replaceMessages, replaceTags } from "./src/replace.ts";
 import { getBootstrapDirectory } from "./src/bootstrap-paths.ts";
 import { registerBootstrapSession } from "./src/bootstrap-session.ts";
+import { registerLazySkills, type SkillPromptTransform } from "./src/bootstrap-skills.ts";
 
 export function getConfigPath(): string {
   return join(getBootstrapDirectory(), "config.toml");
@@ -14,10 +15,12 @@ export function getConfigPath(): string {
 
 export default function bootstrap(pi: ExtensionAPI) {
   const snapshot = registerBootstrapSession(pi);
-  registerBootstrap(pi, getConfigPath(), snapshot);
+  const transformSkills = registerLazySkills(pi);
+  registerBootstrap(pi, getConfigPath(), snapshot, transformSkills);
 }
 
-export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snapshot: () => string = () => "") {
+export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snapshot: () => string = () => "",
+  transformSkills: SkillPromptTransform = messages => messages) {
   pi.on("context_with_system", async event => {
     let config: string;
     try {
@@ -39,7 +42,7 @@ export function registerBootstrap(pi: ExtensionAPI, path = getConfigPath(), snap
         ? join(homedir(), link.slice(2)) : resolve(dirname(path), link);
       references.set(target, text);
     };
-    const messages = replaceMessages(event.messages, replacements, saveReference);
+    const messages = replaceMessages(transformSkills(event.messages), replacements, saveReference);
     // Bootstrap has no independent system preamble/postamble. Explicit bootstrap
     // paths still work, but broad prompt-edge rules cannot eat this snapshot.
     const bootstraps = replaceTags(snapshot(), replacements, ["system-prompt"], [], saveReference);
