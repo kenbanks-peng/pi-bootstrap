@@ -1,6 +1,6 @@
 <meta>
 
-- **timestamp**: 2026-10-03T03:20:59.256Z
+- **timestamp**: 2026-10-03T03:55:10.906Z
 - **agent**: Pi
 - **wire format**: openai
 - **model**: gpt-6.1-sol
@@ -21,13 +21,13 @@ user-agent: pi (darwin 25.6.0; arm64)
 openai-beta: responses=experimental
 accept: text/event-stream
 content-type: application/json
-session-id: 01a0ffc7-71d6-77e4-ad2e-b24b2638c3a7
-x-client-request-id: 01a0ffc7-71d6-77e4-ad2e-b24b2638c3a7
+session-id: 01a0ffe6-bde8-72b8-b325-a6b4b928ff52
+x-client-request-id: 01a0ffe6-bde8-72b8-b325-a6b4b928ff52
 content-encoding: zstd
 accept-language: *
 sec-fetch-mode: cors
 accept-encoding: gzip, deflate
-content-length: 8777
+content-length: 9423
 ```
 
 </headers>
@@ -90,7 +90,7 @@ In addition to the tools above, you may have access to other custom tools depend
 - Show file paths clearly when working with files
 </rules>
 
-<docs>Pi documentation can be found at ~/.pi/agents/extensions/pi-docs.md. Read it only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI.</docs>
+<docs>Pi documentation can be found at ~/.pi/agent/extensions/pi-bootstrap/links/pi-docs.md. Read it only when the user asks about pi itself, its SDK, extensions, themes, skills, or TUI.</docs>
 
 <skills>
 The following skills provide specialized instructions for specific tasks.
@@ -102,6 +102,11 @@ When a skill file references a relative path, resolve it against the skill direc
     <name>agents</name>
     <description>Run parallel or dependent coding tasks with Aven and Workmux. Track ownership, verify merges, and resume interrupted work.</description>
     <location>/Users/kenbanks/.config/pi/agent/skills/agents/SKILL.md</location>
+  </skill>
+  <skill>
+    <name>archify</name>
+    <description>Create polished, validated architecture, workflow, sequence, data-flow, and lifecycle/state diagrams as explorable standalone HTML with inline SVG, dark/light themes, optional trace motion, and PNG/JPEG/WebP/SVG/WebM export. Accept plain-language requirements or pasted Mermaid flowchart, sequenceDiagram, and stateDiagram input; inspect repository evidence when the diagram must reflect real code. Use when the user asks to visualize system architecture, infrastructure, cloud/security/network topology, technical workflows, API call sequences, request lifecycles, data pipelines, ETL/ELT, data lineage, state machines, or to convert/beautify Mermaid.</description>
+    <location>/Users/kenbanks/.config/pi/agent/skills/archify/SKILL.md</location>
   </skill>
   <skill>
     <name>aven</name>
@@ -164,14 +169,19 @@ When a skill file references a relative path, resolve it against the skill direc
     <location>/Users/kenbanks/.config/pi/agent/skills/writing-for-agents/SKILL.md</location>
   </skill>
   <skill>
-    <name>prototype</name>
-    <description>Build a throwaway prototype to answer a design question. Use when the user wants to sanity-check whether a state model or logic feels right, or explore what a UI should look like.</description>
-    <location>/Users/kenbanks/.agents/skills/prototype/SKILL.md</location>
+    <name>deep-research</name>
+    <description>Use when the user needs multi-source research with citation tracking, evidence persistence, and structured report generation. Triggers on &quot;deep research&quot;, &quot;comprehensive analysis&quot;, &quot;research report&quot;, &quot;compare X vs Y&quot;, &quot;analyze trends&quot;, or &quot;state of the art&quot;. Not for simple lookups, debugging, or questions answerable with 1-2 searches.</description>
+    <location>/Users/kenbanks/.agents/skills/deep-research/SKILL.md</location>
   </skill>
   <skill>
-    <name>understand-chat</name>
-    <description>Use when you need to ask questions about a codebase or understand code using a knowledge graph</description>
-    <location>/Users/kenbanks/.agents/skills/understand-chat/SKILL.md</location>
+    <name>ui-ux-pro-max</name>
+    <description>UI/UX design intelligence with searchable database</description>
+    <location>/Users/kenbanks/.agents/skills/ui-ux-pro-max/SKILL.md</location>
+  </skill>
+  <skill>
+    <name>wizard</name>
+    <description>Generate an interactive bash wizard that walks a human through steps only they can perform. Use when provisioning infrastructure, setting up credentials or CI secrets, walking an unfamiliar third-party dashboard, or running a one-off migration or cutover. Don&apos;t invoke this for steps the agent can perform itself.</description>
+    <location>/Users/kenbanks/.agents/skills/wizard/SKILL.md</location>
   </skill>
   <skill>
     <name>context7-docs</name>
@@ -272,12 +282,11 @@ Trigger: /context-mode:ctx-upgrade
 
 <prime>
   <memory>Never consider backwards compatibility as a hard requirement unless the user indicates otherwise.</memory>
+  <memory>Do not use README.md for a dumping ground to describe every small change. If the README.md does describe usage, then keep the updates high level.</memory>
+  <memory>Only use subagents when instructed by the user to use subagents.</memory>
   <memory>always use ASD-STE100 Simplified Technical English when you talk to me</memory>
-  <memory>If the user is simply inquiring about how to do something, then provide him the procedure without any change action.
-  </memory>
-  <memory>Prefer Pi&apos;s `ffgrep` and `fffind` tools for repository content and file searches. Use `ripgrep` (`rg`) and `fd` only when FFF is unavailable or cannot express the query.
-  
-  These CLI tools are available on this machine:
+  <memory>If the user is simply inquiring about how to do something, then provide him the procedure without any change action. But if the user has engaged you as an agent to perform activity on his behalf, unless there is a technical reason not to do so, perform the tasks yourself. Generally speaking, you should not be asking the user to perform tasks when you can do them yourself.</memory>
+  <memory>These CLI tools are available on this machine:
   
   - ast-grep: Structural code search and rewrite
   - bat: View files with syntax highlighting
@@ -345,7 +354,7 @@ Globals:
 - `text(value)`, `image(dataUrlOrImageBlock)`, `console.log(...)`, and top-level `return` add output; `exit()` ends the script.
 - `store(key, value)` and `load(key)` keep JSON values across codemode calls.
 - `ALL_TOOLS`, `searchTools(query, { limit?, namespace? })`, `describeTool(name)`, `describeNamespace(name)`: find unlisted tools, such as MCP tools.
-- `models`: classifiers and image generation. Read /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/9cf8-18da8527dc445530-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/docs/codemode.md first.
+- `models`: classifiers and image generation. Read /Users/kenbanks/Software/ToolChain/pnpm/install/global/v11/a553-18da965c07460748-0/node_modules/.pnpm/@earendil-works+pi-coding-agent@1.0.0_@aws-sdk+credential-provider-node@3.972.84_@smithy+signature-v4@5.7.4_ws@8.22.0/node_modules/@earendil-works/pi-coding-agent/docs/codemode.md first.
 
 Nested tools:
 
@@ -407,13 +416,13 @@ context-mode active. Hierarchy: ctx_batch_execute > ctx_execute > ctx_execute_fi
 
 - **status**: completed
 
-- **usage**: {"attribution":{"items":{"msg_031f66d0e164ecf1016ac0749dbd4c87d18cc065267a104987":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":5,"output_tokens":0}],"input_tokens":5,"output_tokens":0},"msg_031f66d0e164ecf1016ac0749dbd6087d1bd6d2e1c1408aa34":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":102,"output_tokens":0}],"input_tokens":102,"output_tokens":0},"msg_031f66d0e164ecf1016ac0749f73ac87d1aefbdf381795eaa9":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":2,"output_tokens":13}],"input_tokens":2,"output_tokens":13}},"request_fields":{"tools":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":587,"output_tokens":0},"instructions":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":4667,"output_tokens":0}}},"input_tokens":5363,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":13,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":5376}
+- **usage**: {"attribution":{"items":{"msg_0fdc5ce14263a115016ac07c9f8aec87d1b48a3e5dbf31feb0":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":5,"output_tokens":0}],"input_tokens":5,"output_tokens":0},"msg_0fdc5ce14263a115016ac07c9f8b0487d18048fbeb406d51bd":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":102,"output_tokens":0}],"input_tokens":102,"output_tokens":0},"msg_0fdc5ce14263a115016ac07ca114b487d1844dcf875256e6f3":{"cache_write_tokens":0,"cached_tokens":0,"content":[{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":2,"output_tokens":13}],"input_tokens":2,"output_tokens":13}},"request_fields":{"tools":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":585,"output_tokens":0},"instructions":{"cache_write_tokens":0,"cached_tokens":0,"input_tokens":5057,"output_tokens":0}}},"input_tokens":5751,"input_tokens_details":{"cache_write_tokens":0,"cached_tokens":0},"output_tokens":13,"output_tokens_details":{"reasoning_tokens":0},"total_tokens":5764}
 
 
 
 <assistant-text>
 
-Hi. What can I help you with?
+Hi. What do you need help with?
 
 </assistant-text>
 
