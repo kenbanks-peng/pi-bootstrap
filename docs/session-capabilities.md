@@ -58,10 +58,13 @@ Unmatched files, subdirectories and source symlinks are ignored. Root-level
 those basenames are ordinary selectable command files.
 
 Memories are complete strict UTF-8 text, without filenames. Commands are strict
-UTF-8 TOML with `version = 1` and exactly one of `argv` or `expression`:
+UTF-8 TOML with `version = 1`, a non-empty single-line `description`, and
+exactly one of `argv` or `expression`. Missing, blank, non-string, or multiline
+descriptions are errors. Add this field to existing command files:
 
 ```toml
 version = 1
+description = "Working tree status"
 argv = ["git", "status", "--short"]
 cwd = "."
 ```
@@ -82,6 +85,7 @@ Create a file such as `commands/tools.toml`:
 
 ```toml
 version = 1
+description = "Available tools"
 expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
 ```
 
@@ -110,8 +114,9 @@ These limits do not bound memory allocation. The Node VM is not a security
 sandbox. Only use trusted expression configuration.
 
 Expressions and external commands follow the same source ordering and error
-handling. The expression text is XML-escaped into `<run>`, and its result is
-XML-escaped into `<output>`. Failed evaluation clears the session snapshot and
+handling. Each `<command>` contains the XML-escaped description on one line,
+then the XML-escaped output without `<run>` or `<output>` tags. Execution details
+are not included. Failed evaluation clears the session snapshot and
 reports the source filename and error. Neither execution method runs per request.
 
 ## Snapshot lifecycle
@@ -124,13 +129,13 @@ the previous snapshot, then composes fresh content from the current cwd:
 <bootstrap version="1">
   <memory>User-authored guidance</memory>
   <command>
-    <run>git status --short</run>
-    <output> M README.md</output>
+Working tree status
+ M README.md
   </command>
 </bootstrap>
 ```
 
-Memory text, invocation and output are XML-escaped; newlines are preserved and
+Memory text, description and output are XML-escaped; newlines are preserved and
 indented. Empty or failed composition leaves no snapshot. Command errors notify
 with filename and exit status or error details when available; other errors propagate to Pi's
 handler error reporting. No partial result is injected.
@@ -188,7 +193,7 @@ reported rather than exposing bootstrap through a user-message fallback.
 - `edit <id> [memory|command]` and `delete <id> [memory|command]`.
 
 Add/edit use the UI editor and reject non-interactive mode. Cancellation changes
-nothing. Command addition supplies an argv/cwd template and prepends `version = 1`
+nothing. Command addition supplies a description/argv/cwd template and prepends `version = 1`
 after editing. The template also shows an expression example; remove `argv` and
 `cwd` to use it. Editing an existing command shows its complete TOML. List/delete
 work without interactive UI. Operations catch errors and notify the user.
@@ -197,7 +202,7 @@ snapshot, not the current one.
 
 ## Verification and boundaries
 
-Validated with `npm test` (**73 passed, 0 failed**), `npm run typecheck`, and
+Validated with `npm test` (**84 passed, 0 failed**), `npm run typecheck`, and
 `git diff --check`. API evidence: Pi 1.0.0 extension event declarations,
 `core/messages.js`, pi-ai `utils/text.js`, `utils/transcript.js`, and
 `api/openai-responses-shared.js`; cross-checked against Context7

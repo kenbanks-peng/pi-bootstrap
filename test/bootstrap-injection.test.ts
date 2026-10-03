@@ -46,7 +46,7 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
   const f = await fixture(t);
   const marker = join(f.root, "executions");
   await memory(f.project, "guidance.md", "Only system <guidance>");
-  await command(f.project, "tools.toml", 'version = 1\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
+  await command(f.project, "tools.toml", 'version = 1\ndescription = "Test command"\nexpression = \'"Registered tools: " + ALL_TOOLS.map(t => t.name).join(",")\'\n');
   await command(f.project, "once.toml", executable(`require('node:fs').appendFileSync(${JSON.stringify(marker)}, 'x'); process.stdout.write('Snapshot output')`));
   const h = harness(() => f.repository);
   const config = join(f.root, "config.toml");
@@ -79,11 +79,11 @@ test("real outgoing provider payload keeps bootstrap in system instructions, nev
     assert.ok(payload, "provider must reach the HTTP request boundary");
     assert.equal(payload.input[0].role, "system");
     assert.match(payload.input[0].content, /<bootstrap version="1">[\s\S]*Only system &lt;guidance&gt;[\s\S]*Snapshot output[\s\S]*<\/bootstrap>/);
-    assert.match(payload.input[0].content, /<output>\nRegistered tools: read\n    <\/output>/);
+    assert.match(payload.input[0].content, /Test command\nRegistered tools: read\n  <\/command>/);
     assert.match(payload.input[0].content, /<\/bootstrap>$/);
     assert.equal((payload.input[0].content.match(/<command>/g) ?? []).length, 2);
     assert.equal((payload.input[0].content.match(/<\/command>/g) ?? []).length, 2);
-    assert.match(payload.input[0].content, /<command>\s*<run>\n[\s\S]*?\n    <\/run>\s*<output>\nSnapshot output\n    <\/output>\s*<\/command>/);
+    assert.match(payload.input[0].content, /<command>\nTest command\nSnapshot output\n  <\/command>/);
     assert.match(payload.input[0].content, /Read rules.md[\s\S]*<bootstrap/);
     assert.equal(JSON.stringify(payload).split('<bootstrap version=').length - 1, 1);
     assert.deepEqual(payload.input.filter((m: any) => m.role === "user"), [{ role: "user", content: [{ type: "input_text", text: "Question" }] }]);

@@ -56,15 +56,15 @@ test("rule order precedes filename order and overlap is scoped to the action fol
   await protocol(f.project, 'version = 1\n[[rule]]\nglob = "*.toml"\naction = "memory"\n[[rule]]\nglob = "*.toml"\naction = "command"\n');
   await memory(f.project, "same.toml", "Memory");
   await command(f.project, "same.toml", executable('process.stdout.write("Command")'));
-  assert.match(await f.repository.compose(), /Memory[\s\S]*<output>\nCommand/);
+  assert.match(await f.repository.compose(), /Memory[\s\S]*Test command\nCommand/);
 });
 
 test("command argv is literal, output preserves lines and XML cannot introduce markup", async t => {
   const f = await fixture(t);
-  await command(f.project, "command-test.toml", `version = 1\nargv = ${JSON.stringify([process.execPath, "-e", "process.stdout.write(process.argv[1])", "literal; $HOME <tag>&\nnext"])}\ncwd = "."\n`);
+  await command(f.project, "command-test.toml", `version = 1\ndescription = "Test command"\nargv = ${JSON.stringify([process.execPath, "-e", "process.stdout.write(process.argv[1])", "literal; $HOME <tag>&\nnext"])}\ncwd = "."\n`);
   const output = await f.repository.compose();
-  assert.match(output, /<run>\n.*literal; \$HOME &lt;tag&gt;&amp;\n    next\n    <\/run>/);
-  assert.match(output, /<output>\nliteral; \$HOME &lt;tag&gt;&amp;\n    next\n    <\/output>/);
+  assert.doesNotMatch(output, /<run>|<output>|process\.stdout/);
+  assert.match(output, /Test command\nliteral; \$HOME &lt;tag&gt;&amp;\n    next\n  <\/command>/);
   assert.doesNotMatch(output, /<tag>/);
 });
 
@@ -74,7 +74,7 @@ test("both scopes run commands relative to the project root, including contained
   await writeFile(join(f.projectRoot, "child", "marker.txt"), "child-marker");
   await command(f.global, "global.toml", executable('process.stdout.write(require("fs").readFileSync("child/marker.txt"))'));
   await command(f.project, "project.toml", executable('process.stdout.write(require("fs").readFileSync("marker.txt"))', "child"));
-  assert.equal((await f.repository.compose()).match(/<output>\nchild-marker\n    <\/output>/g)?.length, 2);
+  assert.equal((await f.repository.compose()).match(/Test command\nchild-marker\n  <\/command>/g)?.length, 2);
 });
 
 test("commands execute in scope, rule and filename order and overlap is preflighted", async t => {
@@ -121,10 +121,10 @@ test("command timeout, output bound, invalid UTF-8, spawn errors and noisy stder
     await command(f.project, "case.toml", executable(code));
     await assert.rejects(f.repository.compose(), expected);
   }
-  await command(f.project, "case.toml", 'version = 1\nargv = ["/nonexistent/bootstrap-executable"]\n');
+  await command(f.project, "case.toml", 'version = 1\ndescription = "Test command"\nargv = ["/nonexistent/bootstrap-executable"]\n');
   await assert.rejects(f.repository.compose(), /execution failed/);
   await command(f.project, "case.toml", executable('process.stderr.write("x".repeat(2000000), () => process.stdout.write("ok"))'));
-  assert.match(await f.repository.compose(), /<output>\nok\n    <\/output>/);
+  assert.match(await f.repository.compose(), /Test command\nok\n  <\/command>/);
 });
 
 test("command definitions and cwd containment are validated", async t => {
@@ -133,8 +133,8 @@ test("command definitions and cwd containment are validated", async t => {
   for (const [body, expected] of [
     ['version =', /not valid TOML/],
     ['version = 2\nargv = ["git"]', /version = 1/],
-    ['version = 1\nargv = []', /non-empty argv/],
-    ['version = 1\nargv = [2]', /non-empty argv/],
+    ['version = 1\ndescription = "Test command"\nargv = []', /non-empty argv/],
+    ['version = 1\ndescription = "Test command"\nargv = [2]', /non-empty argv/],
     [executable("", ""), /invalid cwd/],
     [executable("", f.projectRoot), /cwd must be relative/],
     [executable("", "../outside"), /must not escape/],
@@ -181,7 +181,7 @@ test("existing unmatched command globs remain unchanged rather than being silent
   assert.equal(await f.repository.compose(), "");
   assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), existing);
   await protocol(f.global, commandProtocol);
-  assert.match(await f.repository.compose(), /<output>\nSelected\n    <\/output>/);
+  assert.match(await f.repository.compose(), /Test command\nSelected\n  <\/command>/);
 });
 
 test("command files named protocol and config are ordinary sources inside commands", async t => {
@@ -197,7 +197,7 @@ test("command files named protocol and config are ordinary sources inside comman
   const output = await f.repository.compose();
   for (const scope of ["global", "project"]) {
     for (const id of ["protocol", "config"]) {
-      assert.ok(output.includes(`<output>\nedited-${scope}-${id}\n    </output>`));
+      assert.ok(output.includes(`Test command\nedited-${scope}-${id}\n  </command>`));
     }
   }
 });
@@ -209,7 +209,7 @@ test("contained cwd names beginning with two dots are not parent traversal", asy
   await symlink(join(f.projectRoot, "..cache"), join(f.projectRoot, "alias"));
   for (const cwd of ["..cache", "alias"]) {
     await command(f.project, "command-contained.toml", executable('process.stdout.write(require("fs").readFileSync("marker.txt"))', cwd));
-    assert.match(await f.repository.compose(), /<output>\ncontained\n    <\/output>/);
+    assert.match(await f.repository.compose(), /Test command\ncontained\n  <\/command>/);
   }
 });
 

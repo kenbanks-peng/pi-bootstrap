@@ -26,8 +26,8 @@ class CommandExitError extends Error {
 
 export type BootstrapSessionEntry =
   | { type: "memory"; content: string }
-  | { type: "command"; argv: [string, ...string[]]; output: string }
-  | { type: "command"; expression: string; output: string };
+  | { type: "command"; description: string; argv: [string, ...string[]]; output: string }
+  | { type: "command"; description: string; expression: string; output: string };
 
 export const DEFAULT_PROTOCOL = `version = ${BOOTSTRAP_VERSION}
 
@@ -51,8 +51,8 @@ export interface BootstrapProtocolV1 {
 }
 
 type CommandSourceV1 =
-  | { version: typeof BOOTSTRAP_VERSION; argv: [string, ...string[]]; cwd?: string }
-  | { version: typeof BOOTSTRAP_VERSION; expression: string };
+  | { version: typeof BOOTSTRAP_VERSION; description: string; argv: [string, ...string[]]; cwd?: string }
+  | { version: typeof BOOTSTRAP_VERSION; description: string; expression: string };
 
 const protocolFilename = "protocol.toml";
 const utf8 = new TextDecoder("utf-8", { fatal: true });
@@ -169,12 +169,12 @@ async function runCommandSource(sourcePath: string, projectRoot: string, scopeLa
     const source = parseCommandSource(await readUtf8(sourcePath, `${scopeLabel} command source "${sourceName}"`), sourceName, scopeLabel);
     if ("expression" in source) {
       if (!expressionContext) throw new Error("Expression commands require a Pi session context.");
-      return { type: "command", expression: source.expression, output: await evaluateExpression(source.expression, expressionContext, sourceName, COMMAND_TIMEOUT_MS, COMMAND_OUTPUT_LIMIT_BYTES) };
+      return { type: "command", description: source.description, expression: source.expression, output: await evaluateExpression(source.expression, expressionContext, sourceName, COMMAND_TIMEOUT_MS, COMMAND_OUTPUT_LIMIT_BYTES) };
     }
     const cwd = await commandCwd(source.cwd, projectRoot, sourceName, scopeLabel);
     const output = await execute(source.argv, cwd, sourceName, scopeLabel);
     try {
-      return { type: "command", argv: source.argv, output: utf8.decode(output) };
+      return { type: "command", description: source.description, argv: source.argv, output: utf8.decode(output) };
     } catch {
       throw new Error(`${scopeLabel} command source "${sourceName}" produced invalid UTF-8 stdout.`);
     }
@@ -194,6 +194,9 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (!isRecord(value) || value.version !== BOOTSTRAP_VERSION) {
     throw new Error(`${label} must contain version = ${BOOTSTRAP_VERSION}.`);
   }
+  if (typeof value.description !== "string" || value.description.trim().length === 0 || /[\r\n]/.test(value.description)) {
+    throw new Error(`${label} description must be a non-empty single-line string.`);
+  }
   if (("argv" in value) === ("expression" in value)) {
     throw new Error(`${label} must contain exactly one of argv or expression.`);
   }
@@ -202,7 +205,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
       throw new Error(`${label} expression must be a non-empty string.`);
     }
     if ("cwd" in value) throw new Error(`${label} cwd is only supported with argv.`);
-    return { version: BOOTSTRAP_VERSION, expression: value.expression };
+    return { version: BOOTSTRAP_VERSION, description: value.description, expression: value.expression };
   }
   if (!Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
     throw new Error(`${label} must contain a non-empty argv string array.`);
@@ -210,7 +213,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (value.cwd !== undefined && (typeof value.cwd !== "string" || value.cwd.length === 0)) {
     throw new Error(`${scopeLabel} command source "${sourceName}" has an invalid cwd.`);
   }
-  return { version: BOOTSTRAP_VERSION, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
+  return { version: BOOTSTRAP_VERSION, description: value.description, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
 }
 
 async function commandCwd(cwd: string | undefined, projectRoot: string, sourceName: string, scopeLabel: string): Promise<string> {

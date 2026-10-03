@@ -27,4 +27,4 @@ export const commandProtocol = 'version = 1\n[[rule]]\nglob = "*.toml"\naction =
 export const protocol = (root: string, content: string) => writeFile(join(root, "protocol.toml"), content);
 export const memory = (root: string, name: string, content: string | Buffer) => writeFile(join(root, "memories", name), content);
 export const command = (root: string, name: string, content: string | Buffer) => writeFile(join(root, "commands", name), content);
-export const executable = (code: string, cwd?: string) => `version = 1\nargv = ${JSON.stringify([process.execPath, "-e", code])}\n${cwd === undefined ? "" : `cwd = ${JSON.stringify(cwd)}\n`}`;
+export const executable = (code: string, cwd?: string) => `version = 1\ndescription = "Test command"\nargv = ${JSON.stringify([process.execPath, "-e", code])}\n${cwd === undefined ? "" : `cwd = ${JSON.stringify(cwd)}\n`}`;

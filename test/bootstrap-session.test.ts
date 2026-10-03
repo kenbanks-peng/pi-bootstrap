@@ -152,7 +152,7 @@ test("empty composition sends no message and command failures notify without par
   await command(f.project, "bad.toml", executable("process.exit(7)"));
   await h.handlers.get("session_start")!({}, ctx);
   assert.deepEqual(notices.notifications.pop(), { message: "bad.toml returned error code 7.", level: undefined });
-  await command(f.project, "bad.toml", "version = 1\nargv = []");
+  await command(f.project, "bad.toml", "version = 1\ndescription = \"Test command\"\nargv = []");
   await h.handlers.get("session_start")!({}, ctx);
   const failure = notices.notifications.pop()!;
   assert.match(failure.message, /bad.toml had an error:.*non-empty argv/);
@@ -205,7 +205,7 @@ test("repository listing ignores invalid names, symlinks, subdirectories and roo
 test("slash command uses the same repository factory and offers only /bootstrap", async t => {
   const f = await fixture(t);
   const h = harness(() => f.repository);
-  const notices = ui(["New memory", 'argv = ["git", "status"]\n']);
+  const notices = ui(["New memory", 'description = "Test command"\nargv = ["git", "status"]\n']);
   const ctx = { cwd: f.projectRoot, hasUI: true, ui: notices.api };
   const run = h.commands.get("bootstrap")!.handler;
   await run("", ctx);
@@ -215,9 +215,10 @@ test("slash command uses the same repository factory and offers only /bootstrap"
   assert.match(notices.notifications[1].message, /^Added Global memory Bootstrap "memory-[0-9a-f]{8}"\.$/);
   assert.match(notices.notifications[2].message, /^Added Global command Bootstrap "command-[0-9a-f]{8}"\.$/);
   assert.doesNotMatch(notices.editors[1].initial, /version/);
+  assert.match(notices.editors[1].initial, /description = "Working tree status"/);
   const sources = await f.repository.list("global");
   const added = sources.find(s => s.type === "command")!;
-  assert.equal(await f.repository.read("global", added), 'version = 1\nargv = ["git", "status"]\n');
+  assert.equal(await f.repository.read("global", added), 'version = 1\ndescription = "Test command"\nargv = ["git", "status"]\n');
   await run("list global", ctx);
   assert.match(notices.notifications.at(-1)!.message, /memory: New memory/);
   assert.match(notices.notifications.at(-1)!.message, /command: version = 1/);
@@ -266,13 +267,13 @@ test("slash-created commands use renamed filenames and execute on the next sessi
   assert.equal(h.messages.length, 0);
   await h.handlers.get("session_start")!({}, ctx);
   const original = h.snapshot();
-  assert.match(original, /<output>\ncreated\n    <\/output>/);
+  assert.match(original, /Test command\ncreated\n  <\/command>/);
   await run(`edit ${source.id} command`, ctx);
   assert.match(notices.editors[1].initial, /^version = 1/);
   assert.equal(h.snapshot(), original);
   await h.handlers.get("session_start")!({}, ctx);
-  assert.match(h.snapshot(), /<output>\nedited\n    <\/output>/);
-  assert.match(original, /<output>\ncreated\n    <\/output>/);
+  assert.match(h.snapshot(), /Test command\nedited\n  <\/command>/);
+  assert.match(original, /Test command\ncreated\n  <\/command>/);
   await run(`delete ${source.id} command`, ctx);
   await h.handlers.get("session_start")!({}, ctx);
   assert.equal(h.snapshot(), "");

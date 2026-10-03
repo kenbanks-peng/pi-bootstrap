@@ -35,12 +35,16 @@ Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
 filters; add defaults to `project memory`. Edit/delete accept an optional type.
 No model-callable management tools are registered.
 
-Each command file must contain `version = 1` and exactly one of `argv` or
-`expression`. Existing `argv` files work without changes. To list registered
+Each command file must contain `version = 1`, a non-empty single-line
+`description`, and exactly one of `argv` or `expression`. Add a description to
+existing command files. Each `<command>` contains the description line followed
+by the XML-escaped output, without `<run>` or `<output>` tags. Execution details
+are not included. To list registered
 tools, create `commands/tools.toml` in either scope:
 
 ```toml
 version = 1
+description = "Available tools"
 expression = 'ALL_TOOLS.map(t => t.name).join("\n")'
 ```
 
