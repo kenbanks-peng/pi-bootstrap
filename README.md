@@ -8,6 +8,14 @@ This extension provides configurable transformations of the Pi agent system prom
 pi install npm:@npn-ken/pi-bootstrap
 ```
 
+On first use, if the global `config.toml` is missing, the extension installs:
+
+- `config.toml`: enables all Markdown memories and TOML commands.
+- `commands/repo.toml`: adds tracked repository files to `system_prompt.repo`.
+- `memories/memory-example.md`: requests ASD-STE100 Simplified Technical English.
+
+These files go in the agent directory under `extensions/pi-bootstrap`. Existing files are not overwritten. An existing configuration does not receive these defaults.
+
 ## Example transformations
 
 Save each TOML example below as a separate file in `commands/`.

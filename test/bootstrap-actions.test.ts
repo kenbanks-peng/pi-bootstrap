@@ -158,7 +158,7 @@ test("request selection ignores symlinks and subdirectories and never creates le
   assert.ok(!(await readdir(f.global)).includes("legacy.toml"));
   await rm(f.global, { recursive: true });
   assert.deepEqual((await run(event)).messages, event.messages);
-  assert.deepEqual(await readdir(f.global), ["config.toml"]);
+  assert.deepEqual((await readdir(f.global)).sort(), ["commands", "config.toml", "memories"]);
 });
 
 test("/bootstrap manages action files and changes take effect on the next request", async t => {

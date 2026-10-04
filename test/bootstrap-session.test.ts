@@ -69,6 +69,7 @@ test("session snapshots and existing request replacements compose without changi
   try {
     const repository = createBootstrapRepository(f.projectRoot);
     await repository.create("global", "memory", "Session guidance");
+    await protocol(repository.directories.globalDirectory, await readFile(join(f.global, "config.toml"), "utf8"));
     await actions(repository.directories.globalDirectory, { "system_prompt.tools": "New tools", "system_prompt.preamble": "New preamble", "system_prompt.postamble": { refer: "Read $link", link: "prompt.md" } });
     const h = harness();
     h.handlers.clear();

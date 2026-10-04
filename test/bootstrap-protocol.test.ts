@@ -24,11 +24,14 @@ test("default protocol is installed exclusively, inherited, overridden and resto
   assert.equal(await readFile(join(f.global, "config.toml"), "utf8"), memoryProtocol);
 });
 
-test("missing roots are empty and concurrent default installation does not clobber", async t => {
+test("missing roots receive defaults and concurrent installation does not clobber", async t => {
   const f = await fixture(t);
   await rm(f.global, { recursive: true });
   await rm(f.project, { recursive: true });
-  assert.deepEqual(await Promise.all([f.repository.compose(), f.repository.compose()]), ["", ""]);
+  await f.repository.compose();
+  const expected = "<memory>\nAlways use ASD-STE100 Simplified Technical English when responding\n</memory>";
+  assert.deepEqual(await Promise.all([f.repository.compose(), f.repository.compose()]), [expected, expected]);
+  assert.match(await readFile(join(f.global, "commands", "repo.toml"), "utf8"), /section = "system_prompt.repo"/);
 });
 
 test("only direct regular files in action-specific folders are selected, sorted and escaped", async t => {

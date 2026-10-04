@@ -37,7 +37,6 @@ glob = "*.md"
 action = "memory"
 
 [[rule]]
-
 glob = "*.toml"
 action = "command"
 `;
@@ -68,6 +67,19 @@ export async function installDefaultProtocol(sourceRoot: string): Promise<void> 
     await writeFile(resolve(sourceRoot, protocolFilename), DEFAULT_PROTOCOL, { encoding: "utf8", flag: "wx" });
   } catch (error) {
     if (!isFileSystemError(error, "EEXIST")) throw error;
+    return;
+  }
+  const defaults = [
+    ["commands", "repo.toml", `section = "system_prompt.repo"\ndescription = "Tracked repository files:"\nargv = ${JSON.stringify(["sh", "-c", 'git ls-files 2>/dev/null | awk \'BEGIN { sep = "" } { printf "%s%s", sep, $0; sep = ", " } END { if (NR) printf "\\n" }\' || true'])}\ncwd = "."\n`],
+    ["memories", "memory-example.md", "Always use ASD-STE100 Simplified Technical English when responding\n"],
+  ];
+  for (const [folder, filename, content] of defaults) {
+    await mkdir(join(sourceRoot, folder), { recursive: true });
+    try {
+      await writeFile(join(sourceRoot, folder, filename), content, { encoding: "utf8", flag: "wx" });
+    } catch (error) {
+      if (!isFileSystemError(error, "EEXIST")) throw error;
+    }
   }
 }
 

@@ -5,6 +5,7 @@ import type { TestContext } from "node:test";
 import { BootstrapRepository } from "../src/bootstrap-repository.ts";
 import type { Action } from "../src/replace.ts";
 import { stringify } from "smol-toml";
+import { DEFAULT_PROTOCOL } from "../src/bootstrap-protocol.ts";
 
 export async function fixture(t: TestContext) {
   const root = await mkdtemp(join(tmpdir(), "pi-bootstrap-session-"));
@@ -18,6 +19,7 @@ export async function fixture(t: TestContext) {
     await mkdir(join(dir, "memories"), { recursive: true });
     await mkdir(join(dir, "commands"), { recursive: true });
   }
+  await writeFile(join(repository.directories.globalDirectory, "config.toml"), DEFAULT_PROTOCOL);
   return { root, projectRoot, repository,
     global: repository.directories.globalDirectory,
     project: repository.directories.projectDirectory,
