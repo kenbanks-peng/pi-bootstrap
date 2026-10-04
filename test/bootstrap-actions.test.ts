@@ -84,7 +84,6 @@ test("request action validation rejects mixed actions, invalid fields and malfor
   const f = await fixture(t);
   const run = hook(f.repository, f.projectRoot);
   for (const body of [
-    'section = "docs"\nreplacement = "Text"',
     'description = ""\nsection = "docs"\nreplacement = "Text"',
     'description = "Line\\nbreak"\nsection = "docs"\nreplacement = "Text"',
     'description = "Action"\nsection = "docs"',

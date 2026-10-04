@@ -9,9 +9,16 @@ test("commands show an escaped description line and output without execution det
     '<commands>\nAvailable &lt;tools&gt;&amp;\nread\nbash\n</commands>');
 });
 
-test("command descriptions must be non-empty single-line strings", async t => {
+test("command descriptions are optional", async t => {
   const f = await fixture(t);
-  for (const description of ["", 'description = ""\n', 'description = "   "\n', "description = 42\n", 'description = "first\\nsecond"\n', 'description = "first\\rsecond"\n']) {
+  await command(f.project, "example.toml", `expression = '"ok"'\n`);
+  assert.equal(await f.repository.compose({ allTools: [], activeTools: [] }),
+    "<commands>\nok\n</commands>");
+});
+
+test("provided command descriptions must be non-empty single-line strings", async t => {
+  const f = await fixture(t);
+  for (const description of [ 'description = ""\n', 'description = "   "\n', "description = 42\n", 'description = "first\\nsecond"\n', 'description = "first\\rsecond"\n']) {
     await command(f.project, "example.toml", `${description}expression = '"ok"'\n`);
     await assert.rejects(f.repository.compose({ allTools: [], activeTools: [] }), /description must be a non-empty single-line string/);
   }

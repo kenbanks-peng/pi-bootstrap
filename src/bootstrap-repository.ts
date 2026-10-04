@@ -177,7 +177,7 @@ export function formatSnapshot(entries: BootstrapSessionEntry[]): BootstrapSnaps
 
 function formatSessionEntry(entry: BootstrapSessionEntry): string {
   if (entry.type === "memory") return escapeXml(entry.content.replace(/[\r\n]+$/, ""));
-  return `${escapeXml(entry.description)}\n${escapeXml(entry.output.replace(/[\r\n]+$/, ""))}`;
+  return `${entry.description ? `${escapeXml(entry.description)}\n` : ""}${escapeXml(entry.output.replace(/[\r\n]+$/, ""))}`;
 }
 
 function escapeXml(value: string): string {

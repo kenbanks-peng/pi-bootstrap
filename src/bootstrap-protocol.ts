@@ -229,9 +229,10 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (!isRecord(value)) {
     throw new Error(`${label} must be a TOML table.`);
   }
-  if (typeof value.description !== "string" || value.description.trim().length === 0 || /[\r\n]/.test(value.description)) {
+  if (value.description !== undefined && (typeof value.description !== "string" || value.description.trim().length === 0 || /[\r\n]/.test(value.description))) {
     throw new Error(`${label} description must be a non-empty single-line string.`);
   }
+  const description = typeof value.description === "string" ? value.description : "";
   const actions = ["argv", "expression", "replacement", "refer"].filter(key => key in value);
   if (actions.length !== 1) {
     throw new Error(`${label} must contain exactly one of argv, expression, replacement, or refer.`);
@@ -251,12 +252,12 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
     }
     if ("replacement" in value) {
       if (typeof value.replacement !== "string") throw new Error(`${label} replacement must be a string.`);
-      return { description: value.description, section, action: value.replacement };
+      return { description, section, action: value.replacement };
     }
     if (typeof value.refer !== "string" || typeof value.link !== "string" || !value.link.trim()) {
       throw new Error(`${label} refer requires a string and a non-empty link.`);
     }
-    return { description: value.description, section, action: { refer: value.refer, link: value.link } };
+    return { description, section, action: { refer: value.refer, link: value.link } };
   }
   if ("link" in value) throw new Error(`${label} link requires refer.`);
   const destination = section === undefined ? {} : { section };
@@ -265,7 +266,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
       throw new Error(`${label} expression must be a non-empty string.`);
     }
     if ("cwd" in value) throw new Error(`${label} cwd is only supported with argv.`);
-    return { description: value.description, ...destination, expression: value.expression };
+    return { description, ...destination, expression: value.expression };
   }
   if (!Array.isArray(value.argv) || value.argv.length === 0 || !value.argv.every((part) => typeof part === "string")) {
     throw new Error(`${label} must contain a non-empty argv string array.`);
@@ -273,7 +274,7 @@ function parseCommandSource(text: string, sourceName: string, scopeLabel: string
   if (value.cwd !== undefined && (typeof value.cwd !== "string" || value.cwd.length === 0)) {
     throw new Error(`${scopeLabel} command source "${sourceName}" has an invalid cwd.`);
   }
-  return { description: value.description, ...destination, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
+  return { description, ...destination, argv: value.argv as [string, ...string[]], ...(value.cwd === undefined ? {} : { cwd: value.cwd }) };
 }
 
 async function commandCwd(cwd: string | undefined, projectRoot: string, sourceName: string, scopeLabel: string): Promise<string> {

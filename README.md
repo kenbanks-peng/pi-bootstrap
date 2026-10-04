@@ -34,9 +34,9 @@ Run `/bootstrap` for help, or `/bootstrap list`, `add`, `edit <id>`, and
 filters; add defaults to `project memory`. Edit/delete accept an optional type.
 No model-callable management tools are registered.
 
-Each command file must contain a non-empty single-line
-`description`, and exactly one of `argv`, `expression`, `replacement`, or `refer`.
-Executable command items contain the description line followed
+Each command file may contain a non-empty single-line
+`description`, and must contain exactly one of `argv`, `expression`, `replacement`, or `refer`.
+Executable command items contain the optional description line followed
 by the XML-escaped output, without `<run>` or `<output>` tags. Execution details
 are not included. To list registered
 tools, create `commands/tools.toml` in either scope:
@@ -157,7 +157,7 @@ Put one action in each `commands/*.toml` file, in the global or project scope.
 The command rule in `protocol.toml` must select the file. Use `glob = "*.toml"`
 to select all command files.
 
-Each file requires a non-empty, single-line `description` and exactly one of:
+Each file accepts an optional non-empty, single-line `description` and requires exactly one of:
 
 | Field | Purpose | When it runs |
 | --- | --- | --- |
@@ -283,7 +283,7 @@ require a new session snapshot, such as `/reload`.
 there are no default replacement actions. To migrate:
 
 1. Create one command file for each active table in the old `config.toml`.
-2. Add a description and move the table path to `section`.
+2. Optionally add a description and move the table path to `section`.
 3. Copy its `replacement`, or its `refer` and `link` fields.
 4. Skip empty tables. Check that the protocol selects the new files.
 5. Remove unnecessary section commands that the replacements would overwrite.
