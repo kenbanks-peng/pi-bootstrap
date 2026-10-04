@@ -83,7 +83,7 @@ export function registerBootstrapSession(
   });
 
   pi.registerCommand("bootstrap", {
-    description: "Manage Bootstrap memories and commands; injection requires a matching protocol.toml rule",
+    description: "Manage Bootstrap memories and commands; injection requires a matching config.toml rule",
     handler: async (args, ctx) => {
       await runBootstrapCommand(args, repositoryFor(ctx.cwd), {
         hasUI: ctx.hasUI,

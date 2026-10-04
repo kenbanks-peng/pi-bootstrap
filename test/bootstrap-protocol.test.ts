@@ -11,17 +11,17 @@ test("default protocol is installed exclusively, inherited, overridden and resto
   await memory(f.global, "global.md", "Global");
   await memory(f.project, "project.md", "Project");
   assert.equal(await f.repository.compose(), '<memory>\nGlobal\n\nProject\n</memory>');
-  assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), DEFAULT_PROTOCOL);
+  assert.equal(await readFile(join(f.global, "config.toml"), "utf8"), DEFAULT_PROTOCOL);
   assert.match(DEFAULT_PROTOCOL, /glob = "\*\.toml"/);
   await protocol(f.project, '[[rule]]\nglob = "only-*.md"\naction = "memory"\n');
   await memory(f.project, "only-one.md", "Selected");
   assert.match(await f.repository.compose(), /Selected/);
   assert.doesNotMatch(await f.repository.compose(), /Project/);
-  await rm(join(f.project, "protocol.toml"));
+  await rm(join(f.project, "config.toml"));
   assert.match(await f.repository.compose(), /Project/);
   await protocol(f.global, memoryProtocol);
   await f.repository.compose();
-  assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), memoryProtocol);
+  assert.equal(await readFile(join(f.global, "config.toml"), "utf8"), memoryProtocol);
 });
 
 test("missing roots are empty and concurrent default installation does not clobber", async t => {
@@ -168,7 +168,7 @@ test("invalid protocols, globs, actions, overlap and UTF-8 fail explicitly", asy
     await protocol(f.project, text);
     await assert.rejects(f.repository.compose(), expected);
   }
-  await writeFile(join(f.project, "protocol.toml"), Buffer.from([255]));
+  await writeFile(join(f.project, "config.toml"), Buffer.from([255]));
   await assert.rejects(f.repository.compose(), /not valid UTF-8/);
   await protocol(f.project, memoryProtocol);
   await memory(f.project, "guide.md", Buffer.from([255]));
@@ -184,7 +184,7 @@ test("existing unmatched command globs remain unchanged rather than being silent
   await protocol(f.global, existing);
   await command(f.global, "command-0123abcd.toml", executable('process.stdout.write("Selected")'));
   assert.equal(await f.repository.compose(), "");
-  assert.equal(await readFile(join(f.global, "protocol.toml"), "utf8"), existing);
+  assert.equal(await readFile(join(f.global, "config.toml"), "utf8"), existing);
   await protocol(f.global, commandProtocol);
   assert.match(await f.repository.compose(), /Test command\nSelected/);
 });
@@ -220,7 +220,7 @@ test("contained cwd names beginning with two dots are not parent traversal", asy
 
 test("protocols never select config.toml or protocol.toml at the extension root", async t => {
   const f = await fixture(t);
-  await writeFile(join(f.global, "config.toml"), "invalid source");
+  await writeFile(join(f.global, "protocol.toml"), "invalid source");
   await protocol(f.global, commandProtocol);
   assert.equal(await f.repository.compose(), "");
   const isolated = new BootstrapRepository({ globalDirectory: f.global, projectDirectory: f.project });

@@ -143,22 +143,22 @@ test("protocol selection applies to actions without running executable sources o
   await assert.rejects(run(event), /overlap/);
 });
 
-test("request selection ignores symlinks and subdirectories and never creates config.toml", async t => {
+test("request selection ignores symlinks and subdirectories and never creates legacy.toml", async t => {
   const f = await fixture(t);
   const run = hook(f.repository, f.projectRoot);
-  await writeFile(join(f.global, "config.toml"), "invalid legacy config");
+  await writeFile(join(f.global, "legacy.toml"), "invalid legacy config");
   await command(f.global, "ignored.txt", "invalid");
   await mkdir(join(f.global, "commands", "folder.toml"));
-  await symlink(join(f.global, "config.toml"), join(f.global, "commands", "linked.toml"));
+  await symlink(join(f.global, "legacy.toml"), join(f.global, "commands", "linked.toml"));
   const event = { messages: [{ role: "system", content: "<tools>Unchanged</tools>" }] };
   assert.deepEqual((await run(event)).messages, event.messages);
-  assert.equal(await readFile(join(f.global, "config.toml"), "utf8"), "invalid legacy config");
-  await rm(join(f.global, "config.toml"));
+  assert.equal(await readFile(join(f.global, "legacy.toml"), "utf8"), "invalid legacy config");
+  await rm(join(f.global, "legacy.toml"));
   assert.deepEqual((await run(event)).messages, event.messages);
-  assert.ok(!(await readdir(f.global)).includes("config.toml"));
+  assert.ok(!(await readdir(f.global)).includes("legacy.toml"));
   await rm(f.global, { recursive: true });
   assert.deepEqual((await run(event)).messages, event.messages);
-  assert.deepEqual(await readdir(f.global), ["protocol.toml"]);
+  assert.deepEqual(await readdir(f.global), ["config.toml"]);
 });
 
 test("/bootstrap manages action files and changes take effect on the next request", async t => {

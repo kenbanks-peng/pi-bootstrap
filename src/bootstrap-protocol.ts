@@ -30,7 +30,9 @@ export type BootstrapSessionEntry =
   | { type: "command"; description: string; section?: string[]; argv: [string, ...string[]]; output: string }
   | { type: "command"; description: string; section?: string[]; expression: string; output: string; deferred?: true; sourceName?: string };
 
-export const DEFAULT_PROTOCOL = `[[rule]]
+export const DEFAULT_PROTOCOL = `enabled = true
+
+[[rule]]
 glob = "*.md"
 action = "memory"
 
@@ -46,6 +48,7 @@ interface BootstrapRule {
 }
 
 export interface BootstrapProtocol {
+  enabled: boolean;
   rule: BootstrapRule[];
 }
 
@@ -56,7 +59,7 @@ type CommandSource =
   | { description: string; section?: string[]; argv: [string, ...string[]]; cwd?: string }
   | { description: string; section?: string[]; expression: string };
 
-const protocolFilename = "protocol.toml";
+const protocolFilename = "config.toml";
 const utf8 = new TextDecoder("utf-8", { fatal: true });
 
 export async function installDefaultProtocol(sourceRoot: string): Promise<void> {
@@ -78,6 +81,7 @@ export async function loadProtocol(sourceRoot: string, scopeLabel: string): Prom
 }
 
 export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocol, projectRoot: string, expressionContext?: BootstrapExpressionContext): Promise<BootstrapSessionEntry[]> {
+  if (!protocol.enabled) return [];
   const files = {
     memory: await listDirectFiles(join(sourceRoot, "memories"), scopeLabel),
     command: await listDirectFiles(join(sourceRoot, "commands"), scopeLabel),
@@ -102,6 +106,7 @@ export async function resolveProtocolMemories(sourceRoot: string, scopeLabel: st
 
 /** Read action definitions without executing argv or expressions. */
 export async function resolveProtocolActions(sourceRoot: string, scopeLabel: string, protocol: BootstrapProtocol): Promise<Map<string, Action>> {
+  if (!protocol.enabled) return new Map();
   const files = {
     memory: await listDirectFiles(join(sourceRoot, "memories"), scopeLabel),
     command: await listDirectFiles(join(sourceRoot, "commands"), scopeLabel),
@@ -126,13 +131,18 @@ export async function resolveProtocolActions(sourceRoot: string, scopeLabel: str
 }
 
 function parseProtocol(text: string, scopeLabel: string): BootstrapProtocol {
-  const value = parseToml(text, `${scopeLabel} protocol`);
+  const value = parseToml(text, `${scopeLabel} config`);
+  if (!isRecord(value) || (value.enabled !== undefined && typeof value.enabled !== "boolean")) {
+    throw new Error(`${scopeLabel} config enabled must be a boolean.`);
+  }
+  const enabled = value.enabled ?? true;
+  if (!enabled && value.rule === undefined) return { enabled, rule: [] };
   if (!isRecord(value) || !Array.isArray(value.rule) || value.rule.length === 0) {
     throw new Error(`${scopeLabel} protocol must contain one or more [[rule]] entries.`);
   }
 
   const rules = value.rule.map((rule, index) => parseRule(rule, index, scopeLabel));
-  return { rule: rules };
+  return { enabled, rule: rules };
 }
 
 function parseRule(value: unknown, index: number, scopeLabel: string): BootstrapRule {

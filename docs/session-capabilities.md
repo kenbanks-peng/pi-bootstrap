@@ -10,7 +10,7 @@ search. Project configuration lives in `<cwd>/.agents/bootstrap/`.
 Both scopes use:
 
 ```text
-protocol.toml
+config.toml
 memories/
   memory-0123abcd.md
 commands/
@@ -31,6 +31,7 @@ are supported. Existing configuration is never moved or rewritten.
 On session start or a request, the global protocol is installed exclusively if missing:
 
 ```toml
+enabled = true
 
 [[rule]]
 glob = "*.md"
@@ -42,8 +43,15 @@ action = "command"
 ```
 
 Global rules apply to global sources. Project sources inherit them unless a
-project `protocol.toml` exists. Removing that override restores inheritance;
+project `config.toml` exists. Removing that override restores inheritance;
 a malformed override is an error, not a fallback.
+
+The top-level `enabled` flag defaults to `true` and must be a boolean.
+Set it to `false` to skip source reads, command execution, and request actions
+for that scope. A disabled config can omit rules. Project sources inherit the
+global flag and rules unless a project config overrides them. Reload after
+changing the flag to clear or rebuild the session snapshot. Tool guidance and
+skill discovery remain available.
 
 Each action selects direct regular files from its folder: `memory` selects
 from `memories/`, `command` from `commands/`. Globs are basename patterns with
@@ -53,7 +61,7 @@ in declaration order, files in lexical order, global scope before project.
 Overlapping rules for the same action folder are rejected before that scope
 executes. The same basename in different folders is not an overlap.
 Unmatched files, subdirectories and source symlinks are ignored. Root-level
-`config.toml` and `protocol.toml` are never command sources; inside `commands/`,
+`config.toml` and legacy `protocol.toml` are never command sources; inside `commands/`,
 those basenames are ordinary selectable command files.
 
 Memories are complete strict UTF-8 text, without filenames. Commands are strict
@@ -154,7 +162,9 @@ Section commands run before request actions. An action can replace or reference
 their generated text. See [request actions](../README.md#request-actions) for the
 schema, target rules, examples, and migration procedure.
 
-`config.toml` is ignored and never created. `default.toml` has been removed.
+`config.toml` is read and created with the default enabled flag and rules.
+The old `protocol.toml` filename is ignored; rename it and add `enabled = true`
+before the first rule. `default.toml` has been removed.
 No replacement or reference action is installed by default.
 
 ## Snapshot lifecycle

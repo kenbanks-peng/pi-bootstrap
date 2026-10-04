@@ -41,7 +41,7 @@ export async function actions(root: string, values: Record<string, Action>) {
 
 export const memoryProtocol = '[[rule]]\nglob = "*.md"\naction = "memory"\n';
 export const commandProtocol = '[[rule]]\nglob = "*.toml"\naction = "command"\n';
-export const protocol = (root: string, content: string) => writeFile(join(root, "protocol.toml"), content);
+export const protocol = (root: string, content: string) => writeFile(join(root, "config.toml"), content);
 export const memory = (root: string, name: string, content: string | Buffer) => writeFile(join(root, "memories", name), content);
 export const command = (root: string, name: string, content: string | Buffer) => writeFile(join(root, "commands", name), content);
 export const executable = (code: string, cwd?: string) => `description = "Test command"\nargv = ${JSON.stringify([process.execPath, "-e", code])}\n${cwd === undefined ? "" : `cwd = ${JSON.stringify(cwd)}\n`}`;

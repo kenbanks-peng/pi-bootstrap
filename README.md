@@ -10,10 +10,16 @@ Global configuration lives under `~/.config/pi/agent/extensions/pi-bootstrap/`
 
 - `memories/*.md`: user-authored guidance.
 - `commands/*.toml`: executable commands, replacements, or references.
-- `protocol.toml`: rules that select sources; created if missing.
+- `config.toml`: `enabled` flag and rules that select sources; created if missing.
+
+Set top-level `enabled = false` to skip memories, executable commands, and request
+actions for that scope. The default is `enabled = true`. Project sources inherit
+the global configuration unless a project `config.toml` exists. Reload after
+changing `enabled` to rebuild the session snapshot. Tool guidance and skill
+discovery stay registered.
 
 Project sources use `.agents/bootstrap/` with the same session layout. Global
-sources precede project sources; a project `protocol.toml` overrides the global
+sources precede project sources; a project `config.toml` overrides the global
 policy for that project. Memories and executable command output are saved on `session_start`, not
 on every request. Replacement and reference actions are read on each request. Skill expressions run once before the first agent run, when Pi supplies skill metadata. Commands execute with your permissions: review them before use.
 
@@ -54,7 +60,7 @@ list. Expressions must return a string synchronously. Do not set `cwd` in an
 expression file. Review expressions as executable configuration; the Node VM
 is not a security sandbox.
 
-The command rule in `protocol.toml` must use `glob = "*.toml"` to select these
+The command rule in `config.toml` must use `glob = "*.toml"` to select these
 files. Run `/reload` after you change sources or the protocol.
 
 See [session configuration and capability parity](docs/session-capabilities.md)
@@ -154,7 +160,7 @@ instructions already read into conversation history.
 ## Request actions
 
 Put one action in each `commands/*.toml` file, in the global or project scope.
-The command rule in `protocol.toml` must select the file. Use `glob = "*.toml"`
+The command rule in `config.toml` must select the file. Use `glob = "*.toml"`
 to select all command files.
 
 Each file accepts an optional non-empty, single-line `description` and requires exactly one of:
@@ -279,15 +285,16 @@ Action and protocol definitions are read on each request. No reload is needed
 for replacement/reference edits. Memory and executable command edits still
 require a new session snapshot, such as `/reload`.
 
-`config.toml` is no longer read or created. There is no `default.toml`, and
-there are no default replacement actions. To migrate:
+`config.toml` contains the enabled flag and source-selection rules, not request
+actions. There is no `default.toml`, and there are no default replacement actions.
+To migrate from `protocol.toml`:
 
-1. Create one command file for each active table in the old `config.toml`.
-2. Optionally add a description and move the table path to `section`.
-3. Copy its `replacement`, or its `refer` and `link` fields.
-4. Skip empty tables. Check that the protocol selects the new files.
-5. Remove unnecessary section commands that the replacements would overwrite.
-6. Reload the updated extension. Then remove or archive the old config.
+1. Rename `protocol.toml` to `config.toml` in each configured scope.
+2. Add `enabled = true` before the first `[[rule]]` table.
+3. Run `/reload`.
+
+Keep replacement and reference actions in separate `commands/*.toml` files.
+The extension does not read the old `protocol.toml` filename.
 
 Relative link destinations remain unchanged for global actions. The extension
 does not migrate user files automatically. The `target` field is not supported;
