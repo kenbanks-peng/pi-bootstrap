@@ -202,10 +202,11 @@ The single `context_with_system` request handler:
 2. Transforms Pi's transcript without mutating input messages.
 3. Transforms a copy of the bootstrap snapshot with explicit bootstrap paths.
 4. Writes reference files.
-5. Replays all system content and section patches into the leading message,
-   then appends bootstrap last. Later system messages retain their tool deltas,
-   positions and metadata; their prompt content and sections are folded into
-   the leading message. Input messages and stored history stay unchanged.
+5. Replays all system content and section patches into the first system message,
+   then appends bootstrap last. Shell results and other messages can precede it.
+   Later system messages retain their tool deltas, positions and metadata; their
+   prompt content and sections are folded into the first system message.
+   Input messages and stored history stay unchanged.
 
 Bootstrap is **last inside the system-prompt body**, logically immediately before
 `</system-prompt>`, never a separate `<message>`. Memory and command items have no item tags; a blank line separates items.
@@ -228,8 +229,9 @@ prompt, not bootstrap. Explicit `section = "system_prompt.memory"` or
 `section = "memory"` actions can replace/reference the request copy. Tag matching and escaping remain unchanged. Request actions refresh on each
 request; session output remains fixed until a new snapshot.
 The original snapshot and conversation history remain immutable. A nonempty
-snapshot requires Pi's leading system message; malformed transcripts are
-reported rather than exposing bootstrap through a user-message fallback.
+snapshot requires a system message somewhere in the transcript. Bootstrap keeps
+preceding messages in place. A transcript without a system message is reported
+rather than exposing bootstrap through a user-message fallback.
 
 ## User command
 

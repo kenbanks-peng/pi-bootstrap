@@ -61,6 +61,28 @@ test("section commands replace request sections, combine in source order, and st
   assert.deepEqual(messages, original);
 });
 
+test("section commands add missing sections to the first system message after shell history", async t => {
+  const f = await fixture(t);
+  await command(f.project, "rules.toml", 'description = "Rules"\nsection = "system_prompt.rules"\nexpression = \'"New rules"\'');
+  const h = harness(f.repository);
+  registerBootstrap(h.pi as never, () => f.repository, h.snapshot, h.transform, h.snapshot.sections);
+  await h.run("session_start", {}, { cwd: f.projectRoot, ui: { notify() {} } });
+  const messages = [
+    { role: "bashExecution", command: "pwd", output: "/project", timestamp: 0 },
+    { role: "system", content: "", sections: { cwd: "<cwd>/project</cwd>" }, timestamp: 1 },
+    { role: "user", content: "Question", timestamp: 2 },
+    { role: "system", content: "", sections: { rules: "<rules>Historical</rules>" }, timestamp: 3 },
+  ];
+  const before = structuredClone(messages);
+  const result = await h.run("context_with_system", { messages }, { cwd: f.projectRoot });
+  assert.deepEqual(result.messages.map((message: any) => message.role), ["bashExecution", "system", "user", "system"]);
+  assert.deepEqual(result.messages[0], messages[0]);
+  assert.deepEqual(result.messages[2], messages[2]);
+  assert.deepEqual(result.messages[1].sections, { cwd: "<cwd>/project</cwd>", rules: "<rules>\nRules\nNew rules\n</rules>" });
+  assert.equal(result.messages[3].sections.rules, "<rules>\nRules\nNew rules\n</rules>");
+  assert.deepEqual(messages, before);
+});
+
 test("skill metadata is filtered and frozen, and skill commands run once from saved sources", async t => {
   const f = await fixture(t);
   await command(f.project, "skills.toml", skillCommand);

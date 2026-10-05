@@ -21,8 +21,10 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
     const references = new Map<string, string>();
     const saveReference = (target: string, text: string) => { references.set(target, text); };
     const sections = snapshotSections();
-    if (Object.keys(sections).length && event.messages[0]?.role !== "system") {
-      throw new Error("Section injection requires a leading system message");
+    const transformed = transformSkills(event.messages);
+    const firstSystemIndex = transformed.findIndex(message => message.role === "system");
+    if (Object.keys(sections).length && firstSystemIndex === -1) {
+      throw new Error("Section injection requires a system message");
     }
     const patches: Record<string, string> = {};
     const generated = new Map<string, string>();
@@ -34,10 +36,10 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
         patches[name] = `<${name}>\n${body}\n</${name}>`;
       } else generated.set(key, body);
     }
-    const prepared = replaceMessages(transformSkills(event.messages).map((message, index) => {
+    const prepared = replaceMessages(transformed.map((message, index) => {
       if (message.role !== "system" || !Object.keys(patches).length) return message;
       const current = Object.fromEntries(Object.entries(patches)
-        .filter(([name]) => index === 0 || name in (message.sections ?? {})));
+        .filter(([name]) => index === firstSystemIndex || name in (message.sections ?? {})));
       return { ...message, sections: { ...message.sections, ...current } };
     }), generated);
 
@@ -53,9 +55,10 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
     // Inject after replacements and after replaying prompt sections. Pi renders
     // content before sections, so appending to content alone is not the prompt tail.
     if (bootstraps) {
-      const first = messages[0];
+      const firstSystemIndex = messages.findIndex(message => message.role === "system");
+      const first = messages[firstSystemIndex];
       if (!first || first.role !== "system") {
-        throw new Error("Bootstrap injection requires a leading system message");
+        throw new Error("Bootstrap injection requires a system message");
       }
       const { sections: _initialSections, ...initialMetadata } = first;
       const content: string[] = [];
@@ -71,11 +74,11 @@ export function registerBootstrap(pi: ExtensionAPI, repositoryFor = createBootst
           else sections.set(name, value);
         }
         // Keep system/tool delta positions and metadata, but fold their prompt
-        // text into the leading message so every adapter gets the same prompt tail.
+        // text into the first system message so every adapter gets the same prompt tail.
         const { sections: _sections, ...metadata } = message;
         messages[index] = { ...metadata, content: "" };
       }
-      messages[0] = {
+      messages[firstSystemIndex] = {
         ...initialMetadata,
         content: [...content, ...sections.values(), bootstraps].filter(Boolean).join("\n\n"),
       };

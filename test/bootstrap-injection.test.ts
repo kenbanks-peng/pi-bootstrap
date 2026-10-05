@@ -177,6 +177,27 @@ test("late composition cannot repopulate shutdown or superseded session state", 
   assert.equal(h.snapshot(), "");
 });
 
+test("bootstrap injects into the first system message after shell history without reordering messages", async t => {
+  const f = await fixture(t);
+  const h = harness(() => f.repository);
+  registerBootstrap(h.pi as never, () => f.repository, () => '<memory>Snapshot</memory>');
+  const messages = freeze([
+    { role: "bashExecution", command: "pwd", output: "/project", exitCode: 0, cancelled: false, truncated: false, timestamp: 0 },
+    { role: "system", content: "Prompt", sections: { rules: "<rules>Old</rules>" }, toolsAdded: [{ name: "read" }], timestamp: 1 },
+    { role: "user", content: "Question", timestamp: 2 },
+    { role: "system", content: "", sections: { rules: "<rules>Updated</rules>" }, toolsAdded: [{ name: "bash" }], timestamp: 3 },
+  ]);
+  const before = structuredClone(messages);
+  const result = await h.handlers.get("context_with_system")!({ messages }, { cwd: f.projectRoot });
+  assert.deepEqual(result.messages.map((message: any) => message.role), ["bashExecution", "system", "user", "system"]);
+  assert.deepEqual(result.messages[0], messages[0]);
+  assert.deepEqual(result.messages[2], messages[2]);
+  assert.equal(result.messages[1].content, "Prompt\n\n<rules>Updated</rules>\n\n<memory>Snapshot</memory>");
+  assert.deepEqual(result.messages[1].toolsAdded, messages[1].toolsAdded);
+  assert.deepEqual(result.messages[3], { role: "system", content: "", toolsAdded: [{ name: "bash" }], timestamp: 3 });
+  assert.deepEqual(messages, before);
+});
+
 test("string, empty and section-only system prompts inject without changing conversation order", async t => {
   const f = await fixture(t);
   const h = harness(() => f.repository);
@@ -191,5 +212,5 @@ test("string, empty and section-only system prompts inject without changing conv
     assert.match(result.messages[0].content, /<\/memory>$/);
     assert.deepEqual(messages[0].sections, { rules: "<rules>Rules</rules>" });
   }
-  await assert.rejects(h.handlers.get("context_with_system")!({ messages: [{ role: "user", content: "User" }] }, { cwd: f.projectRoot }), /leading system message/);
+  await assert.rejects(h.handlers.get("context_with_system")!({ messages: [{ role: "user", content: "User" }] }, { cwd: f.projectRoot }), /requires a system message/);
 });
