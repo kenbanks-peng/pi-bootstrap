@@ -1,0 +1,521 @@
+{
+  "measuredAt": "2026-10-14T15:23:59.576Z",
+  "status": "offline-keyword-only; live semantic comparison blocked",
+  "modelVersion": null,
+  "pricingDate": null,
+  "assumptions": "Keyword tool has no API calls, token usage, API cost or cache. No semantic measurements. Synthetic sequential replay; repetitions are not independent queries. Generated from the recorded production revision with working-tree schema-v2 evaluation changes identified by evaluationSourceSha256.",
+  "evaluationSourceSha256": {
+    "harness.ts": "4998919b36d3d59d870f3af280f364dd8c812d3c9061129631e37c4f1b78c1a1",
+    "run.ts": "20372ef5febc5344943ed1737d1a458235dd500812baee265941637b3dd45d27",
+    "fixtures.ts": "7973dd8f3debf240917850b3e4ddda7fa182fc7620f5ca192917bc4860e4ad70"
+  },
+  "reports": [
+    {
+      "schemaVersion": 2,
+      "fixtureVersion": "skill-search-synthetic-v1",
+      "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+      "split": "tuning",
+      "repetitions": 10,
+      "shortlistLimit": 20,
+      "resultLimits": [
+        1,
+        3,
+        5
+      ],
+      "queryCount": 12,
+      "catalogSize": 12,
+      "manifest": {
+        "mode": "keyword",
+        "implementationVersion": "1eac46b62368b92640c85788f198c7ea8fdf0afc:bootstrap-skills-sha256:3551fbf534a4e4cb25a05ddeea21216aa89756c8a3d7aafdfbe5bd645f58140d",
+        "modelVersion": null,
+        "sdkVersion": null,
+        "configuration": {
+          "shortlistLimit": 20,
+          "resultLimits": "1,3,5",
+          "scoreThreshold": 0
+        }
+      },
+      "environment": {
+        "node": "v22.23.3",
+        "platform": "linux",
+        "arch": "arm64"
+      },
+      "metrics": [
+        {
+          "limit": 1,
+          "positiveTrials": 80,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.875,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.875,
+          "shortlistHitRate": 0.875,
+          "shortlistMissTrials": 10,
+          "shortlistMissCaseIds": [
+            "t04"
+          ],
+          "usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "cache": {
+            "disabled": {
+              "trials": 120,
+              "latencyMs": {
+                "p50": 0.013041000000015401,
+                "p95": 0.026290999999986298
+              }
+            },
+            "miss": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "hit": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "bypass": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "unknown": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            }
+          },
+          "latencyMs": {
+            "p50": 0.013041000000015401,
+            "p95": 0.026290999999986298
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 3,
+          "positiveTrials": 80,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.875,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.875,
+          "shortlistHitRate": 0.875,
+          "shortlistMissTrials": 10,
+          "shortlistMissCaseIds": [
+            "t04"
+          ],
+          "usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "cache": {
+            "disabled": {
+              "trials": 120,
+              "latencyMs": {
+                "p50": 0.012124999999997499,
+                "p95": 0.022750000000002046
+              }
+            },
+            "miss": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "hit": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "bypass": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "unknown": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            }
+          },
+          "latencyMs": {
+            "p50": 0.012124999999997499,
+            "p95": 0.022750000000002046
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 5,
+          "positiveTrials": 80,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.875,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.875,
+          "shortlistHitRate": 0.875,
+          "shortlistMissTrials": 10,
+          "shortlistMissCaseIds": [
+            "t04"
+          ],
+          "usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "cache": {
+            "disabled": {
+              "trials": 120,
+              "latencyMs": {
+                "p50": 0.011917000000011058,
+                "p95": 0.021874999999994316
+              }
+            },
+            "miss": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "hit": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "bypass": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "unknown": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            }
+          },
+          "latencyMs": {
+            "p50": 0.011917000000011058,
+            "p95": 0.021874999999994316
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        }
+      ],
+      "dependencyVersions": {
+        "@earendil-works/pi-coding-agent": "1.2.0",
+        "@types/node": "24.19.2",
+        "@typesafe-ai/sdk": "0.6.0",
+        "smol-toml": "1.9.1",
+        "tsx": "4.23.15",
+        "typebox": "1.3.37",
+        "typescript": "5.9.3"
+      }
+    },
+    {
+      "schemaVersion": 2,
+      "fixtureVersion": "skill-search-synthetic-v1",
+      "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+      "split": "held-out",
+      "repetitions": 10,
+      "shortlistLimit": 20,
+      "resultLimits": [
+        1,
+        3,
+        5
+      ],
+      "queryCount": 14,
+      "catalogSize": 12,
+      "manifest": {
+        "mode": "keyword",
+        "implementationVersion": "1eac46b62368b92640c85788f198c7ea8fdf0afc:bootstrap-skills-sha256:3551fbf534a4e4cb25a05ddeea21216aa89756c8a3d7aafdfbe5bd645f58140d",
+        "modelVersion": null,
+        "sdkVersion": null,
+        "configuration": {
+          "shortlistLimit": 20,
+          "resultLimits": "1,3,5",
+          "scoreThreshold": 0
+        }
+      },
+      "environment": {
+        "node": "v22.23.3",
+        "platform": "linux",
+        "arch": "arm64"
+      },
+      "metrics": [
+        {
+          "limit": 1,
+          "positiveTrials": 100,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.7,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.8,
+          "shortlistHitRate": 0.8,
+          "shortlistMissTrials": 20,
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04"
+          ],
+          "usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "cache": {
+            "disabled": {
+              "trials": 140,
+              "latencyMs": {
+                "p50": 0.012707999999975073,
+                "p95": 0.025083000000051925
+              }
+            },
+            "miss": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "hit": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "bypass": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "unknown": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            }
+          },
+          "latencyMs": {
+            "p50": 0.012707999999975073,
+            "p95": 0.025083000000051925
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 3,
+          "positiveTrials": 100,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.8,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.8,
+          "shortlistHitRate": 0.8,
+          "shortlistMissTrials": 20,
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04"
+          ],
+          "usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "cache": {
+            "disabled": {
+              "trials": 140,
+              "latencyMs": {
+                "p50": 0.011750000000006366,
+                "p95": 0.02583399999997482
+              }
+            },
+            "miss": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "hit": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "bypass": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "unknown": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            }
+          },
+          "latencyMs": {
+            "p50": 0.011750000000006366,
+            "p95": 0.02583399999997482
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 5,
+          "positiveTrials": 100,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.8,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.8,
+          "shortlistHitRate": 0.8,
+          "shortlistMissTrials": 20,
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04"
+          ],
+          "usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "cache": {
+            "disabled": {
+              "trials": 140,
+              "latencyMs": {
+                "p50": 0.01125000000001819,
+                "p95": 0.022375000000010914
+              }
+            },
+            "miss": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "hit": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "bypass": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            },
+            "unknown": {
+              "trials": 0,
+              "latencyMs": {
+                "p50": null,
+                "p95": null
+              }
+            }
+          },
+          "latencyMs": {
+            "p50": 0.01125000000001819,
+            "p95": 0.022375000000010914
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        }
+      ],
+      "dependencyVersions": {
+        "@earendil-works/pi-coding-agent": "1.2.0",
+        "@types/node": "24.19.2",
+        "@typesafe-ai/sdk": "0.6.0",
+        "smol-toml": "1.9.1",
+        "tsx": "4.23.15",
+        "typebox": "1.3.37",
+        "typescript": "5.9.3"
+      }
+    }
+  ]
+}

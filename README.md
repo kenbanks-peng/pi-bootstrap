@@ -23,7 +23,10 @@ defines global-only configuration, privacy bounds, and adapter behavior. Reranki
 uses `@typesafe-ai/sdk` only after explicit opt-in, an explicit model, and a
 `TYPESAFE_API_KEY` environment credential. Failures retain keyword results;
 no automatic prompts or skill instruction loading change. Adoption requires
-repository-specific accuracy, latency, and cost evaluation.
+repository-specific accuracy, latency, and cost evaluation. The
+[rollout evaluation status and operator guide](docs/skill-search-rollout.md)
+records offline measurements and the explicitly blocked live comparison; it does
+not recommend adoption.
 
 ## Example transformations
 

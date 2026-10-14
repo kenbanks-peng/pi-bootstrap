@@ -37,7 +37,18 @@ For each fixed result limit:
 - **Latency:** nearest-rank p50 and p95 in milliseconds over complete search invocations. The baseline measures actual fixed-limit tool execution, including keyword scoring and result serialization. Its separate diagnostic limit-20 call is excluded. Registration, fixture loading, process startup, and summary writing are excluded. This is tool end-to-end latency, not full agent-turn latency. The synthetic catalog is small; timings are descriptive, not a production latency promise.
 - **API cost:** sum of actual billed USD for measured invocations. Keyword baseline cost is **zero**. Unknown costs stay `null` in rows and increment `unknownCostTrials`; `knownApiCostUsd` is not a total-cost claim when any trials are unknown. Later semantic runs must count retries, fallback attempts, and any billed cache-warming work. Report pricing assumptions separately if cost must be estimated.
 
-All trials are retained, including the first call and cache-affected repetitions. Means give every trial equal weight. `positiveTrials` and `noMatchTrials` expose the denominators. A reranker can abstain with a nonempty shortlist; no-match accuracy measures final results only. The harness rejects ineligible names, duplicate names, results outside the actual shortlist, oversized results/shortlists, and invalid telemetry.
+Schema v2 also reports shortlist miss counts and fixture IDs, API-attempt and
+input/output token totals with unknown-trial counts, and p50/p95 latency/sample
+counts grouped by observed cache state (`disabled`, `miss`, `hit`, `bypass`,
+`unknown`). `ReplayResult.telemetry` is optional; absent telemetry is unknown,
+not zero. Counts must be nonnegative safe integers or `null`. Adapters must
+observe cache state, not infer it from repetition number. Baseline telemetry is
+known zero with cache disabled. Empty latency groups are `null`. Model costs
+remain separately measured or unknown; token totals are not a billing estimate.
+See [rollout status](skill-search-rollout.md) for paired-regression reporting and
+remaining live-integration blockers.
+
+All trials are retained, including the first call and cache-affected repetitions. Means give every trial equal weight. `positiveTrials` and `noMatchTrials` expose the denominators. A reranker can abstain with a nonempty shortlist; no-match accuracy measures final results only. The harness rejects ineligible names, duplicate names, results outside the actual shortlist, oversized results/shortlists, and invalid telemetry. The default shortlist bound is 20; a semantic adapter must declare its actual bound as `configuration.shortlistLimit` (integer 1–64). Production fallback can return results outside a bounded semantic shortlist; this needs outcome-aware harness validation before such cases can be replayed, rather than falsifying shortlist membership.
 
 ## Replay a semantic implementation
 

@@ -4,6 +4,15 @@ import type { ExtensionAPI, Skill } from "@earendil-works/pi-coding-agent";
 import { registerLazySkills, skillCatalog } from "../../src/bootstrap-skills.ts";
 import { catalog, fixtureVersion, queries, resultLimits, shortlistLimit, type QueryCase } from "./fixtures.ts";
 
+export interface ReplayTelemetry {
+  /** Count actual outbound attempts, including failed/billed attempts. */
+  apiCalls: number | null;
+  inputTokens: number | null;
+  outputTokens: number | null;
+  /** Observed runtime state, not inferred from repetition number or latency. */
+  cache: "disabled" | "miss" | "hit" | "bypass" | "unknown";
+}
+
 export interface ReplayResult {
   matches: string[];
   /** Actual candidates before reranking/abstention, never inferred from output. */
@@ -12,6 +21,7 @@ export interface ReplayResult {
   latencyMs: number;
   /** Actual billed model API cost; null means unavailable, not zero. */
   apiCostUsd: number | null;
+  telemetry?: ReplayTelemetry;
 }
 
 /** Evaluation-only interface, not the production semantic adapter contract. */
@@ -60,6 +70,7 @@ export function keywordAdapter(skills: readonly Skill[], implementationVersion: 
         matches: result.details.matches.map(s => s.name),
         shortlist: candidates.details.matches.map(s => s.name),
         latencyMs, apiCostUsd: 0,
+        telemetry: { apiCalls: 0, inputTokens: 0, outputTokens: 0, cache: "disabled" },
       };
     },
   };
@@ -107,6 +118,9 @@ export async function evaluate(adapter: ReplayAdapter, options: {
     (adapter.manifest.mode === "semantic" && (!adapter.manifest.modelVersion || !adapter.manifest.sdkVersion))) {
     throw new Error("Adapter must record implementation, model and SDK versions");
   }
+  const actualShortlistLimit = adapter.manifest.configuration.shortlistLimit ?? shortlistLimit;
+  if (typeof actualShortlistLimit !== "number" || !Number.isInteger(actualShortlistLimit) ||
+    actualShortlistLimit < 1 || actualShortlistLimit > 64) throw new Error("Invalid adapter shortlist limit");
   validateFixtures(skills, cases);
   const selected = cases.filter(q => q.split === options.split);
   if (!selected.length) throw new Error("Empty evaluation split");
@@ -114,6 +128,7 @@ export async function evaluate(adapter: ReplayAdapter, options: {
   const rows: Array<{
     caseId: string; category: QueryCase["category"]; trial: number; limit: number;
     matches: number[]; shortlist: number[]; latencyMs: number; apiCostUsd: number | null;
+    telemetry: ReplayTelemetry;
   } & ReturnType<typeof scoreResult>> = [];
   // Sequential fixed order; no unreported warmup API calls. Repetitions expose
   // cache effects. Preserve every trial rather than hiding stochastic failures.
@@ -126,18 +141,24 @@ export async function evaluate(adapter: ReplayAdapter, options: {
             throw new Error("Adapter returned duplicate or ineligible skill");
           }
         }
-        if (result.matches.length > limit || result.shortlist.length > shortlistLimit ||
+        if (result.matches.length > limit || result.shortlist.length > actualShortlistLimit ||
           result.matches.some(n => !result.shortlist.includes(n))) throw new Error("Invalid adapter shortlist/output bounds");
         if (!Number.isFinite(result.latencyMs) || result.latencyMs < 0 ||
           (result.apiCostUsd !== null && (!Number.isFinite(result.apiCostUsd) || result.apiCostUsd < 0))) {
           throw new Error("Invalid adapter telemetry");
+        }
+        const telemetry = result.telemetry ?? { apiCalls: null, inputTokens: null, outputTokens: null, cache: "unknown" };
+        if (!["disabled", "miss", "hit", "bypass", "unknown"].includes(telemetry.cache) ||
+          [telemetry.apiCalls, telemetry.inputTokens, telemetry.outputTokens].some(value =>
+            value !== null && (!Number.isSafeInteger(value) || value < 0))) {
+          throw new Error("Invalid adapter usage/cache telemetry");
         }
         rows.push({
           caseId: q.id, category: q.category, trial, limit,
           // Only fixture IDs and catalog indexes are emitted, not raw strings.
           matches: result.matches.map(n => [...available].indexOf(n)),
           shortlist: result.shortlist.map(n => [...available].indexOf(n)),
-          ...scoreResult(q, result, limit), latencyMs: result.latencyMs, apiCostUsd: result.apiCostUsd,
+          ...scoreResult(q, result, limit), latencyMs: result.latencyMs, apiCostUsd: result.apiCostUsd, telemetry: { ...telemetry },
         });
       }
     }
@@ -154,16 +175,28 @@ export async function evaluate(adapter: ReplayAdapter, options: {
       noMatchAccuracy: rate(negative.filter(r => r.noMatchHit).length, negative.length),
       shortlistRecall: rate(positive.reduce((sum, r) => sum + r.shortlistRecall!, 0), positive.length),
       shortlistHitRate: rate(positive.filter(r => r.shortlistHit).length, positive.length),
+      shortlistMissTrials: positive.filter(r => !r.shortlistHit).length,
+      shortlistMissCaseIds: [...new Set(positive.filter(r => !r.shortlistHit).map(r => r.caseId))],
+      usage: Object.fromEntries((["apiCalls", "inputTokens", "outputTokens"] as const).map(key => [key, {
+        knownTotal: group.reduce((sum, r) => sum + (r.telemetry[key] ?? 0), 0),
+        unknownTrials: group.filter(r => r.telemetry[key] === null).length,
+      }])),
+      cache: Object.fromEntries((["disabled", "miss", "hit", "bypass", "unknown"] as const).map(state => {
+        const samples = group.filter(r => r.telemetry.cache === state);
+        return [state, { trials: samples.length, latencyMs: {
+          p50: quantile(samples.map(r => r.latencyMs), 0.5), p95: quantile(samples.map(r => r.latencyMs), 0.95),
+        } }];
+      })),
       latencyMs: { p50: quantile(group.map(r => r.latencyMs), 0.5), p95: quantile(group.map(r => r.latencyMs), 0.95) },
       knownApiCostUsd: knownCosts.reduce((sum, r) => sum + r.apiCostUsd!, 0),
       unknownCostTrials: group.length - knownCosts.length,
     };
   });
   return {
-    schemaVersion: 1, fixtureVersion,
+    schemaVersion: 2, fixtureVersion,
     fixtureSha256: createHash("sha256").update(JSON.stringify({ skills, cases })).digest("hex"),
-    split: options.split, repetitions, shortlistLimit, resultLimits,
-    catalogSize: available.size, manifest: adapter.manifest,
+    split: options.split, repetitions, shortlistLimit: actualShortlistLimit, resultLimits,
+    queryCount: selected.length, catalogSize: available.size, manifest: adapter.manifest,
     environment: { node: process.version, platform: process.platform, arch: process.arch },
     metrics, rows,
   };

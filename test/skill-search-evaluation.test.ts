@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { compareReports } from "./skill-search-evaluation/comparison.ts";
 import { catalog, queries, resultLimits } from "./skill-search-evaluation/fixtures.ts";
 import { evaluate, keywordAdapter, scoreResult, validateFixtures, type ReplayAdapter } from "./skill-search-evaluation/harness.ts";
 
@@ -46,6 +47,11 @@ test("evaluation replay records fixed limits, split, costs, versions and privacy
   for (const metric of result.metrics) {
     assert.equal(metric.knownApiCostUsd, 0);
     assert.equal(metric.unknownCostTrials, 0);
+    assert.deepEqual(metric.usage.apiCalls, { knownTotal: 0, unknownTrials: 0 });
+    assert.equal(metric.cache.disabled.trials, 28);
+    assert.equal(metric.cache.hit.latencyMs.p50, null);
+    assert.equal(metric.shortlistMissTrials, 4);
+    assert.equal(metric.shortlistMissCaseIds.length, 2);
     assert.ok(metric.latencyMs.p95! >= metric.latencyMs.p50!);
   }
   const text = JSON.stringify(result);
@@ -68,19 +74,87 @@ test("semantic replay uses same cases; retrieval misses remain visible and unkno
     assert.equal(metric.shortlistHitRate, 0);
     assert.equal(metric.noMatchAccuracy, 1);
     assert.equal(metric.unknownCostTrials, 12);
+    assert.deepEqual(metric.usage.inputTokens, { knownTotal: 0, unknownTrials: 12 });
+    assert.equal(metric.cache.unknown.trials, 12);
+    assert.equal(metric.cache.hit.trials, 0);
   }
+});
+
+test("cache-state latency and usage summarize observed telemetry, not repetition guesses", async () => {
+  const keyword = baseline();
+  let calls = 0;
+  const adapter: ReplayAdapter = {
+    ...keyword,
+    async search(query, limit) {
+      const result = await keyword.search(query, limit);
+      const miss = calls++ % 2 === 0;
+      return { ...result, latencyMs: miss ? 10 : 1, telemetry: {
+        apiCalls: miss ? 1 : 0, inputTokens: miss ? 12 : 0, outputTokens: miss ? 2 : 0,
+        cache: miss ? "miss" as const : "hit" as const,
+      } };
+    },
+  };
+  const report = await evaluate(adapter, { split: "held-out", repetitions: 2 });
+  for (const metric of report.metrics) {
+    assert.equal(metric.cache.miss.trials, 14);
+    assert.equal(metric.cache.hit.trials, 14);
+    assert.equal(metric.cache.miss.latencyMs.p95, 10);
+    assert.equal(metric.cache.hit.latencyMs.p95, 1);
+    assert.deepEqual(metric.usage.apiCalls, { knownTotal: 14, unknownTrials: 0 });
+    assert.deepEqual(metric.usage.inputTokens, { knownTotal: 168, unknownTrials: 0 });
+  }
+});
+
+test("paired reports expose regressions and gains by fixture ID and reject mismatches", async () => {
+  const keyword = await evaluate(baseline(), { split: "held-out", repetitions: 2 });
+  const semantic = structuredClone(keyword);
+  semantic.manifest = { ...semantic.manifest, mode: "semantic", modelVersion: "fake-v1", sdkVersion: "fake-v1" };
+  for (const row of semantic.rows) {
+    if (row.selectionHit !== null) row.selectionHit = !row.selectionHit;
+    if (row.noMatchHit !== null) row.noMatchHit = !row.noMatchHit;
+  }
+  const comparison = compareReports(keyword, semantic);
+  assert.deepEqual(comparison.metrics.map(m => m.selectionRegressions.trials), [14, 16, 16]);
+  assert.deepEqual(comparison.metrics.map(m => m.selectionGains.trials), [6, 4, 4]);
+  assert.ok(comparison.metrics.every(m => m.noMatchRegressions.trials === 6 && m.noMatchGains.trials === 2));
+  assert.ok(comparison.metrics.every(m => m.uniqueQueries === 14 && m.pairedTrials === 28));
+  assert.ok(comparison.metrics.every(m => m.selectionRegressions.caseIds.length * 2 === m.selectionRegressions.trials));
+  for (const field of ["fixtureSha256", "split", "repetitions", "environment"] as const) {
+    const changed = structuredClone(semantic);
+    Object.assign(changed, { [field]: "different" });
+    assert.throws(() => compareReports(keyword, changed), /Unpaired/);
+  }
+  const missing = structuredClone(semantic);
+  missing.rows.pop();
+  assert.throws(() => compareReports(keyword, missing), /Missing/);
+  const duplicate = structuredClone(semantic);
+  duplicate.rows[1] = duplicate.rows[0];
+  assert.throws(() => compareReports(keyword, duplicate), /duplicate/);
+  assert.throws(() => compareReports(keyword, keyword), /keyword and semantic/);
 });
 
 test("invalid replay output fails rather than silently skewing measurements", async () => {
   await assert.rejects(evaluate(baseline(), { split: "tuning", repetitions: 0 }), /repetitions/);
   await assert.rejects(evaluate({ ...baseline(), manifest: { ...baseline().manifest, mode: "semantic" } },
     { split: "tuning", repetitions: 1 }), /versions/);
+  for (const shortlistLimit of [0, 65, "32"]) {
+    const adapter = baseline();
+    adapter.manifest.configuration.shortlistLimit = shortlistLimit;
+    await assert.rejects(evaluate(adapter, { split: "tuning", repetitions: 1 }), /shortlist limit/);
+  }
+  const expanded = baseline();
+  expanded.manifest.configuration.shortlistLimit = 32;
+  assert.equal((await evaluate(expanded, { split: "tuning", repetitions: 1 })).shortlistLimit, 32);
   for (const invalid of [
     { matches: ["manual-deploy"], shortlist: ["manual-deploy"], latencyMs: 1, apiCostUsd: 0 },
     { matches: ["testing"], shortlist: [], latencyMs: 1, apiCostUsd: 0 },
     { matches: ["testing", "testing"], shortlist: ["testing"], latencyMs: 1, apiCostUsd: 0 },
     { matches: [], shortlist: [], latencyMs: NaN, apiCostUsd: 0 },
     { matches: [], shortlist: [], latencyMs: 1, apiCostUsd: -1 },
+    { matches: [], shortlist: [], latencyMs: 1, apiCostUsd: 0,
+      telemetry: { apiCalls: -1, inputTokens: 0, outputTokens: 0, cache: "miss" as const } },
+    { matches: [], shortlist: [], latencyMs: 1, apiCostUsd: 0,
+      telemetry: { apiCalls: 1, inputTokens: 0.5, outputTokens: 0, cache: "miss" as const } },
   ]) {
     await assert.rejects(evaluate({ ...baseline(), search: async () => invalid }, { split: "tuning", repetitions: 1 }), /Adapter|adapter/);
   }
