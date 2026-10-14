@@ -16,6 +16,12 @@ On first use, if the global `config.toml` is missing, the extension installs:
 
 These files go in the agent directory under `extensions/pi-bootstrap`. Existing files are not overwritten. An existing configuration does not receive these defaults.
 
+## Skill search
+
+Keyword search remains the default. The [opt-in semantic reranking contract](docs/skill-search-reranking.md)
+defines the planned configuration, privacy bounds, and adapter behavior; networking
+is not implemented by the contract change.
+
 ## Example transformations
 
 Save each TOML example below as a separate file in `commands/`.
