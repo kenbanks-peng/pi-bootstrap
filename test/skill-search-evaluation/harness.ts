@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import type { ExtensionAPI, Skill } from "@earendil-works/pi-coding-agent";
+import type { SkillSearchObservation } from "../../src/bootstrap-skills-observation.ts";
 import { registerLazySkills, skillCatalog } from "../../src/bootstrap-skills.ts";
 import { catalog, fixtureVersion, queries, resultLimits, shortlistLimit, type QueryCase } from "./fixtures.ts";
 
@@ -13,6 +14,8 @@ export interface ReplayTelemetry {
   cache: "disabled" | "miss" | "hit" | "bypass" | "unknown";
 }
 
+export type ReplayObservation = Omit<SkillSearchObservation, "shortlist" | "cache" | "keywordResults"> & { keywordResults: string[] };
+
 export interface ReplayResult {
   matches: string[];
   /** Actual candidates before reranking/abstention, never inferred from output. */
@@ -22,6 +25,7 @@ export interface ReplayResult {
   /** Actual billed model API cost; null means unavailable, not zero. */
   apiCostUsd: number | null;
   telemetry?: ReplayTelemetry;
+  observation?: ReplayObservation;
 }
 
 /** Evaluation-only interface, not the production semantic adapter contract. */
@@ -35,6 +39,7 @@ export interface ReplayAdapter {
     configuration: Record<string, string | number | boolean | null>;
   };
   search(query: string, limit: number): Promise<ReplayResult>;
+  close?(): Promise<void>;
 }
 
 type SearchDetails = { matches: { name: string }[]; total: number };
@@ -51,7 +56,9 @@ export function keywordAdapter(skills: readonly Skill[], implementationVersion: 
       if (tool.name === "skill_search") execute = tool.execute;
     },
   };
-  registerLazySkills(pi as unknown as ExtensionAPI);
+  let observed: SkillSearchObservation | undefined;
+  const eligible = skillCatalog(skills);
+  registerLazySkills(pi as unknown as ExtensionAPI, { observe(value) { observed = value; } });
   if (!start || !execute) throw new Error("skill_search registration missing");
   start({ systemPromptOptions: { skills: structuredClone(skills), sections: {} } });
   const search = execute;
@@ -64,6 +71,8 @@ export function keywordAdapter(skills: readonly Skill[], implementationVersion: 
       const before = performance.now();
       const result = await search("evaluation", { query, limit });
       const latencyMs = performance.now() - before;
+      const observation = observed;
+      if (!observation) throw new Error("Keyword observation missing");
       // Diagnostic search is outside the timed invocation. No keyword cache.
       const candidates = await search("evaluation-shortlist", { query, limit: shortlistLimit });
       return {
@@ -71,6 +80,8 @@ export function keywordAdapter(skills: readonly Skill[], implementationVersion: 
         shortlist: candidates.details.matches.map(s => s.name),
         latencyMs, apiCostUsd: 0,
         telemetry: { apiCalls: 0, inputTokens: 0, outputTokens: 0, cache: "disabled" },
+        observation: { decision: observation.decision, reason: observation.reason, shortlistKind: observation.shortlistKind,
+          keywordResults: observation.keywordResults.map(index => eligible[index].name) },
       };
     },
   };
@@ -113,7 +124,7 @@ export async function evaluate(adapter: ReplayAdapter, options: {
   const skills = options.skills ?? catalog;
   const cases = options.cases ?? queries;
   const repetitions = options.repetitions ?? 10;
-  if (!Number.isInteger(repetitions) || repetitions < 1) throw new Error("Invalid repetitions");
+  if (!Number.isInteger(repetitions) || repetitions < 1 || repetitions > 100) throw new Error("Invalid repetitions");
   if (!adapter.manifest.implementationVersion ||
     (adapter.manifest.mode === "semantic" && (!adapter.manifest.modelVersion || !adapter.manifest.sdkVersion))) {
     throw new Error("Adapter must record implementation, model and SDK versions");
@@ -129,6 +140,7 @@ export async function evaluate(adapter: ReplayAdapter, options: {
     caseId: string; category: QueryCase["category"]; trial: number; limit: number;
     matches: number[]; shortlist: number[]; latencyMs: number; apiCostUsd: number | null;
     telemetry: ReplayTelemetry;
+    observation?: Omit<ReplayObservation, "keywordResults"> & { keywordResults: number[] };
   } & ReturnType<typeof scoreResult>> = [];
   // Sequential fixed order; no unreported warmup API calls. Repetitions expose
   // cache effects. Preserve every trial rather than hiding stochastic failures.
@@ -141,8 +153,25 @@ export async function evaluate(adapter: ReplayAdapter, options: {
             throw new Error("Adapter returned duplicate or ineligible skill");
           }
         }
-        if (result.matches.length > limit || result.shortlist.length > actualShortlistLimit ||
-          result.matches.some(n => !result.shortlist.includes(n))) throw new Error("Invalid adapter shortlist/output bounds");
+        const observed = result.observation;
+        if (observed) {
+          if (!["keyword", "matches", "no-match", "fallback"].includes(observed.decision) ||
+            !["keyword", "semantic"].includes(observed.shortlistKind) ||
+            ![null, "exact", "empty", "unavailable", "bounds", "timeout", "provider", "invalid-response", "uncertain"].includes(observed.reason) ||
+            observed.keywordResults.length > 20 || new Set(observed.keywordResults).size !== observed.keywordResults.length ||
+            observed.keywordResults.some(name => !available.has(name))) throw new Error("Invalid adapter decision observation");
+          if (observed.decision === "fallback" || observed.decision === "keyword") {
+            if (!observed.reason || JSON.stringify(result.matches) !== JSON.stringify(observed.keywordResults.slice(0, limit))) {
+              throw new Error("Fallback must reproduce the observed keyword results");
+            }
+          } else if (observed.shortlistKind !== "semantic" || observed.reason !== null ||
+            (observed.decision === "no-match" && result.matches.length)) throw new Error("Invalid semantic decision");
+        }
+        const outputBound = observed?.shortlistKind === "keyword" ? shortlistLimit : actualShortlistLimit;
+        if (result.matches.length > limit || result.shortlist.length > outputBound ||
+          (!(observed?.decision === "fallback") && result.matches.some(n => !result.shortlist.includes(n)))) {
+          throw new Error("Invalid adapter shortlist/output bounds");
+        }
         if (!Number.isFinite(result.latencyMs) || result.latencyMs < 0 ||
           (result.apiCostUsd !== null && (!Number.isFinite(result.apiCostUsd) || result.apiCostUsd < 0))) {
           throw new Error("Invalid adapter telemetry");
@@ -159,6 +188,7 @@ export async function evaluate(adapter: ReplayAdapter, options: {
           matches: result.matches.map(n => [...available].indexOf(n)),
           shortlist: result.shortlist.map(n => [...available].indexOf(n)),
           ...scoreResult(q, result, limit), latencyMs: result.latencyMs, apiCostUsd: result.apiCostUsd, telemetry: { ...telemetry },
+          ...(observed ? { observation: { ...observed, keywordResults: observed.keywordResults.map(n => [...available].indexOf(n)) } } : {}),
         });
       }
     }
@@ -175,8 +205,14 @@ export async function evaluate(adapter: ReplayAdapter, options: {
       noMatchAccuracy: rate(negative.filter(r => r.noMatchHit).length, negative.length),
       shortlistRecall: rate(positive.reduce((sum, r) => sum + r.shortlistRecall!, 0), positive.length),
       shortlistHitRate: rate(positive.filter(r => r.shortlistHit).length, positive.length),
+      shortlistKindTrials: Object.fromEntries(["keyword", "semantic", "unknown"].map(kind => [kind,
+        group.filter(r => (r.observation?.shortlistKind ?? "unknown") === kind).length])),
       shortlistMissTrials: positive.filter(r => !r.shortlistHit).length,
       shortlistMissCaseIds: [...new Set(positive.filter(r => !r.shortlistHit).map(r => r.caseId))],
+      decisions: Object.fromEntries(["keyword", "matches", "no-match", "fallback", "unknown"].map(decision => [decision,
+        group.filter(r => (r.observation?.decision ?? "unknown") === decision).length])),
+      fallbackReasons: Object.fromEntries(["unavailable", "bounds", "timeout", "provider", "invalid-response", "uncertain"].map(reason => [reason,
+        group.filter(r => r.observation?.decision === "fallback" && r.observation.reason === reason).length])),
       usage: Object.fromEntries((["apiCalls", "inputTokens", "outputTokens"] as const).map(key => [key, {
         knownTotal: group.reduce((sum, r) => sum + (r.telemetry[key] ?? 0), 0),
         unknownTrials: group.filter(r => r.telemetry[key] === null).length,

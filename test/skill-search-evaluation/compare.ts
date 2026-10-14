@@ -7,7 +7,8 @@ if (!baselinePath || !semanticPath || extra.length) {
 }
 const baseline = JSON.parse(readFileSync(baselinePath, "utf8"));
 const semantic = JSON.parse(readFileSync(semanticPath, "utf8"));
-if (JSON.stringify(baseline.dependencyVersions) !== JSON.stringify(semantic.dependencyVersions)) {
+if (!baseline.dependencyVersions || !semantic.dependencyVersions ||
+  JSON.stringify(baseline.dependencyVersions) !== JSON.stringify(semantic.dependencyVersions)) {
   throw new Error("Unpaired installed dependency versions");
 }
 process.stdout.write(JSON.stringify(compareReports(baseline, semantic), null, 2) + "\n");

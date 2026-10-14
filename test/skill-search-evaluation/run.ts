@@ -21,5 +21,8 @@ const installed = JSON.parse(execFileSync("npm", ["ls", "--depth=0", "--json"], 
   dependencies: Record<string, { version: string }>;
 };
 const dependencyVersions = Object.fromEntries(Object.entries(installed.dependencies).map(([name, info]) => [name, info.version]));
-const result = await evaluate(adapter, { split, repetitions: Number(repeatArg) });
-process.stdout.write(JSON.stringify({ ...result, dependencyVersions }, null, 2) + "\n");
+try {
+  const result = await evaluate(adapter, { split, repetitions: Number(repeatArg) });
+  await adapter.close?.();
+  process.stdout.write(JSON.stringify({ ...result, dependencyVersions }, null, 2) + "\n");
+} finally { await adapter.close?.(); }

@@ -1,3 +1,4 @@
+import { observeSafely, type SkillSearchObservation } from "./bootstrap-skills-observation.ts";
 import { Type } from "typebox";
 import { getBootstrapDirectory } from "./bootstrap-paths.ts";
 import { defaultRerankingConfig, loadRerankingConfig } from "./bootstrap-skills-reranking-config.ts";
@@ -39,6 +40,8 @@ export function registerLazySkills(pi: ExtensionAPI, dependencies: {
   adapterFor?: (credential: string) => SkillRerankingAdapter;
   credential?: () => string | undefined;
   diagnostic?: (message: string) => void;
+  /** Internal, sanitized, optional observation; never part of public tool results. */
+  observe?: (observation: SkillSearchObservation) => void;
 } = {}): SkillPromptTransform {
   let catalog: SkillMetadata[] = [];
   let config = defaultRerankingConfig;
@@ -89,19 +92,36 @@ export function registerLazySkills(pi: ExtensionAPI, dependencies: {
         .sort((a, b) => b.rank - a.rank || a.skill.name.localeCompare(b.skill.name));
       const ranked = allRanked.filter(match => match.rank > 0);
       let selected = ranked.map(match => match.skill);
+      const indexes = (skills: readonly SkillMetadata[]) => skills.map(skill => snapshot.indexOf(skill));
+      const observation: SkillSearchObservation | undefined = dependencies.observe ? {
+        shortlist: indexes(selected.slice(0, 20)), keywordResults: indexes(selected.slice(0, 20)),
+        shortlistKind: "keyword", decision: "keyword", reason: !snapshot.length ? "empty" :
+          snapshot.some(skill => skill.name.toLowerCase() === normalized) ? "exact" : "unavailable",
+        cache: "bypass",
+      } : undefined;
       credential = config.enabled && config.model ? (dependencies.credential ?? (() => process.env.TYPESAFE_API_KEY))()?.trim() || undefined : undefined;
       runtime.snapshot(snapshot, config, credential);
       if (config.enabled && config.model && credential && snapshot.length && !snapshot.some(skill => skill.name.toLowerCase() === normalized)) {
         const request = buildRerankingRequest(normalized, allRanked.map(match => match.skill), config);
+        if (observation) {
+          observation.shortlistKind = "semantic";
+          observation.shortlist = request ? request.candidates.map(candidate => snapshot.findIndex(skill => skill.name === candidate.name)) : [];
+          observation.decision = "fallback";
+          observation.reason = "bounds";
+        }
         if (request) {
           const requestCredential = credential;
           const version = runtime.version;
           // The adapter receives only fresh bounded metadata, never local paths or prompt state.
           const decision = await runtime.search(request, config, {
             rerank: (payload, options) => (dependencies.adapterFor ?? createJevAdapter)(requestCredential).rerank(payload, options),
-          }, signal);
+          }, signal, observation ? state => { observation.cache = state; } : undefined);
           signal?.throwIfAborted();
           if (version !== runtime.version) throw new Error("Skill search state changed.");
+          if (observation) {
+            observation.decision = decision.kind;
+            observation.reason = decision.kind === "fallback" ? decision.reason : null;
+          }
           if (decision.kind === "no-match") selected = [];
           else if (decision.kind === "matches") {
             const localByName = new Map(snapshot.map(skill => [skill.name, skill]));
@@ -114,6 +134,7 @@ export function registerLazySkills(pi: ExtensionAPI, dependencies: {
       const text = matches.length
         ? JSON.stringify(matches, null, 2) + "\nRead the selected filePath. Resolve supporting files against baseDir."
         : "No matching skills. Try another skill name or task keywords.";
+      if (observation) observeSafely(dependencies.observe, observation);
       return { content: [{ type: "text" as const, text }], details: { matches, total: selected.length } };
     },
   };

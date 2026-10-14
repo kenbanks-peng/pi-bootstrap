@@ -192,6 +192,20 @@ snapshot change (including paths), credential change, config change, `session_st
 these boundaries. Reconstruct cache-hit results from the current local catalog,
 never from persisted paths. No shared cross-session credential or cache state.
 
+## Internal evaluation observation
+
+Optional dependency-injected callbacks support the repository benchmark without
+changing the public tool result or outbound request. Tool observations contain
+only indexes in the eligible sorted catalog, bounded keyword-result indexes,
+shortlist kind, decision/reason enums and runtime-observed cache state. The
+pre-rerank shortlist is observed even on cache hits; keyword fallback results are
+kept separate, never unioned into it. SDK observations contain only attempt events
+and validated nonnegative integer token counts (or `null` when unavailable), not
+raw responses, query/metadata text, credentials, prompts or paths. No observers
+are installed by normal extension registration, and throwing observers are
+ignored. The benchmark additionally guards actual transport attempts by its
+explicit authorized request ceiling. See [rollout evaluation](skill-search-rollout.md).
+
 ## Verification handoff
 
 The implementation must test the config defaults/invalid settings and global-only

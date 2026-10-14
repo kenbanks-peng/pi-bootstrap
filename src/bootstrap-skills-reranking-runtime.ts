@@ -1,3 +1,4 @@
+import { observeSafely } from "./bootstrap-skills-observation.ts";
 import type { SkillMetadata } from "./bootstrap-skills.ts";
 import type { SkillRerankingAdapter, SkillRerankingConfig, SkillRerankingDecision, SkillRerankingRequest } from "./bootstrap-skills-reranking.ts";
 
@@ -72,7 +73,7 @@ export class SkillRerankingRuntime {
     }
   }
 
-  async search(request: SkillRerankingRequest, config: SkillRerankingConfig, adapter: SkillRerankingAdapter, signal?: AbortSignal): Promise<SkillRerankingDecision> {
+  async search(request: SkillRerankingRequest, config: SkillRerankingConfig, adapter: SkillRerankingAdapter, signal?: AbortSignal, observeCache?: (state: "hit" | "miss" | "disabled") => void): Promise<SkillRerankingDecision> {
     signal?.throwIfAborted();
     const key = JSON.stringify([1, config, request]);
     const cached = this.cache.get(key);
@@ -80,9 +81,11 @@ export class SkillRerankingRuntime {
       this.cache.delete(key);
       if (cached.expires > this.now()) {
         this.cache.set(key, cached);
+        observeSafely(observeCache, "hit");
         return cached.decision;
       }
     }
+    observeSafely(observeCache, config.cacheMaxEntries && config.cacheTtlMs ? "miss" : "disabled");
     const started = this.now();
     const generation = this.generation;
     const controller = new AbortController();
