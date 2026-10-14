@@ -1,13 +1,21 @@
 {
-  "measuredAt": "2026-10-14T15:23:59.576Z",
+  "measuredAt": "2026-10-14T15:49:52.539Z",
   "status": "offline-keyword-only; live semantic comparison blocked",
   "modelVersion": null,
   "pricingDate": null,
-  "assumptions": "Keyword tool has no API calls, token usage, API cost or cache. No semantic measurements. Synthetic sequential replay; repetitions are not independent queries. Generated from the recorded production revision with working-tree schema-v2 evaluation changes identified by evaluationSourceSha256.",
+  "assumptions": "Keyword tool has no API calls, token usage, API cost or cache. No semantic measurements. Synthetic sequential replay with optional observation overhead included; repetitions are not independent queries. Production and evaluation sources were committed before measurement; revision, source hashes and installed direct dependencies are recorded.",
   "evaluationSourceSha256": {
-    "harness.ts": "4998919b36d3d59d870f3af280f364dd8c812d3c9061129631e37c4f1b78c1a1",
-    "run.ts": "20372ef5febc5344943ed1737d1a458235dd500812baee265941637b3dd45d27",
-    "fixtures.ts": "7973dd8f3debf240917850b3e4ddda7fa182fc7620f5ca192917bc4860e4ad70"
+    "test/skill-search-evaluation/harness.ts": "3963b415b54317a8f511965c1b9cd9af3a4884c7943239ea93eb3a8cda3a0403",
+    "test/skill-search-evaluation/run.ts": "cf018f4b1d036595d00ebaf03a5b8df06db862457bdc5099f0aacee74165cd5f",
+    "test/skill-search-evaluation/fixtures.ts": "7973dd8f3debf240917850b3e4ddda7fa182fc7620f5ca192917bc4860e4ad70"
+  },
+  "productionSourceSha256": {
+    "src/bootstrap-skills.ts": "55bd09d3a8adcaa114cdaa2c35d868f519f6686d9a175146aa177ba1afab5be7",
+    "src/bootstrap-skills-reranking-runtime.ts": "21ad6ff500798bf6c72b51b11b2945fec5ec89652010c531baf1a3c92cb823f5",
+    "src/bootstrap-skills-reranking-config.ts": "2e95f4468016650741e64581247ed62883e19abb1302658e5b33c86b5ef998aa",
+    "src/bootstrap-skills-reranking.ts": "213c76062f183df4e055e149521c12961c5696d74772543db658c9c2938af52e",
+    "src/bootstrap-skills-jev.ts": "620fad8b7a5cd32bcae0226d4ece9620c89891661d1c7b622e1be70461cef8b9",
+    "src/bootstrap-skills-observation.ts": "94de57726ee4c129adb137ec934667f614a9a75731c46c95dd49a89087ded9f0"
   },
   "reports": [
     {
@@ -26,7 +34,7 @@
       "catalogSize": 12,
       "manifest": {
         "mode": "keyword",
-        "implementationVersion": "1eac46b62368b92640c85788f198c7ea8fdf0afc:bootstrap-skills-sha256:3551fbf534a4e4cb25a05ddeea21216aa89756c8a3d7aafdfbe5bd645f58140d",
+        "implementationVersion": "8bfab4e3c8e8e297cd6f02360c24d456ca98ee54:bootstrap-skills-sha256:55bd09d3a8adcaa114cdaa2c35d868f519f6686d9a175146aa177ba1afab5be7",
         "modelVersion": null,
         "sdkVersion": null,
         "configuration": {
@@ -49,10 +57,30 @@
           "noMatchAccuracy": 0.75,
           "shortlistRecall": 0.875,
           "shortlistHitRate": 0.875,
+          "shortlistKindTrials": {
+            "keyword": 120,
+            "semantic": 0,
+            "unknown": 0
+          },
           "shortlistMissTrials": 10,
           "shortlistMissCaseIds": [
             "t04"
           ],
+          "decisions": {
+            "keyword": 120,
+            "matches": 0,
+            "no-match": 0,
+            "fallback": 0,
+            "unknown": 0
+          },
+          "fallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          },
           "usage": {
             "apiCalls": {
               "knownTotal": 0,
@@ -71,8 +99,8 @@
             "disabled": {
               "trials": 120,
               "latencyMs": {
-                "p50": 0.013041000000015401,
-                "p95": 0.026290999999986298
+                "p50": 0.013208000000020093,
+                "p95": 0.024583000000006905
               }
             },
             "miss": {
@@ -105,8 +133,8 @@
             }
           },
           "latencyMs": {
-            "p50": 0.013041000000015401,
-            "p95": 0.026290999999986298
+            "p50": 0.013208000000020093,
+            "p95": 0.024583000000006905
           },
           "knownApiCostUsd": 0,
           "unknownCostTrials": 0
@@ -119,10 +147,30 @@
           "noMatchAccuracy": 0.75,
           "shortlistRecall": 0.875,
           "shortlistHitRate": 0.875,
+          "shortlistKindTrials": {
+            "keyword": 120,
+            "semantic": 0,
+            "unknown": 0
+          },
           "shortlistMissTrials": 10,
           "shortlistMissCaseIds": [
             "t04"
           ],
+          "decisions": {
+            "keyword": 120,
+            "matches": 0,
+            "no-match": 0,
+            "fallback": 0,
+            "unknown": 0
+          },
+          "fallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          },
           "usage": {
             "apiCalls": {
               "knownTotal": 0,
@@ -141,8 +189,8 @@
             "disabled": {
               "trials": 120,
               "latencyMs": {
-                "p50": 0.012124999999997499,
-                "p95": 0.022750000000002046
+                "p50": 0.012249999999994543,
+                "p95": 0.024666999999965356
               }
             },
             "miss": {
@@ -175,8 +223,8 @@
             }
           },
           "latencyMs": {
-            "p50": 0.012124999999997499,
-            "p95": 0.022750000000002046
+            "p50": 0.012249999999994543,
+            "p95": 0.024666999999965356
           },
           "knownApiCostUsd": 0,
           "unknownCostTrials": 0
@@ -189,10 +237,30 @@
           "noMatchAccuracy": 0.75,
           "shortlistRecall": 0.875,
           "shortlistHitRate": 0.875,
+          "shortlistKindTrials": {
+            "keyword": 120,
+            "semantic": 0,
+            "unknown": 0
+          },
           "shortlistMissTrials": 10,
           "shortlistMissCaseIds": [
             "t04"
           ],
+          "decisions": {
+            "keyword": 120,
+            "matches": 0,
+            "no-match": 0,
+            "fallback": 0,
+            "unknown": 0
+          },
+          "fallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          },
           "usage": {
             "apiCalls": {
               "knownTotal": 0,
@@ -211,8 +279,8 @@
             "disabled": {
               "trials": 120,
               "latencyMs": {
-                "p50": 0.011917000000011058,
-                "p95": 0.021874999999994316
+                "p50": 0.012499999999988631,
+                "p95": 0.023417000000051758
               }
             },
             "miss": {
@@ -245,8 +313,8 @@
             }
           },
           "latencyMs": {
-            "p50": 0.011917000000011058,
-            "p95": 0.021874999999994316
+            "p50": 0.012499999999988631,
+            "p95": 0.023417000000051758
           },
           "knownApiCostUsd": 0,
           "unknownCostTrials": 0
@@ -278,7 +346,7 @@
       "catalogSize": 12,
       "manifest": {
         "mode": "keyword",
-        "implementationVersion": "1eac46b62368b92640c85788f198c7ea8fdf0afc:bootstrap-skills-sha256:3551fbf534a4e4cb25a05ddeea21216aa89756c8a3d7aafdfbe5bd645f58140d",
+        "implementationVersion": "8bfab4e3c8e8e297cd6f02360c24d456ca98ee54:bootstrap-skills-sha256:55bd09d3a8adcaa114cdaa2c35d868f519f6686d9a175146aa177ba1afab5be7",
         "modelVersion": null,
         "sdkVersion": null,
         "configuration": {
@@ -301,11 +369,31 @@
           "noMatchAccuracy": 0.75,
           "shortlistRecall": 0.8,
           "shortlistHitRate": 0.8,
+          "shortlistKindTrials": {
+            "keyword": 140,
+            "semantic": 0,
+            "unknown": 0
+          },
           "shortlistMissTrials": 20,
           "shortlistMissCaseIds": [
             "h03",
             "h04"
           ],
+          "decisions": {
+            "keyword": 140,
+            "matches": 0,
+            "no-match": 0,
+            "fallback": 0,
+            "unknown": 0
+          },
+          "fallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          },
           "usage": {
             "apiCalls": {
               "knownTotal": 0,
@@ -324,8 +412,8 @@
             "disabled": {
               "trials": 140,
               "latencyMs": {
-                "p50": 0.012707999999975073,
-                "p95": 0.025083000000051925
+                "p50": 0.013208999999960724,
+                "p95": 0.026499999999998636
               }
             },
             "miss": {
@@ -358,8 +446,8 @@
             }
           },
           "latencyMs": {
-            "p50": 0.012707999999975073,
-            "p95": 0.025083000000051925
+            "p50": 0.013208999999960724,
+            "p95": 0.026499999999998636
           },
           "knownApiCostUsd": 0,
           "unknownCostTrials": 0
@@ -372,11 +460,31 @@
           "noMatchAccuracy": 0.75,
           "shortlistRecall": 0.8,
           "shortlistHitRate": 0.8,
+          "shortlistKindTrials": {
+            "keyword": 140,
+            "semantic": 0,
+            "unknown": 0
+          },
           "shortlistMissTrials": 20,
           "shortlistMissCaseIds": [
             "h03",
             "h04"
           ],
+          "decisions": {
+            "keyword": 140,
+            "matches": 0,
+            "no-match": 0,
+            "fallback": 0,
+            "unknown": 0
+          },
+          "fallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          },
           "usage": {
             "apiCalls": {
               "knownTotal": 0,
@@ -395,8 +503,8 @@
             "disabled": {
               "trials": 140,
               "latencyMs": {
-                "p50": 0.011750000000006366,
-                "p95": 0.02583399999997482
+                "p50": 0.012249999999994543,
+                "p95": 0.025374999999996817
               }
             },
             "miss": {
@@ -429,8 +537,8 @@
             }
           },
           "latencyMs": {
-            "p50": 0.011750000000006366,
-            "p95": 0.02583399999997482
+            "p50": 0.012249999999994543,
+            "p95": 0.025374999999996817
           },
           "knownApiCostUsd": 0,
           "unknownCostTrials": 0
@@ -443,11 +551,31 @@
           "noMatchAccuracy": 0.75,
           "shortlistRecall": 0.8,
           "shortlistHitRate": 0.8,
+          "shortlistKindTrials": {
+            "keyword": 140,
+            "semantic": 0,
+            "unknown": 0
+          },
           "shortlistMissTrials": 20,
           "shortlistMissCaseIds": [
             "h03",
             "h04"
           ],
+          "decisions": {
+            "keyword": 140,
+            "matches": 0,
+            "no-match": 0,
+            "fallback": 0,
+            "unknown": 0
+          },
+          "fallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          },
           "usage": {
             "apiCalls": {
               "knownTotal": 0,
@@ -466,8 +594,8 @@
             "disabled": {
               "trials": 140,
               "latencyMs": {
-                "p50": 0.01125000000001819,
-                "p95": 0.022375000000010914
+                "p50": 0.011791000000016538,
+                "p95": 0.024416999999971267
               }
             },
             "miss": {
@@ -500,8 +628,8 @@
             }
           },
           "latencyMs": {
-            "p50": 0.01125000000001819,
-            "p95": 0.022375000000010914
+            "p50": 0.011791000000016538,
+            "p95": 0.024416999999971267
           },
           "knownApiCostUsd": 0,
           "unknownCostTrials": 0
