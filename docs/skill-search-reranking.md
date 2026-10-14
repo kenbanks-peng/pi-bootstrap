@@ -1,9 +1,9 @@
 # Opt-in skill-search reranking contract
 
-Status: implementation contract, **not an enabled feature**. This change defines
-configuration and adapter types only. Configuration loading, Jev networking via
-`@typesafe-ai/sdk`, and runtime validation belong to the subsequent implementation.
-The existing `src/bootstrap-skills.ts` keyword search remains unchanged.
+Status: implemented, **disabled by default**. Global configuration loading,
+bounded Jev networking via `@typesafe-ai/sdk` 0.6.0, validation, deadlines, and
+session-memory caching implement this contract. The keyword ranking algorithm
+remains unchanged and supplies the default and every failure fallback.
 
 ## Scope and configuration
 
@@ -28,7 +28,7 @@ nested `enabled = true` grants that consent. Existing rule tables remain require
 where the current protocol parser requires them. Do not rewrite installed defaults
 or add opt-in settings automatically.
 
-Example to append to a valid global config, **after networking is implemented**:
+Example to append to a valid global config (then start a fresh session/reload):
 
 ```toml
 [skill_search.reranking]
@@ -119,7 +119,7 @@ content redaction. Do not auto-fetch supporting files or URLs found in metadata.
 
 ## Adapter, validation, and decisions
 
-`src/bootstrap-skills-reranking.ts` is a type-only seam. The future adapter receives
+`src/bootstrap-skills-reranking.ts` is a type-only seam. The SDK adapter receives
 only the bounded request, explicit model ID, and caller-owned `AbortSignal`.
 Credentials stay in the adapter's private construction state. Its return type is
 `unknown` deliberately: TypeScript types do not validate provider data.
@@ -177,7 +177,7 @@ one search causes at most one provider request. Propagate tool cancellation to
 the adapter; cancellation terminates the tool rather than launching a fallback
 network call. Concurrent tool searches must use immutable snapshots and independent
 signals. Discard stale responses after catalog/session/config changes; do not cache
-or return obsolete paths. Annotate the future opted-in tool `openWorldHint: true`
+or return obsolete paths. Annotate the opted-in tool `openWorldHint: true`
 because it can send data externally; disabled keyword-only behavior stays local.
 
 Cache only validated, gated successful decisions (including explicit no-match),

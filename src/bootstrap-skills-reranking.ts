@@ -1,5 +1,5 @@
 /**
- * Contract only: no configuration loading, SDK imports, or network activity.
+ * Bounded reranking contract; runtime and SDK implementations are separate.
  * See docs/skill-search-reranking.md for bounds and runtime validation rules.
  */
 export interface SkillRerankingConfig {

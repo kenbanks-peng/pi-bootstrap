@@ -19,8 +19,11 @@ These files go in the agent directory under `extensions/pi-bootstrap`. Existing 
 ## Skill search
 
 Keyword search remains the default. The [opt-in semantic reranking contract](docs/skill-search-reranking.md)
-defines the planned configuration, privacy bounds, and adapter behavior; networking
-is not implemented by the contract change.
+defines global-only configuration, privacy bounds, and adapter behavior. Reranking
+uses `@typesafe-ai/sdk` only after explicit opt-in, an explicit model, and a
+`TYPESAFE_API_KEY` environment credential. Failures retain keyword results;
+no automatic prompts or skill instruction loading change. Adoption requires
+repository-specific accuracy, latency, and cost evaluation.
 
 ## Example transformations
 
