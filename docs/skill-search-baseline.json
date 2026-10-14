@@ -1,0 +1,1418 @@
+{
+  "capturedAt": "2026-10-14T14:51:44.073Z",
+  "reports": [
+    {
+      "schemaVersion": 1,
+      "fixtureVersion": "skill-search-synthetic-v1",
+      "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+      "split": "tuning",
+      "repetitions": 10,
+      "shortlistLimit": 20,
+      "resultLimits": [
+        1,
+        3,
+        5
+      ],
+      "catalogSize": 12,
+      "manifest": {
+        "mode": "keyword",
+        "implementationVersion": "b3539d902507d1bbef2e7879ad0dc1aaf473fecb:bootstrap-skills-sha256:13fc140747ec3cd83a56c6e4db2a46e2eb5ac6ca5f79740b4811bb8340ac69d1",
+        "modelVersion": null,
+        "sdkVersion": null,
+        "configuration": {
+          "shortlistLimit": 20,
+          "resultLimits": "1,3,5",
+          "scoreThreshold": 0
+        }
+      },
+      "environment": {
+        "node": "v22.23.3",
+        "platform": "linux",
+        "arch": "arm64"
+      },
+      "metrics": [
+        {
+          "limit": 1,
+          "positiveTrials": 80,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.875,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.875,
+          "shortlistHitRate": 0.875,
+          "latencyMs": {
+            "p50": 0.00975000000005366,
+            "p95": 0.020458000000076026
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 3,
+          "positiveTrials": 80,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.875,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.875,
+          "shortlistHitRate": 0.875,
+          "latencyMs": {
+            "p50": 0.009250000000065484,
+            "p95": 0.0196250000000191
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 5,
+          "positiveTrials": 80,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.875,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.875,
+          "shortlistHitRate": 0.875,
+          "latencyMs": {
+            "p50": 0.008791000000087479,
+            "p95": 0.01804200000003675
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        }
+      ],
+      "dependencyVersions": {
+        "@earendil-works/pi-coding-agent": "1.2.0",
+        "@types/node": "24.19.2",
+        "smol-toml": "1.9.1",
+        "tsx": "4.23.15",
+        "typebox": "1.3.37",
+        "typescript": "5.9.3"
+      },
+      "firstTrialOutcomes": [
+        {
+          "caseId": "t01",
+          "category": "exact",
+          "limit": 1,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t01",
+          "category": "exact",
+          "limit": 3,
+          "matches": [
+            0,
+            9,
+            5
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t01",
+          "category": "exact",
+          "limit": 5,
+          "matches": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t02",
+          "category": "exact",
+          "limit": 1,
+          "matches": [
+            10
+          ],
+          "shortlist": [
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t02",
+          "category": "exact",
+          "limit": 3,
+          "matches": [
+            10
+          ],
+          "shortlist": [
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t02",
+          "category": "exact",
+          "limit": 5,
+          "matches": [
+            10
+          ],
+          "shortlist": [
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t03",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [
+            2
+          ],
+          "shortlist": [
+            2,
+            8,
+            9
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t03",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [
+            2,
+            8,
+            9
+          ],
+          "shortlist": [
+            2,
+            8,
+            9
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t03",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [
+            2,
+            8,
+            9
+          ],
+          "shortlist": [
+            2,
+            8,
+            9
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t04",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "t04",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "t04",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "t05",
+          "category": "ambiguous",
+          "limit": 1,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t05",
+          "category": "ambiguous",
+          "limit": 3,
+          "matches": [
+            0,
+            9,
+            5
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t05",
+          "category": "ambiguous",
+          "limit": 5,
+          "matches": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t06",
+          "category": "ambiguous",
+          "limit": 1,
+          "matches": [
+            2
+          ],
+          "shortlist": [
+            2,
+            8
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t06",
+          "category": "ambiguous",
+          "limit": 3,
+          "matches": [
+            2,
+            8
+          ],
+          "shortlist": [
+            2,
+            8
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t06",
+          "category": "ambiguous",
+          "limit": 5,
+          "matches": [
+            2,
+            8
+          ],
+          "shortlist": [
+            2,
+            8
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t07",
+          "category": "no-match",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t07",
+          "category": "no-match",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t07",
+          "category": "no-match",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t08",
+          "category": "no-match",
+          "limit": 1,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0,
+            9
+          ],
+          "selectionHit": null,
+          "noMatchHit": false,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t08",
+          "category": "no-match",
+          "limit": 3,
+          "matches": [
+            0,
+            9
+          ],
+          "shortlist": [
+            0,
+            9
+          ],
+          "selectionHit": null,
+          "noMatchHit": false,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t08",
+          "category": "no-match",
+          "limit": 5,
+          "matches": [
+            0,
+            9
+          ],
+          "shortlist": [
+            0,
+            9
+          ],
+          "selectionHit": null,
+          "noMatchHit": false,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t09",
+          "category": "disabled",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t09",
+          "category": "disabled",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t09",
+          "category": "disabled",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t10",
+          "category": "duplicate",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t10",
+          "category": "duplicate",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t10",
+          "category": "duplicate",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "t11",
+          "category": "duplicate",
+          "limit": 1,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t11",
+          "category": "duplicate",
+          "limit": 3,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t11",
+          "category": "duplicate",
+          "limit": 5,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t12",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [
+            7
+          ],
+          "shortlist": [
+            7,
+            1,
+            3,
+            5,
+            6,
+            8,
+            11,
+            0,
+            2,
+            4,
+            9,
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t12",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [
+            7,
+            1,
+            3
+          ],
+          "shortlist": [
+            7,
+            1,
+            3,
+            5,
+            6,
+            8,
+            11,
+            0,
+            2,
+            4,
+            9,
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "t12",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [
+            7,
+            1,
+            3,
+            5,
+            6
+          ],
+          "shortlist": [
+            7,
+            1,
+            3,
+            5,
+            6,
+            8,
+            11,
+            0,
+            2,
+            4,
+            9,
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        }
+      ]
+    },
+    {
+      "schemaVersion": 1,
+      "fixtureVersion": "skill-search-synthetic-v1",
+      "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+      "split": "held-out",
+      "repetitions": 10,
+      "shortlistLimit": 20,
+      "resultLimits": [
+        1,
+        3,
+        5
+      ],
+      "catalogSize": 12,
+      "manifest": {
+        "mode": "keyword",
+        "implementationVersion": "b3539d902507d1bbef2e7879ad0dc1aaf473fecb:bootstrap-skills-sha256:13fc140747ec3cd83a56c6e4db2a46e2eb5ac6ca5f79740b4811bb8340ac69d1",
+        "modelVersion": null,
+        "sdkVersion": null,
+        "configuration": {
+          "shortlistLimit": 20,
+          "resultLimits": "1,3,5",
+          "scoreThreshold": 0
+        }
+      },
+      "environment": {
+        "node": "v22.23.3",
+        "platform": "linux",
+        "arch": "arm64"
+      },
+      "metrics": [
+        {
+          "limit": 1,
+          "positiveTrials": 100,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.7,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.8,
+          "shortlistHitRate": 0.8,
+          "latencyMs": {
+            "p50": 0.00933399999996709,
+            "p95": 0.01916599999998425
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 3,
+          "positiveTrials": 100,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.8,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.8,
+          "shortlistHitRate": 0.8,
+          "latencyMs": {
+            "p50": 0.008083000000056018,
+            "p95": 0.015041999999994005
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        },
+        {
+          "limit": 5,
+          "positiveTrials": 100,
+          "noMatchTrials": 40,
+          "selectionAccuracy": 0.8,
+          "noMatchAccuracy": 0.75,
+          "shortlistRecall": 0.8,
+          "shortlistHitRate": 0.8,
+          "latencyMs": {
+            "p50": 0.008000000000038199,
+            "p95": 0.01733400000000529
+          },
+          "knownApiCostUsd": 0,
+          "unknownCostTrials": 0
+        }
+      ],
+      "dependencyVersions": {
+        "@earendil-works/pi-coding-agent": "1.2.0",
+        "@types/node": "24.19.2",
+        "smol-toml": "1.9.1",
+        "tsx": "4.23.15",
+        "typebox": "1.3.37",
+        "typescript": "5.9.3"
+      },
+      "firstTrialOutcomes": [
+        {
+          "caseId": "h01",
+          "category": "exact",
+          "limit": 1,
+          "matches": [
+            9
+          ],
+          "shortlist": [
+            9,
+            0
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h01",
+          "category": "exact",
+          "limit": 3,
+          "matches": [
+            9,
+            0
+          ],
+          "shortlist": [
+            9,
+            0
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h01",
+          "category": "exact",
+          "limit": 5,
+          "matches": [
+            9,
+            0
+          ],
+          "shortlist": [
+            9,
+            0
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h02",
+          "category": "exact",
+          "limit": 1,
+          "matches": [
+            4
+          ],
+          "shortlist": [
+            4
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h02",
+          "category": "exact",
+          "limit": 3,
+          "matches": [
+            4
+          ],
+          "shortlist": [
+            4
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h02",
+          "category": "exact",
+          "limit": 5,
+          "matches": [
+            4
+          ],
+          "shortlist": [
+            4
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h03",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "h03",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "h03",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "h04",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [
+            6
+          ],
+          "shortlist": [
+            6,
+            2
+          ],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "h04",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [
+            6,
+            2
+          ],
+          "shortlist": [
+            6,
+            2
+          ],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "h04",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [
+            6,
+            2
+          ],
+          "shortlist": [
+            6,
+            2
+          ],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 0,
+          "shortlistHit": false
+        },
+        {
+          "caseId": "h05",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [
+            10
+          ],
+          "shortlist": [
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h05",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [
+            10
+          ],
+          "shortlist": [
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h05",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [
+            10
+          ],
+          "shortlist": [
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h06",
+          "category": "ambiguous",
+          "limit": 1,
+          "matches": [
+            3
+          ],
+          "shortlist": [
+            3,
+            8,
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h06",
+          "category": "ambiguous",
+          "limit": 3,
+          "matches": [
+            3,
+            8,
+            10
+          ],
+          "shortlist": [
+            3,
+            8,
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h06",
+          "category": "ambiguous",
+          "limit": 5,
+          "matches": [
+            3,
+            8,
+            10
+          ],
+          "shortlist": [
+            3,
+            8,
+            10
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h07",
+          "category": "ambiguous",
+          "limit": 1,
+          "matches": [
+            0
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h07",
+          "category": "ambiguous",
+          "limit": 3,
+          "matches": [
+            0,
+            9,
+            5
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h07",
+          "category": "ambiguous",
+          "limit": 5,
+          "matches": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "shortlist": [
+            0,
+            9,
+            5,
+            6
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h08",
+          "category": "no-match",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h08",
+          "category": "no-match",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h08",
+          "category": "no-match",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h09",
+          "category": "no-match",
+          "limit": 1,
+          "matches": [
+            11
+          ],
+          "shortlist": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ],
+          "selectionHit": null,
+          "noMatchHit": false,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h09",
+          "category": "no-match",
+          "limit": 3,
+          "matches": [
+            11,
+            1,
+            3
+          ],
+          "shortlist": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ],
+          "selectionHit": null,
+          "noMatchHit": false,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h09",
+          "category": "no-match",
+          "limit": 5,
+          "matches": [
+            11,
+            1,
+            3,
+            5,
+            6
+          ],
+          "shortlist": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ],
+          "selectionHit": null,
+          "noMatchHit": false,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h10",
+          "category": "disabled",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h10",
+          "category": "disabled",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h10",
+          "category": "disabled",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h11",
+          "category": "duplicate",
+          "limit": 1,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h11",
+          "category": "duplicate",
+          "limit": 3,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h11",
+          "category": "duplicate",
+          "limit": 5,
+          "matches": [],
+          "shortlist": [],
+          "selectionHit": null,
+          "noMatchHit": true,
+          "shortlistRecall": null,
+          "shortlistHit": null
+        },
+        {
+          "caseId": "h12",
+          "category": "duplicate",
+          "limit": 1,
+          "matches": [
+            3
+          ],
+          "shortlist": [
+            3
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h12",
+          "category": "duplicate",
+          "limit": 3,
+          "matches": [
+            3
+          ],
+          "shortlist": [
+            3
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h12",
+          "category": "duplicate",
+          "limit": 5,
+          "matches": [
+            3
+          ],
+          "shortlist": [
+            3
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h13",
+          "category": "exact",
+          "limit": 1,
+          "matches": [
+            11
+          ],
+          "shortlist": [
+            11
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h13",
+          "category": "exact",
+          "limit": 3,
+          "matches": [
+            11
+          ],
+          "shortlist": [
+            11
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h13",
+          "category": "exact",
+          "limit": 5,
+          "matches": [
+            11
+          ],
+          "shortlist": [
+            11
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h14",
+          "category": "paraphrase",
+          "limit": 1,
+          "matches": [
+            8
+          ],
+          "shortlist": [
+            8,
+            9
+          ],
+          "selectionHit": false,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h14",
+          "category": "paraphrase",
+          "limit": 3,
+          "matches": [
+            8,
+            9
+          ],
+          "shortlist": [
+            8,
+            9
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        },
+        {
+          "caseId": "h14",
+          "category": "paraphrase",
+          "limit": 5,
+          "matches": [
+            8,
+            9
+          ],
+          "shortlist": [
+            8,
+            9
+          ],
+          "selectionHit": true,
+          "noMatchHit": null,
+          "shortlistRecall": 1,
+          "shortlistHit": true
+        }
+      ]
+    }
+  ]
+}
