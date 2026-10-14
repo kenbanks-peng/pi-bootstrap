@@ -3,14 +3,21 @@ import type { SkillRerankingAdapter } from "./bootstrap-skills-reranking.ts";
 /** Bound the HTTP body before the SDK buffers/parses it, including error bodies. */
 export function boundedFetch(fetcher: typeof fetch = globalThis.fetch): typeof fetch {
   return async (input, init) => {
+    const signal = init?.signal ?? (input instanceof Request ? input.signal : undefined);
+    signal?.throwIfAborted();
     const response = await fetcher(input, init);
     const reader = response.body?.getReader();
-    if (!reader) return response;
+    if (!reader) { signal?.throwIfAborted(); return response; }
+    // Do not depend on a transport to abort a body read after headers arrived.
+    const cancel = () => { void reader.cancel(signal?.reason).catch(() => {}); };
+    signal?.addEventListener("abort", cancel, { once: true });
     const chunks: Uint8Array[] = [];
     let bytes = 0;
     try {
+      signal?.throwIfAborted();
       for (;;) {
         const { done, value } = await reader.read();
+        signal?.throwIfAborted();
         if (done) break;
         bytes += value.byteLength;
         if (bytes > 65536) throw new Error("Oversized reranking response.");
@@ -19,7 +26,10 @@ export function boundedFetch(fetcher: typeof fetch = globalThis.fetch): typeof f
     } catch (error) {
       void reader.cancel().catch(() => {});
       throw error;
-    } finally { reader.releaseLock(); }
+    } finally {
+      signal?.removeEventListener("abort", cancel);
+      reader.releaseLock();
+    }
     const headers = new Headers(response.headers);
     headers.delete("content-encoding");
     headers.delete("content-length");

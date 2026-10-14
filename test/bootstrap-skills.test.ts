@@ -14,14 +14,14 @@ function skill(name: string, description = name + " guidance", disabled = false)
   };
 }
 
-function harness() {
+function harness(dependencies: Parameters<typeof registerLazySkills>[1] = {}) {
   const handlers = new Map<string, (...args: any[]) => any>();
   const tools = new Map<string, any>();
   const pi = {
     on: (name: string, handler: (...args: any[]) => any) => handlers.set(name, handler),
     registerTool: (tool: any) => tools.set(tool.name, tool),
   };
-  const transform = registerLazySkills(pi as never);
+  const transform = registerLazySkills(pi as never, dependencies);
   const start = (skills: Skill[]) => {
     const event = { systemPromptOptions: { skills, sections: { policy: "Keep policy" } } };
     handlers.get("before_agent_start")!(event);
@@ -37,10 +37,30 @@ test("registration is direct, read-only, and does not read skill files", async (
   assert.equal(tool.exposure, "direct");
   assert.equal(tool.annotations.readOnlyHint, true);
   assert.equal(tool.annotations.destructiveHint, false);
+  assert.equal(tool.annotations.openWorldHint, false);
   assert.equal(tool.parameters.properties.limit.maximum, 20);
   assert.equal(tool.parameters.properties.limit.minimum, 1);
   assert.match(tool.description, /read/);
   assert.deepEqual((await h.search("uninitialized")).details, { matches: [], total: 0 });
+});
+
+test("keyword-only searches never read credentials/create an adapter or change prompt transforms", async () => {
+  const h = harness({
+    credential: () => { assert.fail("disabled mode must not read credentials"); },
+    adapterFor: () => { assert.fail("disabled mode must not construct a provider"); },
+  });
+  const resources = [skill("alpha", "Shared topic"), skill("beta", "Shared topic"), skill("manual", "Shared topic", true)];
+  h.start(resources);
+  const messages = [
+    { role: "system", content: "System prompt", sections: { skills: "Historical catalog", rules: "Keep rules" } },
+    { role: "user", content: "/skill:manual explicit arguments" },
+  ];
+  const transformed = h.transform(messages as never);
+  for (const query of ["shared", "ALPHA", "unmatched"]) await h.search(query);
+  assert.deepEqual(h.transform(messages as never), transformed);
+  assert.equal(transformed[1], messages[1]);
+  assert.deepEqual([...h.handlers.keys()], ["session_start", "session_shutdown", "before_agent_start"]);
+  assert.deepEqual([...h.tools.keys()], ["skill_search"]);
 });
 
 test("prompt text is command-owned; resource metadata stays unchanged", () => {

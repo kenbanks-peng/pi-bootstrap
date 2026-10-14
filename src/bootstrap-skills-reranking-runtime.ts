@@ -96,7 +96,11 @@ export class SkillRerankingRuntime {
     controller.signal.addEventListener("abort", onAbort, { once: true });
     const timer = setTimeout(() => { timeout = true; controller.abort(new Error("Reranking deadline exceeded.")); }, config.timeoutMs);
     try {
-      const value = await Promise.race([Promise.resolve().then(() => adapter.rerank(request, { model: config.model!, signal: controller.signal })), aborted]);
+      const value = await Promise.race([Promise.resolve().then(() => {
+        // Cancellation can arrive before this lazy setup microtask runs.
+        controller.signal.throwIfAborted();
+        return adapter.rerank(request, { model: config.model!, signal: controller.signal });
+      }), aborted]);
       if (generation !== this.generation) throw new Error("Skill search state changed.");
       signal?.throwIfAborted();
       if (this.now() - started >= config.timeoutMs) return { kind: "fallback", reason: "timeout" };
