@@ -33,7 +33,7 @@ Example to append to a valid global config (then start a fresh session/reload):
 ```toml
 [skill_search.reranking]
 enabled = true
-model = "<explicit-supported-Jev-model-id>" # Replace with an available model ID.
+model = "jev-latest" # Optional; pin a version for reproducibility.
 timeout_ms = 1000
 cache_max_entries = 128
 cache_ttl_ms = 300000
@@ -49,7 +49,7 @@ min_margin = 0.10
 | TOML key | Default | Accepted values |
 | --- | --- | --- |
 | `enabled` | `false` | Boolean; only literal `true` opts in |
-| `model` | absent | Explicit nonblank Jev model ID, at most 256 UTF-8 bytes |
+| `model` | `"jev-latest"` | Nonblank Jev model ID, at most 256 UTF-8 bytes |
 | `timeout_ms` | `1000` | Integer 1–10000 |
 | `cache_max_entries` | `128` | Integer 0–1024; 0 disables caching |
 | `cache_ttl_ms` | `300000` | Integer 0–3600000; 0 disables caching |
@@ -69,7 +69,7 @@ error break keyword search; existing unrelated protocol errors retain their beha
 Read config at session start/reload; changes take effect on a fresh session/reload.
 
 Read `TYPESAFE_API_KEY` from the process environment only when opted in. An absent
-or whitespace-only key, missing model, missing table/file, disabled setting, or
+or whitespace-only key, missing table/file, disabled setting, or
 invalid reranking config means normal keyword search and **no provider calls**.
 Do not infer a model from Pi's chat model, use Pi login/auth storage, write keys
 into TOML, return credentials in tool results, or put keys in logs/cache keys.

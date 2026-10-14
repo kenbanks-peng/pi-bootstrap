@@ -4,7 +4,7 @@ import { parse } from "smol-toml";
 import type { SkillRerankingConfig } from "./bootstrap-skills-reranking.ts";
 
 export const defaultRerankingConfig: SkillRerankingConfig = Object.freeze({
-  enabled: false, timeoutMs: 1000, cacheMaxEntries: 128, cacheTtlMs: 300000,
+  enabled: false, model: "jev-latest", timeoutMs: 1000, cacheMaxEntries: 128, cacheTtlMs: 300000,
   maxCandidates: 32, maxQueryBytes: 2048, maxNameBytes: 256, maxDescriptionBytes: 512,
   maxPayloadBytes: 32768, minProbability: 0.55, minMargin: 0.10,
 });

@@ -32,6 +32,20 @@ export type BootstrapSessionEntry =
 
 export const DEFAULT_PROTOCOL = `enabled = true
 
+[skill_search.reranking]
+enabled = false
+model = "jev-latest"
+timeout_ms = 1000
+cache_max_entries = 128
+cache_ttl_ms = 300000
+max_candidates = 32
+max_query_bytes = 2048
+max_name_bytes = 256
+max_description_bytes = 512
+max_payload_bytes = 32768
+min_probability = 0.55
+min_margin = 0.10
+
 [[rule]]
 glob = "*.md"
 action = "memory"

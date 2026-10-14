@@ -38,6 +38,8 @@ async function harness(t: TestContext, adapter: SkillRerankingAdapter, toml = "e
 test("config defaults, all bounds, unknown keys, no coercion and sanitized errors", async t => {
   assert.deepEqual(parseRerankingConfig(undefined), defaultRerankingConfig);
   assert.deepEqual(parseRerankingConfig({}), defaultRerankingConfig);
+  assert.equal(parseRerankingConfig({ enabled: true }).model, "jev-latest");
+  assert.equal(parseRerankingConfig({ enabled: true, model: "jev-1.13.0" }).model, "jev-1.13.0");
   const bounds = { timeout_ms: [1, 10000], cache_max_entries: [0, 1024], cache_ttl_ms: [0, 3600000], max_candidates: [1, 64], max_query_bytes: [1, 8192], max_name_bytes: [1, 256], max_description_bytes: [0, 2048], max_payload_bytes: [256, 65536], min_probability: [0, 1], min_margin: [0, 1] };
   for (const [key, [min, max]] of Object.entries(bounds)) {
     for (const value of [min, max]) assert.doesNotThrow(() => parseRerankingConfig({ [key]: value }));
@@ -67,8 +69,8 @@ test("global-only consent ignores project config and root enabled", async t => {
   assert.equal((await loadRerankingConfig(h.global)).enabled, false);
 });
 
-test("disabled, missing model, missing/blank credentials, exact-name and empty catalog never create SDK", async t => {
-  for (const [toml, key] of [["enabled=false", "key"], ["enabled=true", "key"], ["enabled=true\nmodel='model'", undefined], ["enabled=true\nmodel='model'", "  "]] as const) {
+test("disabled, missing/blank credentials, exact-name and empty catalog never create SDK", async t => {
+  for (const [toml, key] of [["enabled=false", "key"], ["enabled=true\nmodel='model'", undefined], ["enabled=true\nmodel='model'", "  "]] as const) {
     const h = await harness(t, { rerank: async () => chosen }, toml, key);
     h.key(key);
     h.start([skill("alpha")]);

@@ -4,7 +4,7 @@
  */
 export interface SkillRerankingConfig {
   readonly enabled: boolean;
-  /** Explicit Jev model ID; no implicit model selection. */
+  /** Jev model ID; defaults to the moving stable alias jev-latest. */
   readonly model?: string;
   readonly timeoutMs: number;
   readonly cacheMaxEntries: number;

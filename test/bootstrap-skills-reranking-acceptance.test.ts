@@ -268,7 +268,7 @@ test("actual SDK receives only bounded escaped metadata and never a truncated ov
 });
 
 test("invalid inputs and all unavailable consent/credential states leave SDK completely lazy", async t => {
-  for (const settings of ["enabled=false", "enabled=true", "enabled='true'", "enabled=true\nmodel='mock-model'\nunknown='secret'"]) {
+  for (const settings of ["enabled=false", "enabled='true'", "enabled=true\nmodel='mock-model'\nunknown='secret'"]) {
     const h = await setup(t, async () => { throw new Error("must never fetch"); }, settings);
     await h.search("review code");
     assert.deepEqual(h.counts(), { calls: 0, constructions: 0 });
