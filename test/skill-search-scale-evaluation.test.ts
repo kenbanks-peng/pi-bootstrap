@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { spawnSync } from "node:child_process";
-import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { skillCatalog } from "../src/bootstrap-skills.ts";
@@ -150,7 +151,9 @@ test("agent audit distinguishes correct search from complete SKILL.md read after
   assert.equal(report.metrics.wrongLoads, 1);
   assert.equal(report.rows.find(r => r.caseId === "h08")!.noMatchLoadHit, false);
   sample.events = [{ kind: "search", returned: [] }, read];
-  assert.equal(auditAgentTrace(trace, fixture.catalog, fixture.queries, "held-out").metrics.unselectedReads, 1);
+  report = auditAgentTrace(trace, fixture.catalog, fixture.queries, "held-out");
+  assert.equal(report.metrics.unselectedReads, 1);
+  assert.equal(report.metrics.wrongLoads, 1); // unselected read does not add a completed selected load
 });
 
 test("agent audit rejects raw content, non-synthetic reads, mismatched fixtures and incomplete coverage", () => {
@@ -218,6 +221,8 @@ test("optional live scale profile reuses paired runner and request preflight wit
   assert.equal(report.semantic.rows.length, 96);
   assert.equal(report.comparison.metrics[0].uniqueQueries, 32);
   assert.ok(report.sourceSha256["test/skill-search-evaluation/scale-fixtures.ts"]);
+  assert.equal(report.sourceSha256["src/bootstrap-skills-retrieval.ts"],
+    createHash("sha256").update(await readFile("src/bootstrap-skills-retrieval.ts")).digest("hex"));
   assert.ok(!result.stdout.includes("MOCK_NOT_A_CREDENTIAL"));
   await writeFile(path, JSON.stringify({ ...options, maxRequests: 95 }));
   const blocked = run();

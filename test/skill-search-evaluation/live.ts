@@ -27,7 +27,7 @@ try {
   // No warming or hidden diagnostic model calls are made.
   if (!Number.isSafeInteger(options.maxRequests) || options.maxRequests < trials) throw new Error("Insufficient request ceiling");
   const revision = execFileSync("git", ["rev-parse", "HEAD"], { encoding: "utf8" }).trim();
-  const sourceFiles = ["src/bootstrap-skills.ts", "src/bootstrap-skills-jev.ts", "src/bootstrap-skills-reranking-runtime.ts",
+  const sourceFiles = ["src/bootstrap-skills.ts", "src/bootstrap-skills-retrieval.ts", "src/bootstrap-skills-jev.ts", "src/bootstrap-skills-reranking-runtime.ts",
     "src/bootstrap-skills-reranking-config.ts", "src/bootstrap-skills-reranking.ts", "src/bootstrap-skills-observation.ts",
     "test/skill-search-evaluation/harness.ts", "test/skill-search-evaluation/production.ts", "test/skill-search-evaluation/live.ts",
     "test/skill-search-evaluation/comparison.ts", "test/skill-search-evaluation/fixtures.ts", "test/skill-search-evaluation/scale-fixtures.ts"];
