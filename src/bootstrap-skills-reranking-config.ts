@@ -4,7 +4,7 @@ import { parse } from "smol-toml";
 import type { SkillRerankingConfig } from "./bootstrap-skills-reranking.ts";
 
 export const defaultRerankingConfig: SkillRerankingConfig = Object.freeze({
-  enabled: false, model: "jev-latest", timeoutMs: 1000, cacheMaxEntries: 128, cacheTtlMs: 300000,
+  enabled: false, experimentalFit: false, minFitProbability: 0.75, model: "jev-latest", timeoutMs: 1000, cacheMaxEntries: 128, cacheTtlMs: 300000,
   maxCandidates: 32, maxQueryBytes: 2048, maxNameBytes: 256, maxDescriptionBytes: 512,
   maxPayloadBytes: 32768, minProbability: 0.55, minMargin: 0.10,
 });
@@ -23,9 +23,12 @@ export function parseRerankingConfig(value: unknown): SkillRerankingConfig {
   if (!object(value)) throw new Error("Invalid skill-search reranking configuration.");
   const config = { ...defaultRerankingConfig };
   for (const [key, entry] of Object.entries(value)) {
-    if (key === "enabled") {
+    if (key === "enabled" || key === "experimental_fit") {
       if (typeof entry !== "boolean") throw new Error("Invalid skill-search reranking configuration.");
-      config.enabled = entry;
+      config[key === "enabled" ? "enabled" : "experimentalFit"] = entry;
+    } else if (key === "min_fit_probability") {
+      if (typeof entry !== "number" || !Number.isFinite(entry) || entry <= 0.5 || entry > 1) throw new Error("Invalid skill-search reranking configuration.");
+      config.minFitProbability = entry;
     } else if (key === "model") {
       if (typeof entry !== "string" || !entry.trim() || Buffer.byteLength(entry, "utf8") > 256) throw new Error("Invalid skill-search reranking configuration.");
       config.model = entry;

@@ -4,6 +4,10 @@
  */
 export interface SkillRerankingConfig {
   readonly enabled: boolean;
+  /** Additional experimental consent; independent metadata-only applicability. */
+  readonly experimentalFit: boolean;
+  /** Symmetric fit/negative confidence gate, strictly greater than 0.5. */
+  readonly minFitProbability: number;
   /** Jev model ID; defaults to the moving stable alias jev-latest. */
   readonly model?: string;
   readonly timeoutMs: number;
@@ -42,13 +46,15 @@ export interface SkillRerankingProbability {
 /** Validated complete distribution, not a correctness guarantee. */
 export interface SkillRerankingDistribution {
   readonly probabilities: readonly SkillRerankingProbability[];
+  /** Required complete independent probabilities when experimentalFit is enabled. */
+  readonly fits?: readonly { readonly id: string; readonly probability: number }[];
 }
 
 /** The caller owns timeout, validation, gating, caching, and keyword fallback. */
 export interface SkillRerankingAdapter {
   rerank(
     request: SkillRerankingRequest,
-    options: { readonly model: string; readonly signal: AbortSignal },
+    options: { readonly model: string; readonly signal: AbortSignal; readonly experimentalFit?: boolean },
   ): Promise<unknown>;
 }
 

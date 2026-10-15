@@ -38,10 +38,33 @@ export function decideReranking(value: unknown, request: SkillRerankingRequest, 
     probabilities.push({ id: entry.id, probability: entry.probability, order: entry.id === null ? -1 : request.candidates.findIndex(candidate => candidate.id === entry.id) });
   }
   if (expected.size || Math.abs(sum - 1) > 0.000001) return invalid();
+  let applicable: Set<string> | undefined;
+  if (config.experimentalFit) {
+    const fits = (value as { fits?: unknown }).fits;
+    if (!Array.isArray(fits) || fits.length !== request.candidates.length) return invalid();
+    const remaining = new Set(request.candidates.map(candidate => candidate.id));
+    applicable = new Set<string>();
+    let uncertain = false;
+    for (const fit of fits) {
+      if (!fit || typeof fit !== "object" || !remaining.delete(fit.id) || typeof fit.probability !== "number" ||
+        !Number.isFinite(fit.probability) || fit.probability < 0 || fit.probability > 1) return invalid();
+      if (fit.probability >= config.minFitProbability) applicable.add(fit.id);
+      else if (fit.probability > 1 - config.minFitProbability) uncertain = true;
+    }
+    if (remaining.size) return invalid();
+    // Independent confident negatives can abstain even when Choice merely ranks bad options.
+    if (!applicable.size && !uncertain) return { kind: "no-match" };
+  }
   for (const entry of probabilities) entry.probability /= sum;
   probabilities.sort((a, b) => b.probability - a.probability || a.order - b.order);
   if (probabilities[0].probability < config.minProbability || probabilities[0].probability - probabilities[1].probability < config.minMargin) return { kind: "fallback", reason: "uncertain" };
   if (probabilities[0].id === null) return { kind: "no-match" };
+  if (applicable) {
+    if (!applicable.size) return { kind: "fallback", reason: "uncertain" };
+    // Choice orders independently applicable results, even if a different option won
+    // or a useful secondary option trails no_match. No max-fit proxy for winner fit.
+    return { kind: "matches", ids: probabilities.filter(entry => entry.id !== null && applicable.has(entry.id)).map(entry => entry.id!) };
+  }
   // Search inclusion is distinct from confidence in the winning decision. Choice
   // mass is relative, not independent applicability: retain candidates ahead of
   // no-match, conservatively excluding its ties (and zero-support alternatives).
@@ -106,7 +129,7 @@ export class SkillRerankingRuntime {
       const value = await Promise.race([Promise.resolve().then(() => {
         // Cancellation can arrive before this lazy setup microtask runs.
         controller.signal.throwIfAborted();
-        return adapter.rerank(request, { model: config.model!, signal: controller.signal });
+        return adapter.rerank(request, { model: config.model!, signal: controller.signal, experimentalFit: config.experimentalFit });
       }), aborted]);
       if (generation !== this.generation) throw new Error("Skill search state changed.");
       signal?.throwIfAborted();

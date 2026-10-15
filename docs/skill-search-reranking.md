@@ -49,6 +49,8 @@ min_margin = 0.10
 | TOML key | Default | Accepted values |
 | --- | --- | --- |
 | `enabled` | `false` | Boolean; only literal `true` opts in |
+| `experimental_fit` | `false` | Boolean; adds independent candidate applicability in the same request; still requires `enabled` |
+| `min_fit_probability` | `0.75` | Finite number in (0.5, 1]; uncalibrated symmetric fit/negative confidence gate |
 | `model` | `"jev-latest"` | Nonblank Jev model ID, at most 256 UTF-8 bytes |
 | `timeout_ms` | `1000` | Integer 1–10000 |
 | `cache_max_entries` | `128` | Integer 0–1024; 0 disables caching |
@@ -179,8 +181,9 @@ Decision rules:
   check**. Even a small positive probability can qualify when no-match is lower;
   a confident winner does not certify the remaining results. Conversely, a
   useful secondary skill may be excluded when no-match outranks it. Independent
-  per-candidate fit checks and measured quality evaluation remain separate work;
-  mocked distributions establish policy mechanics, not relevance quality.
+  per-candidate fit checks are available only under the additional experimental
+  opt-in below; measured quality evaluation remains separate work. Mocked
+  distributions establish policy mechanics, not relevance quality.
 - A low-probability or ambiguous distribution is `uncertain`, not an explicit
   no-match. Use the unchanged keyword baseline. Likewise, timeout, unavailable
   provider/config/credentials, malformed response/IDs, SDK errors, unsupported
@@ -190,6 +193,54 @@ Decision rules:
   `filePath`/`baseDir`, and read/relative-path guidance. Keep internal
   `SkillRerankingDecision`/sanitized failure reasons separate; do not expose raw
   responses, prompts, or credentials through results or diagnostics.
+
+### Experimental independent applicability
+
+Optional global `experimental_fit = true` adds one `noul` question per submitted
+candidate to the **same** Choice request. It is off by default, including for
+existing reranking users. No second request, retries, skill bodies or session
+context are added. Metadata occurs once in state; questions refer to local IDs.
+The fixed rubric judges whether each skill serves the query independently of
+other options, not whether the query requests execution: planning, review and
+explanation skills may all apply. This mode uses the legacy metadata-in-state
+Choice shape, regardless of the adapter's offline formulation selection.
+
+Require a complete bounded fit array (`{id, probability}` per candidate) alongside
+the complete Choice distribution. SDK answers must contain exactly `selection`
+and all `fit_cN` answers of type `noul` with finite probabilities in [0, 1]. Missing,
+extra, duplicate, wrong-type or out-of-range fit data fail closed to keyword
+fallback; no inferred fit from Choice mass, prose, reported choice or confidence.
+Fit probabilities are independent and **must not** sum to one.
+
+With `t = min_fit_probability` (default **0.75**, an uncalibrated experimental
+policy value, not a cookbook-derived or measured threshold):
+
+- Each fit >= t is independently applicable; each fit <= 1-t is confidently
+  inapplicable; values between those gates are uncertain.
+- All confidently inapplicable yields intentional no-match, even if relative
+  Choice confidently prefers the best bad option or is ambiguous.
+- Otherwise retain existing Choice top confidence/margin gates and explicit
+  accepted no_match. A confident no_match remains an intentional empty result.
+- After an accepted candidate winner, return **all independently applicable**
+  candidates in Choice order, irrespective of whether the winner itself fits or
+  whether another applicable result falls below no_match. Do not gate on maximum
+  fit of some other option. Ties retain shortlist order. Exclude uncertain fits;
+  if no positive fit remains, use uncertain keyword fallback, not abstention.
+- `total` is the fitted count before `limit`; cache decisions remain independent
+  of limit. Invalid/provider/timeout/uncertain outcomes are never cached; validated
+  all-low no-match may be cached. Effective fit settings participate in cache keys
+  and snapshot invalidation.
+
+The logical metadata `max_payload_bytes` cap is unchanged. Fit mode permits a
+separate fixed **24576-byte** schema/rubric/model envelope (versus 4096 for
+Choice-only), checked both before SDK setup and on actual serialized transport.
+Thus the full JSON body is at most `max_payload_bytes + 24576` bytes (57344 at
+defaults, absolute maximum 90112); headers/authentication are separate. The
+response cap remains 65536 bytes. Question count is bounded at 65 (64 fits plus
+Choice); metadata is not duplicated to buy this overhead. More judgments can cost
+more time/tokens; no cost, efficacy or latency benefit is claimed. The cookbook is
+inspiration only; offline fake-HTTP tests are not calibration or measured evidence.
+Focused acceptance: `npx tsx --test test/bootstrap-skills-fit.test.ts`.
 
 ## Resource lifetime and fallback guarantees
 
