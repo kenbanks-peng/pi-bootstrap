@@ -41,12 +41,15 @@ selects the formulation: `createJevAdapter(key, fakeFetch, observe,
 "explicit-criteria")`. Calling its `rerank` method invokes the SDK and supplied
 fetch; use fake fetch for offline work. Omitting fake fetch would perform a paid
 request. This task did not make paid requests. Production construction remains
-legacy; no config switch, enablement change or default promotion is introduced.
+legacy; this Choice-only experiment introduces no formulation config switch,
+enablement change or default promotion.
 Any future live comparison needs separate consent and separately identified
 formulation artifacts/caches. Pure request-shape tests establish no accuracy,
 latency, token-cost or efficacy advantage.
 
 ## Bounds and unchanged decisions
+
+The bounds and decisions below describe Choice-only mode, without experimental fit.
 
 The existing runtime still bounds `JSON.stringify(SkillRerankingRequest)` by
 `max_payload_bytes`, including escaping and delimiters. The metadata budget is
@@ -80,5 +83,8 @@ zero retries, pre-abort, and oversized responses.
 
 The [TypeSafe skill-suggestion cookbook](https://docs.typesafe.ai/cookbooks/skill_suggestion)
 is inspiration for option-level evidence only, not measured evidence for this
-implementation. Its bodies/history, second pass and applicability questions are
-not adopted here. Absolute applicability is separate follow-up work.
+Choice-only experiment. Its bodies/history, second pass and applicability questions
+are not adopted by this experiment. Independent applicability is now available
+separately through the additional opt-in
+[`experimental_fit` mode](skill-search-reranking.md#experimental-independent-applicability),
+with its own documented single-request questions, decision policy and envelope bound.
