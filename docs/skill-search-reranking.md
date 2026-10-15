@@ -91,11 +91,23 @@ unsupported-model/auth error is a provider failure, not evidence of no match.
    it does not introduce a new ranking algorithm or affect `/skill:name`.
 4. Compute the unchanged keyword baseline (positive scores only, descending score,
    ties by the existing `name.localeCompare`). Save it for every fallback.
-5. For semantic candidates, sort the entire eligible catalog by that same score
-   and name order, **including zero-score entries after positive ones**, then take
-   at most `max_candidates`. This permits synonyms with no keyword overlap while
-   bounding recall: a relevant skill outside the shortlist cannot be selected.
-   Do not restrict the shortlist to the requested result `limit`.
+5. For opted-in semantic candidates, start with the entire eligible catalog in
+   unchanged keyword score/name order, including zero-score entries. Locally rank
+   name/description metadata against the small curated synonym-concept vocabulary
+   in `src/bootstrap-skills-retrieval.ts`, scoring alternate concept terms only
+   (literal query tokens already have the lexical stream). Alternate lexical and
+   concept-ranked streams, deduplicating names; start with concept matches when
+   all lexical scores are zero. Then take at most `max_candidates`, independent of result `limit`.
+   This reserves slots for supported synonym-only targets even in late catalog
+   positions or when lexical matches fill the cap, without additional API calls.
+   The outbound query/metadata are not expanded. This is deterministic retrieval
+   enrichment, not general semantic understanding: unsupported vocabulary,
+   non-English paraphrases, ambiguous concepts, or many competing concept matches
+   can still miss the target. Small caps (especially 1 with positive lexical hits)
+   and payload tail-dropping further limit recall. No quality improvement is
+   claimed beyond the focused synthetic acceptance cases; cookbook examples are
+   inspiration, not measured evidence. A skill absent from the actual transmitted
+   shortlist cannot be selected.
 6. Build fresh allowlisted objects containing only `id`, `name`, and `description`.
    IDs are `c0`, `c1`, … in shortlist order, valid only for this request/snapshot.
    Keep the ID-to-local-metadata map private. Skip candidates with names over

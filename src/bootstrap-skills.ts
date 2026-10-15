@@ -5,6 +5,7 @@ import { defaultRerankingConfig, loadRerankingConfig } from "./bootstrap-skills-
 import { createJevAdapter } from "./bootstrap-skills-jev.ts";
 import { buildRerankingRequest, SkillRerankingRuntime } from "./bootstrap-skills-reranking-runtime.ts";
 import type { SkillRerankingAdapter } from "./bootstrap-skills-reranking.ts";
+import { retrieveSemanticCandidates } from "./bootstrap-skills-retrieval.ts";
 import type { ContextWithSystemEvent, ExtensionAPI, Skill } from "@earendil-works/pi-coding-agent";
 
 export type SkillMetadata = Pick<Skill, "name" | "description" | "filePath" | "baseDir">;
@@ -102,7 +103,7 @@ export function registerLazySkills(pi: ExtensionAPI, dependencies: {
       credential = config.enabled && config.model ? (dependencies.credential ?? (() => process.env.TYPESAFE_API_KEY))()?.trim() || undefined : undefined;
       runtime.snapshot(snapshot, config, credential);
       if (config.enabled && config.model && credential && snapshot.length && !snapshot.some(skill => skill.name.toLowerCase() === normalized)) {
-        const request = buildRerankingRequest(normalized, allRanked.map(match => match.skill), config);
+        const request = buildRerankingRequest(normalized, retrieveSemanticCandidates(normalized, allRanked), config);
         if (observation) {
           observation.shortlistKind = "semantic";
           observation.shortlist = request ? request.candidates.map(candidate => snapshot.findIndex(skill => skill.name === candidate.name)) : [];
