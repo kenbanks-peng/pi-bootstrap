@@ -1,7 +1,8 @@
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
-import { catalog, queries, resultLimits } from "./fixtures.ts";
+import { catalog, queries, resultLimits, fixtureVersion } from "./fixtures.ts";
+import { scaleFixture, type ScaleProfile } from "./scale-fixtures.ts";
 import { evaluate, keywordAdapter } from "./harness.ts";
 import { createLiveAdapter, type LiveOptions } from "./production.ts";
 import { compareReports } from "./comparison.ts";
@@ -9,14 +10,19 @@ import { compareReports } from "./comparison.ts";
 // No implicit model, credential discovery, warmups, calibration or paid retries.
 // Catch at this boundary: SDK/transport exceptions must never print raw payloads.
 try {
-  const [split, repeatArg, authorizationPath, ...extra] = process.argv.slice(2);
+  const [split, repeatArg, authorizationPath, profile, ...extra] = process.argv.slice(2);
   const repetitions = Number(repeatArg);
   if ((split !== "tuning" && split !== "held-out") || !authorizationPath || extra.length ||
     !Number.isSafeInteger(repetitions) || repetitions < 1 || repetitions > 100) {
     throw new Error("Invalid arguments");
   }
+  if (profile !== undefined && profile !== "128" && profile !== "256") throw new Error("Invalid scale profile");
+  const fixture = profile ? scaleFixture(Number(profile) as ScaleProfile) : { catalog, queries, fixtureVersion };
+  const evaluation: Parameters<typeof evaluate>[1] = {
+    skills: fixture.catalog, cases: fixture.queries, fixtureVersion: fixture.fixtureVersion, split, repetitions,
+  };
   const options: LiveOptions = JSON.parse(readFileSync(authorizationPath, "utf8"));
-  const trials = queries.filter(query => query.split === split).length * resultLimits.length * repetitions;
+  const trials = fixture.queries.filter(query => query.split === split).length * resultLimits.length * repetitions;
   // Conservatively allow one paid call per invocation, including failed calls.
   // No warming or hidden diagnostic model calls are made.
   if (!Number.isSafeInteger(options.maxRequests) || options.maxRequests < trials) throw new Error("Insufficient request ceiling");
@@ -24,15 +30,15 @@ try {
   const sourceFiles = ["src/bootstrap-skills.ts", "src/bootstrap-skills-jev.ts", "src/bootstrap-skills-reranking-runtime.ts",
     "src/bootstrap-skills-reranking-config.ts", "src/bootstrap-skills-reranking.ts", "src/bootstrap-skills-observation.ts",
     "test/skill-search-evaluation/harness.ts", "test/skill-search-evaluation/production.ts", "test/skill-search-evaluation/live.ts",
-    "test/skill-search-evaluation/comparison.ts", "test/skill-search-evaluation/fixtures.ts"];
+    "test/skill-search-evaluation/comparison.ts", "test/skill-search-evaluation/fixtures.ts", "test/skill-search-evaluation/scale-fixtures.ts"];
   const sourceSha256 = Object.fromEntries(sourceFiles.map(file => [file, createHash("sha256").update(readFileSync(file)).digest("hex")]));
   const installed = JSON.parse(execFileSync("npm", ["ls", "--depth=0", "--json"], { encoding: "utf8" }));
   const dependencyVersions = Object.fromEntries(Object.entries(installed.dependencies as Record<string, { version: string }>).map(([key, value]) => [key, value.version]));
   if (dependencyVersions["@typesafe-ai/sdk"] !== "0.6.0") throw new Error("SDK version mismatch");
-  const semantic = await createLiveAdapter(structuredClone(catalog), { ...options, implementationVersion: revision });
+  const semantic = await createLiveAdapter(structuredClone(fixture.catalog), { ...options, implementationVersion: revision });
   try {
-    const keywordReport = await evaluate(keywordAdapter(catalog, revision), { split, repetitions });
-    const semanticReport = await evaluate(semantic, { split, repetitions });
+    const keywordReport = await evaluate(keywordAdapter(fixture.catalog, revision), evaluation);
+    const semanticReport = await evaluate(semantic, evaluation);
     const report = {
       measuredAt: new Date().toISOString(), sourceSha256, dependencyVersions,
       keyword: keywordReport, semantic: semanticReport, comparison: compareReports(keywordReport, semanticReport),

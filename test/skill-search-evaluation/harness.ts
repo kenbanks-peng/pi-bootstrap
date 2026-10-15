@@ -93,7 +93,10 @@ export function validateFixtures(skills: readonly Skill[], cases: readonly Query
   const texts = new Set<string>();
   for (const q of cases) {
     if (ids.has(q.id) || texts.has(q.query.trim().toLowerCase())) throw new Error("Duplicate evaluation case");
-    if (!q.query.trim() || q.acceptable.some(name => !available.has(name))) throw new Error("Invalid query label");
+    if (!q.query.trim() || new Set(q.acceptable).size !== q.acceptable.length ||
+      q.acceptable.some(name => !available.has(name)) || (q.required &&
+      (q.required.length < 2 || new Set(q.required).size !== q.required.length ||
+        q.required.some(name => !q.acceptable.includes(name))))) throw new Error("Invalid query label");
     ids.add(q.id);
     texts.add(q.query.trim().toLowerCase());
   }
@@ -101,6 +104,8 @@ export function validateFixtures(skills: readonly Skill[], cases: readonly Query
 
 export function scoreResult(q: QueryCase, result: ReplayResult, limit: number) {
   return {
+    ...(q.required ? { allRequiredHit: q.required.every(n => result.matches.slice(0, limit).includes(n)),
+      requiredShortlistRecall: q.required.filter(n => result.shortlist.includes(n)).length / q.required.length } : {}),
     selectionHit: q.acceptable.length ? result.matches.slice(0, limit).some(n => q.acceptable.includes(n)) : null,
     noMatchHit: q.acceptable.length ? null : result.matches.length === 0,
     shortlistRecall: q.acceptable.length
@@ -120,6 +125,7 @@ export async function evaluate(adapter: ReplayAdapter, options: {
   repetitions?: number;
   skills?: readonly Skill[];
   cases?: readonly QueryCase[];
+  fixtureVersion?: string;
 }) {
   const skills = options.skills ?? catalog;
   const cases = options.cases ?? queries;
@@ -201,6 +207,11 @@ export async function evaluate(adapter: ReplayAdapter, options: {
     const knownCosts = group.filter(r => r.apiCostUsd !== null);
     return {
       limit, positiveTrials: positive.length, noMatchTrials: negative.length,
+      requiredTrials: group.filter(r => r.allRequiredHit !== undefined).length,
+      allRequiredAccuracy: rate(group.filter(r => r.allRequiredHit).length,
+        group.filter(r => r.allRequiredHit !== undefined).length),
+      requiredShortlistRecall: rate(group.reduce((sum, r) => sum + (r.requiredShortlistRecall ?? 0), 0),
+        group.filter(r => r.requiredShortlistRecall !== undefined).length),
       selectionAccuracy: rate(positive.filter(r => r.selectionHit).length, positive.length),
       noMatchAccuracy: rate(negative.filter(r => r.noMatchHit).length, negative.length),
       shortlistRecall: rate(positive.reduce((sum, r) => sum + r.shortlistRecall!, 0), positive.length),
@@ -229,7 +240,7 @@ export async function evaluate(adapter: ReplayAdapter, options: {
     };
   });
   return {
-    schemaVersion: 2, fixtureVersion,
+    schemaVersion: 2, fixtureVersion: options.fixtureVersion ?? fixtureVersion,
     fixtureSha256: createHash("sha256").update(JSON.stringify({ skills, cases })).digest("hex"),
     split: options.split, repetitions, shortlistLimit: actualShortlistLimit, resultLimits,
     queryCount: selected.length, catalogSize: available.size, manifest: adapter.manifest,

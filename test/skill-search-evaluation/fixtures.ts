@@ -8,6 +8,8 @@ export interface QueryCase {
   query: string;
   /** Any one of these skills satisfies the request. Empty means abstain. */
   acceptable: string[];
+  /** Optional multi-skill task: every listed skill must be returned/loaded. */
+  required?: string[];
 }
 
 function skill(name: string, description: string, suffix = name, disabled = false): Skill {

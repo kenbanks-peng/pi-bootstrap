@@ -33,8 +33,10 @@ export function compareReports(baseline: Report, semantic: Report) {
     const other = semanticRows.get(id)!;
     if (row.category !== other.category ||
       (row.selectionHit === null) !== (other.selectionHit === null) ||
-      (row.noMatchHit === null) !== (other.noMatchHit === null)) throw new Error("Unpaired labels");
+      (row.noMatchHit === null) !== (other.noMatchHit === null) ||
+      (row.allRequiredHit === undefined) !== (other.allRequiredHit === undefined)) throw new Error("Unpaired labels");
     for (const sample of [row, other]) {
+      if (sample.allRequiredHit !== undefined && typeof sample.allRequiredHit !== "boolean") throw new Error("Invalid task score");
       if (!((typeof sample.selectionHit === "boolean" && sample.noMatchHit === null) ||
         (sample.selectionHit === null && typeof sample.noMatchHit === "boolean"))) throw new Error("Invalid trial scores");
     }
@@ -48,7 +50,7 @@ export function compareReports(baseline: Report, semantic: Report) {
       const paired = [...baseRows.values()].filter(row => row.limit === limit).map(row => ({
         baseline: row, semantic: semanticRows.get(key(row))!,
       }));
-      const changes = (field: "selectionHit" | "noMatchHit", from: boolean, to: boolean) => {
+      const changes = (field: "selectionHit" | "noMatchHit" | "allRequiredHit", from: boolean, to: boolean) => {
         const changed = paired.filter(pair => pair.baseline[field] === from && pair.semantic[field] === to);
         return { trials: changed.length, caseIds: [...new Set(changed.map(pair => pair.baseline.caseId))] };
       };
@@ -56,6 +58,7 @@ export function compareReports(baseline: Report, semantic: Report) {
         limit, pairedTrials: paired.length, uniqueQueries: new Set(paired.map(pair => pair.baseline.caseId)).size,
         selectionRegressions: changes("selectionHit", true, false), selectionGains: changes("selectionHit", false, true),
         noMatchRegressions: changes("noMatchHit", true, false), noMatchGains: changes("noMatchHit", false, true),
+        allRequiredRegressions: changes("allRequiredHit", true, false), allRequiredGains: changes("allRequiredHit", false, true),
       };
     }),
   };

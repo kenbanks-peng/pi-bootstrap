@@ -18,6 +18,10 @@ The first argument must select a split. The default repetition count is 10 (acce
 
 The keyword adapter invokes the actual tool registered by `registerLazySkills`, with synthetic resource metadata supplied through `before_agent_start`. It does not copy or extract the scoring algorithm. No skill instruction file is read. Catalog construction and registration happen once before measurement, as they do before agent tool calls.
 
+## Scale and optional agent-load suite
+
+The separate [v2 scale/agent-load guide](skill-search-scale-evaluation.md) covers versioned 128/256-skill catalogs, 62 split queries, multi-skill completion metrics, bounded offline commands and synthetic-only load audits. V1 fixtures and baseline artifacts below are retained unchanged. The guide also qualifies the retained historical live reports; they are not v2 or agent-load evidence.
+
 ## Fixtures and labels
 
 Version `skill-search-synthetic-v1` contains 12 eligible unique skills and 26 queries. Both splits cover exact names, paraphrases, ambiguous requests, unrelated requests, disabled skills, and duplicate metadata. The catalog includes a disabled duplicate before an enabled copy, an enabled duplicate with different metadata, and a disabled duplicate after an enabled copy. First enabled metadata wins, as in production.
@@ -46,7 +50,7 @@ observe cache state, not infer it from repetition number. Baseline telemetry is
 known zero with cache disabled. Empty latency groups are `null`. Model costs
 remain separately measured or unknown; token totals are not a billing estimate.
 See [rollout status](skill-search-rollout.md) for paired-regression reporting and
-the remaining live-only authorization/credential blocker.
+the live-run authorization/credential requirements.
 
 All trials are retained, including the first call and cache-affected repetitions. Means give every trial equal weight. `positiveTrials` and `noMatchTrials` expose the denominators. A reranker can abstain with a nonempty shortlist; no-match accuracy measures final results only. The harness rejects ineligible names, duplicate names, oversized results/shortlists and invalid telemetry. The default shortlist bound is 20; a semantic adapter declares its actual bound as `configuration.shortlistLimit` (integer 1–64). Semantic matches must be inside that shortlist. An explicitly observed keyword fallback may leave it only when results exactly reproduce the separately observed keyword ordering at the requested limit. The actual shortlist is never unioned with fallback results. Keyword bypass uses a keyword shortlist bounded at 20. Decision/fallback and shortlist-kind counts distinguish these paths; missing observation stays unknown.
 
@@ -90,4 +94,4 @@ Adapter manifest/version/configuration values are trusted caller input: supply o
 
 ## Initial baseline interpretation
 
-The baseline's lexical no-match mistakes and paraphrase retrieval misses are expected benchmark findings, not test failures. Compare top-1 and shortlist hit rates before attributing gains to reranking. This evaluation does not recommend adoption, alter thresholds, or claim measured semantic improvements. The SDK/production implementation and runnable paired bridge are available, but actual live comparison remains blocked on authorized credentials/model/budget. See [rollout status](skill-search-rollout.md).
+The baseline's lexical no-match mistakes and paraphrase retrieval misses are expected benchmark findings, not test failures. Compare top-1 and shortlist hit rates before attributing gains to reranking. This initial baseline does not recommend adoption or alter thresholds. Historical v1 live comparison was subsequently recorded; see the [provenance-qualified historical evidence](skill-search-scale-evaluation.md#historical-live-evidence-not-v2-evidence), including the no-match regression. New live runs still require explicit authorized credentials/model/budget. See [rollout status](skill-search-rollout.md) for the runner's gates.
