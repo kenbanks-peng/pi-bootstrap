@@ -1,0 +1,559 @@
+{
+  "scope": "Live Jev 1.13.0, v1 12-skill fixtures; same prior budgets/settings; one repetition per split.",
+  "caveats": [
+    "Historical comparison across separate runs, not controlled attribution to service vs client changes.",
+    "Experimental independent fit remains disabled, matching prior Choice-only settings.",
+    "Billed USD is unknown; approved historical pricing assumptions are not verified jev_2026_10_15 billing.",
+    "Sequential limits share cache; limit-3/5 latency is not an independent cold latency sample."
+  ],
+  "comparisons": [
+    {
+      "split": "tuning",
+      "jev_2026_10_14Report": "docs/benchmarks/2026-10-15/jev-live/jev-2026-10-14-tuning.json",
+      "jev_2026_10_15Report": "docs/benchmarks/2026-10-15/jev-live/jev-2026-10-15-tuning.json",
+      "jev_2026_10_14Sha256": "e0c8a7e636fc78350c72cb9fa998922b9b0692b82704e1c06d0db4b7642dbecf",
+      "jev_2026_10_15Sha256": "9d7f4270445b924d113e2fe7b0c8165ca7d031ef7d21b43b04ffa19749fcd041",
+      "jev_2026_10_14Revision": "f045e005f55d2f21398d21b7d42386597e6b1b21",
+      "jev_2026_10_15Revision": "448709fae6af4c97e53bae1b41c3878455f94321",
+      "jev_2026_10_14Configuration": {
+        "enabled": true,
+        "timeoutMs": 1000,
+        "cacheMaxEntries": 128,
+        "cacheTtlMs": 300000,
+        "maxCandidates": 32,
+        "maxQueryBytes": 2048,
+        "maxNameBytes": 256,
+        "maxDescriptionBytes": 512,
+        "maxPayloadBytes": 32768,
+        "minProbability": 0.55,
+        "minMargin": 0.1,
+        "model": "jev-1.13.0",
+        "shortlistLimit": 32,
+        "maxRequests": 36,
+        "costBasis": "unknown; SDK 0.6.0 exposes tokens, not billed USD",
+        "execution": "live",
+        "authorizedMaxUsd": 0.036000000000000004,
+        "requestCostCeilingUsd": 0.001,
+        "pricingDate": "2026-10-14",
+        "pricingSource": "https://docs.typesafe.ai/models \u2014 $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget."
+      },
+      "jev_2026_10_15Configuration": {
+        "enabled": true,
+        "experimentalFit": false,
+        "minFitProbability": 0.75,
+        "model": "jev-1.13.0",
+        "timeoutMs": 1000,
+        "cacheMaxEntries": 128,
+        "cacheTtlMs": 300000,
+        "maxCandidates": 32,
+        "maxQueryBytes": 2048,
+        "maxNameBytes": 256,
+        "maxDescriptionBytes": 512,
+        "maxPayloadBytes": 32768,
+        "minProbability": 0.55,
+        "minMargin": 0.1,
+        "shortlistLimit": 32,
+        "maxRequests": 36,
+        "costBasis": "unknown; SDK 0.6.0 exposes tokens, not billed USD",
+        "execution": "live",
+        "authorizedMaxUsd": 0.036000000000000004,
+        "requestCostCeilingUsd": 0.001,
+        "pricingDate": "2026-10-14",
+        "pricingSource": "https://docs.typesafe.ai/models \u2014 $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget."
+      },
+      "metrics": [
+        {
+          "limit": 1,
+          "jev_2026_10_14": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "jev_2026_10_15": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.25,
+            "shortlistRecall": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0,
+            "noMatchAccuracy": -25.0,
+            "shortlistRecall": 0
+          },
+          "caseChanges": {
+            "selectionHit": {
+              "gains": [],
+              "regressions": []
+            },
+            "noMatchHit": {
+              "gains": [],
+              "regressions": [
+                "t08"
+              ]
+            }
+          },
+          "jev_2026_10_14LatencyMs": {
+            "p50": 121.262292,
+            "p95": 187.758333
+          },
+          "jev_2026_10_15LatencyMs": {
+            "p50": 85.03891700000003,
+            "p95": 163.97558299999997
+          },
+          "jev_2026_10_14Usage": {
+            "apiCalls": {
+              "knownTotal": 10,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 8656,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 1240,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15Usage": {
+            "apiCalls": {
+              "knownTotal": 10,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 8656,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 1240,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15FallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 1,
+            "uncertain": 0
+          }
+        },
+        {
+          "limit": 3,
+          "jev_2026_10_14": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "jev_2026_10_15": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0
+          },
+          "caseChanges": {
+            "selectionHit": {
+              "gains": [],
+              "regressions": []
+            },
+            "noMatchHit": {
+              "gains": [],
+              "regressions": []
+            }
+          },
+          "jev_2026_10_14LatencyMs": {
+            "p50": 0.19970800000010058,
+            "p95": 0.5356669999998758
+          },
+          "jev_2026_10_15LatencyMs": {
+            "p50": 0.18958299999997053,
+            "p95": 82.99537499999997
+          },
+          "jev_2026_10_14Usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15Usage": {
+            "apiCalls": {
+              "knownTotal": 1,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 867,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 124,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15FallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          }
+        },
+        {
+          "limit": 5,
+          "jev_2026_10_14": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "jev_2026_10_15": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0
+          },
+          "caseChanges": {
+            "selectionHit": {
+              "gains": [],
+              "regressions": []
+            },
+            "noMatchHit": {
+              "gains": [],
+              "regressions": []
+            }
+          },
+          "jev_2026_10_14LatencyMs": {
+            "p50": 0.15666600000008657,
+            "p95": 0.37962500000003274
+          },
+          "jev_2026_10_15LatencyMs": {
+            "p50": 0.14112499999998818,
+            "p95": 0.5239579999999933
+          },
+          "jev_2026_10_14Usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15Usage": {
+            "apiCalls": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 0,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15FallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 0
+          }
+        }
+      ]
+    },
+    {
+      "split": "held-out",
+      "jev_2026_10_14Report": "docs/benchmarks/2026-10-15/jev-live/jev-2026-10-14-held-out.json",
+      "jev_2026_10_15Report": "docs/benchmarks/2026-10-15/jev-live/jev-2026-10-15-held-out.json",
+      "jev_2026_10_14Sha256": "b3986a02740889237fe2614239182160c8dfc10f81ff8f6681bb01268c1ee32f",
+      "jev_2026_10_15Sha256": "ecc05fbcbf03ae161e7259de134d3a988d0aa5fb6765581a8fb0113c68c2bf07",
+      "jev_2026_10_14Revision": "f045e005f55d2f21398d21b7d42386597e6b1b21",
+      "jev_2026_10_15Revision": "448709fae6af4c97e53bae1b41c3878455f94321",
+      "jev_2026_10_14Configuration": {
+        "enabled": true,
+        "timeoutMs": 1000,
+        "cacheMaxEntries": 128,
+        "cacheTtlMs": 300000,
+        "maxCandidates": 32,
+        "maxQueryBytes": 2048,
+        "maxNameBytes": 256,
+        "maxDescriptionBytes": 512,
+        "maxPayloadBytes": 32768,
+        "minProbability": 0.55,
+        "minMargin": 0.1,
+        "model": "jev-1.13.0",
+        "shortlistLimit": 32,
+        "maxRequests": 42,
+        "costBasis": "unknown; SDK 0.6.0 exposes tokens, not billed USD",
+        "execution": "live",
+        "authorizedMaxUsd": 0.042,
+        "requestCostCeilingUsd": 0.001,
+        "pricingDate": "2026-10-14",
+        "pricingSource": "https://docs.typesafe.ai/models \u2014 $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget."
+      },
+      "jev_2026_10_15Configuration": {
+        "enabled": true,
+        "experimentalFit": false,
+        "minFitProbability": 0.75,
+        "model": "jev-1.13.0",
+        "timeoutMs": 1000,
+        "cacheMaxEntries": 128,
+        "cacheTtlMs": 300000,
+        "maxCandidates": 32,
+        "maxQueryBytes": 2048,
+        "maxNameBytes": 256,
+        "maxDescriptionBytes": 512,
+        "maxPayloadBytes": 32768,
+        "minProbability": 0.55,
+        "minMargin": 0.1,
+        "shortlistLimit": 32,
+        "maxRequests": 42,
+        "costBasis": "unknown; SDK 0.6.0 exposes tokens, not billed USD",
+        "execution": "live",
+        "authorizedMaxUsd": 0.042,
+        "requestCostCeilingUsd": 0.001,
+        "pricingDate": "2026-10-14",
+        "pricingSource": "https://docs.typesafe.ai/models \u2014 $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget."
+      },
+      "metrics": [
+        {
+          "limit": 1,
+          "jev_2026_10_14": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "jev_2026_10_15": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0
+          },
+          "caseChanges": {
+            "selectionHit": {
+              "gains": [],
+              "regressions": []
+            },
+            "noMatchHit": {
+              "gains": [],
+              "regressions": []
+            }
+          },
+          "jev_2026_10_14LatencyMs": {
+            "p50": 113.82708300000002,
+            "p95": 195.57437499999992
+          },
+          "jev_2026_10_15LatencyMs": {
+            "p50": 83.91220900000008,
+            "p95": 179.560542
+          },
+          "jev_2026_10_14Usage": {
+            "apiCalls": {
+              "knownTotal": 12,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 10394,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 1488,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15Usage": {
+            "apiCalls": {
+              "knownTotal": 12,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 10394,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 1488,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15FallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 1
+          }
+        },
+        {
+          "limit": 3,
+          "jev_2026_10_14": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "jev_2026_10_15": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0
+          },
+          "caseChanges": {
+            "selectionHit": {
+              "gains": [],
+              "regressions": []
+            },
+            "noMatchHit": {
+              "gains": [],
+              "regressions": []
+            }
+          },
+          "jev_2026_10_14LatencyMs": {
+            "p50": 0.26966600000014296,
+            "p95": 105.46112500000004
+          },
+          "jev_2026_10_15LatencyMs": {
+            "p50": 0.3402920000000904,
+            "p95": 81.03666599999997
+          },
+          "jev_2026_10_14Usage": {
+            "apiCalls": {
+              "knownTotal": 1,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 871,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 124,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15Usage": {
+            "apiCalls": {
+              "knownTotal": 1,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 871,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 124,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15FallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 1
+          }
+        },
+        {
+          "limit": 5,
+          "jev_2026_10_14": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "jev_2026_10_15": {
+            "selectionAccuracy": 1,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0
+          },
+          "caseChanges": {
+            "selectionHit": {
+              "gains": [],
+              "regressions": []
+            },
+            "noMatchHit": {
+              "gains": [],
+              "regressions": []
+            }
+          },
+          "jev_2026_10_14LatencyMs": {
+            "p50": 0.191332999999986,
+            "p95": 111.38649999999984
+          },
+          "jev_2026_10_15LatencyMs": {
+            "p50": 0.2955000000001746,
+            "p95": 78.46108400000003
+          },
+          "jev_2026_10_14Usage": {
+            "apiCalls": {
+              "knownTotal": 1,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 871,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 124,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15Usage": {
+            "apiCalls": {
+              "knownTotal": 1,
+              "unknownTrials": 0
+            },
+            "inputTokens": {
+              "knownTotal": 871,
+              "unknownTrials": 0
+            },
+            "outputTokens": {
+              "knownTotal": 124,
+              "unknownTrials": 0
+            }
+          },
+          "jev_2026_10_15FallbackReasons": {
+            "unavailable": 0,
+            "bounds": 0,
+            "timeout": 0,
+            "provider": 0,
+            "invalid-response": 0,
+            "uncertain": 1
+          }
+        }
+      ]
+    }
+  ]
+}

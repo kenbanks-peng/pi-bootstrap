@@ -1,0 +1,4 @@
+
+> @npm-ken/pi-bootstrap@1.3.0 typecheck
+> tsc --noEmit
+

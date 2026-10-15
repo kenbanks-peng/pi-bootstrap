@@ -97,7 +97,7 @@ All [existing authorization, credential, request/USD and pricing gates](skill-se
 
 ## Historical live evidence (not v2 evidence)
 
-The retained `.aven/measurements/jev-1.13.0-{tuning,held-out}.json` reports were inspected locally. Their source hashes match their recorded revision **`f045e005f55d2f21398d21b7d42386597e6b1b21`**, not current base sources: later commits changed the reranking config and contract files. Report SHA-256 values:
+The retained `docs/benchmarks/2026-10-15/jev-live/jev-2026-10-14-{tuning,held-out}.json` reports were inspected locally. Their source hashes match their recorded revision **`f045e005f55d2f21398d21b7d42386597e6b1b21`**, not current base sources: later commits changed the reranking config and contract files. Report SHA-256 values:
 
 - tuning: `e0c8a7e636fc78350c72cb9fa998922b9b0692b82704e1c06d0db4b7642dbecf`
 - held-out: `b3986a02740889237fe2614239182160c8dfc10f81ff8f6681bb01268c1ee32f`

@@ -1,0 +1,784 @@
+{
+  "generatedAt": "2026-10-15T01:28:14.216767+00:00",
+  "revision": "448709fae6af4c97e53bae1b41c3878455f94321",
+  "scope": "Offline keyword only. No paid calls; no semantic quality or autonomous agent-load evidence.",
+  "repetitionsAreIndependentQueries": false,
+  "latencyComparison": "No speedup claim: historical v1 environment differs; scale baseline has no stored latency.",
+  "baselineCaveat": "Scale comparison uses documented rounded observations reconstructed as exact query fractions, not retained baseline trial rows. No case-level gains/regressions inferred.",
+  "sourceSha256": {
+    "src/bootstrap-command.ts": "2b3efac69f9b4a173d2a487e06982a79699f5a0ef99c29235feff68a459c5083",
+    "src/bootstrap-expression.ts": "e786fc844f58f7b873fcb5b80ba505c4acf5ffa22727066900a46c07f1d98c42",
+    "src/bootstrap-guidance.ts": "8d7f2d656770a0104c5a481c83a7da62b535eead3920b42d6c309f7f65cfb73d",
+    "src/bootstrap-paths.ts": "1343d61211a9ff01a79fb5e5b2849e8ac3f37da6c85dc99ed17014787769a0eb",
+    "src/bootstrap-protocol.ts": "bcb3504e81707f0f23a74f9b98f65049bb53af9cd69e160e2d1494bba8770775",
+    "src/bootstrap-repository.ts": "13ee1b33db4e064832f0b61280086b5d2776873a922a9d743cb4694342637e55",
+    "src/bootstrap-session.ts": "339a7082565d03acf2e9c8850b4ec6b000036dd090fde2d77e612f381d2309cf",
+    "src/bootstrap-skills-jev.ts": "f5e3fdba519b82e944bf5381d7da771ca3116b41bfb3b79eff58cbe59a1cd1f9",
+    "src/bootstrap-skills-observation.ts": "94de57726ee4c129adb137ec934667f614a9a75731c46c95dd49a89087ded9f0",
+    "src/bootstrap-skills-reranking-config.ts": "e57ef337c1f58b502ebedd7351e7e2e35da1bbc2a3006443c6521acc2e51117c",
+    "src/bootstrap-skills-reranking-runtime.ts": "8d20b54bde29a564671bf2632d407b0e098289f8e82d5efd36e76e384aa43ba5",
+    "src/bootstrap-skills-reranking.ts": "a7bdd979704bf0ac43026be5dbe58e555828144ee1be94649f4301b1fa77bde1",
+    "src/bootstrap-skills-retrieval.ts": "db05692bca83bd71b6a8e22b8efb662f1f41b6a767aa27efb29a2e0679758c74",
+    "src/bootstrap-skills.ts": "6583026084fb653cb17c25783d0c415c265462dc47f599d8c633816af5ae7f40",
+    "src/replace.ts": "340b4a6f4aa50c9c18df790ba68f1a6b3ac46bfc984e41ba33f79534f5e29b96",
+    "test/skill-search-evaluation/agent-load.ts": "f3bed87860b33c5acbd3f563cb4dc5751c426e12933a9d786429e5df4f61ff9b",
+    "test/skill-search-evaluation/agent.ts": "f4e315ef254d1853b432112e4d647e4c89e165131f826085c31b423d16d39c9e",
+    "test/skill-search-evaluation/compare.ts": "6a808a5b6a949e81029924d4f1628e51d9d820eadf6a8b2eaa705edb139d70b7",
+    "test/skill-search-evaluation/comparison.ts": "6298e06bfbcd587e2b45ff65f9ab316dd703cb832b8fc104f29dc911e3352766",
+    "test/skill-search-evaluation/fixtures.ts": "83a4241df7f8b8f9e593f029641b2ad25bfd7a40215a2fbae0fd00e9880465f7",
+    "test/skill-search-evaluation/harness.ts": "18bdccb783b5e68e2a693dc23fb818212313c529ac3acda6db65f3cdd200a205",
+    "test/skill-search-evaluation/live.ts": "e39bfe25ac997a594f2c004cbd1620e6ce618a5998fc17cafbf981af2a7ea134",
+    "test/skill-search-evaluation/production.ts": "3c8e6c45eb01dd0242dd659bbc174d3bbe8c11292079ad8a55314be9ebd4f3c3",
+    "test/skill-search-evaluation/run.ts": "cf018f4b1d036595d00ebaf03a5b8df06db862457bdc5099f0aacee74165cd5f",
+    "test/skill-search-evaluation/scale-fixtures.ts": "83515d4cfd06cde3b53783c6128347dffc8aa17e40f4e24b04417ba16344fdb3",
+    "test/skill-search-evaluation/scale.ts": "5e64109bee55c12059edd6f7f7cb6ef5209ff9bcc74b768724f7539eab62f1a8",
+    "package.json": "147a28151a0c129856c4164c24fae7107e7c4ff866710f42c32a72d171db518f",
+    "pnpm-lock.yaml": "e29fbe3f8c47d87367fd908186ee49d1bd35775fd76f369bc78f348981c2bd26",
+    "docs/skill-search-rollout-baseline.json": "2ae9c1efd447b0c2730e851bc166775bd83e72109466d84bfbdd9d18a91f5c74",
+    "docs/skill-search-scale-evaluation.md": "dffb0b2c97549637dbe9f632051e04e6756d1acff495878a42031afa6e698335"
+  },
+  "validation": {
+    "typecheck": "passed",
+    "tests": {
+      "passed": 192,
+      "failed": 0
+    }
+  },
+  "comparisons": [
+    {
+      "report": "scale-128-held-out.json",
+      "reportSha256": "a3f612a9cb9555cebcc193672ed2f5d65b37d764fee4c91bfc286436fa082e03",
+      "fixtureSha256": "81af62cee828d233fadbfed783bf7520146b2fffa49a39ebe03cf312a61154f9",
+      "split": "held-out",
+      "catalogSize": 128,
+      "queryCount": 32,
+      "repetitions": 10,
+      "environment": {
+        "node": "v24.21.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "baselineReference": "docs/skill-search-scale-evaluation.md#interpretation-and-initial-offline-observation",
+      "comparisonKind": "historical aggregate; not paired trials",
+      "metrics": [
+        {
+          "limit": 1,
+          "baseline": {
+            "selectionAccuracy": 0.8076923076923077,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 0
+          },
+          "current": {
+            "selectionAccuracy": 0.8076923076923077,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 0
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04",
+            "sh01",
+            "sh02"
+          ],
+          "latencyMs": {
+            "p50": 0.11583400000000665,
+            "p95": 0.16245799999995825
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 3,
+          "baseline": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04",
+            "sh01",
+            "sh02"
+          ],
+          "latencyMs": {
+            "p50": 0.10608400000000984,
+            "p95": 0.140625
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 5,
+          "baseline": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04",
+            "sh01",
+            "sh02"
+          ],
+          "latencyMs": {
+            "p50": 0.10495800000001054,
+            "p95": 0.13491600000003245
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        }
+      ]
+    },
+    {
+      "report": "scale-128-tuning.json",
+      "reportSha256": "4fd6de292ba46daf73ff219a9f5d4c0bd01440c2eb1eaf645351533c71eee416",
+      "fixtureSha256": "81af62cee828d233fadbfed783bf7520146b2fffa49a39ebe03cf312a61154f9",
+      "split": "tuning",
+      "catalogSize": 128,
+      "queryCount": 30,
+      "repetitions": 10,
+      "environment": {
+        "node": "v24.21.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "baselineReference": "docs/skill-search-scale-evaluation.md#interpretation-and-initial-offline-observation",
+      "comparisonKind": "historical aggregate; not paired trials",
+      "metrics": [
+        {
+          "limit": 1,
+          "baseline": {
+            "selectionAccuracy": 0.8333333333333334,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 0
+          },
+          "current": {
+            "selectionAccuracy": 0.8333333333333334,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 0
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "t04",
+            "st01",
+            "st02"
+          ],
+          "latencyMs": {
+            "p50": 0.1144170000000031,
+            "p95": 0.14995800000002646
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 3,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "t04",
+            "st01",
+            "st02"
+          ],
+          "latencyMs": {
+            "p50": 0.10500000000001819,
+            "p95": 0.14016700000001947
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 5,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "t04",
+            "st01",
+            "st02"
+          ],
+          "latencyMs": {
+            "p50": 0.10337499999997135,
+            "p95": 0.13387500000004593
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        }
+      ]
+    },
+    {
+      "report": "scale-256-held-out.json",
+      "reportSha256": "8ba0fc77c6d58448ac5b2c6cdc4f3ff2bcf13df1cb98bd5753966c399bd81986",
+      "fixtureSha256": "994f36c3f4de0d6ed35c536abdbc18178bdca4e45ecb348b1b1a064869b79280",
+      "split": "held-out",
+      "catalogSize": 256,
+      "queryCount": 32,
+      "repetitions": 10,
+      "environment": {
+        "node": "v24.21.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "baselineReference": "docs/skill-search-scale-evaluation.md#interpretation-and-initial-offline-observation",
+      "comparisonKind": "historical aggregate; not paired trials",
+      "metrics": [
+        {
+          "limit": 1,
+          "baseline": {
+            "selectionAccuracy": 0.8076923076923077,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 0
+          },
+          "current": {
+            "selectionAccuracy": 0.8076923076923077,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 0
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04",
+            "sh01",
+            "sh02"
+          ],
+          "latencyMs": {
+            "p50": 0.2403749999999718,
+            "p95": 0.4742919999999913
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 3,
+          "baseline": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04",
+            "sh01",
+            "sh02"
+          ],
+          "latencyMs": {
+            "p50": 0.2259159999999838,
+            "p95": 0.48283299999991414
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 5,
+          "baseline": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.8461538461538461,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.8461538461538461,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04",
+            "sh01",
+            "sh02"
+          ],
+          "latencyMs": {
+            "p50": 0.22524999999995998,
+            "p95": 0.4242910000000393
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        }
+      ]
+    },
+    {
+      "report": "scale-256-tuning.json",
+      "reportSha256": "79336430108cd981c53f1f10af213dd72675d91acc034fe07e38fd7d9d28934b",
+      "fixtureSha256": "994f36c3f4de0d6ed35c536abdbc18178bdca4e45ecb348b1b1a064869b79280",
+      "split": "tuning",
+      "catalogSize": 256,
+      "queryCount": 30,
+      "repetitions": 10,
+      "environment": {
+        "node": "v24.21.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "baselineReference": "docs/skill-search-scale-evaluation.md#interpretation-and-initial-offline-observation",
+      "comparisonKind": "historical aggregate; not paired trials",
+      "metrics": [
+        {
+          "limit": 1,
+          "baseline": {
+            "selectionAccuracy": 0.8333333333333334,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 0
+          },
+          "current": {
+            "selectionAccuracy": 0.8333333333333334,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 0
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "t04",
+            "st01",
+            "st02"
+          ],
+          "latencyMs": {
+            "p50": 0.20970899999997528,
+            "p95": 0.27804200000002766
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 3,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "t04",
+            "st01",
+            "st02"
+          ],
+          "latencyMs": {
+            "p50": 0.19650000000001455,
+            "p95": 0.24729200000001583
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 5,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.5,
+            "shortlistRecall": 0.875,
+            "allRequiredAccuracy": 1
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "allRequiredAccuracy": 0
+          },
+          "shortlistMissCaseIds": [
+            "t04",
+            "st01",
+            "st02"
+          ],
+          "latencyMs": {
+            "p50": 0.19087500000000546,
+            "p95": 0.24424999999996544
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        }
+      ]
+    },
+    {
+      "report": "v1-held-out.json",
+      "reportSha256": "c8bf44094bb2957d744d2368ec7b6356cb535dde798b3fa167bc19de87b54a87",
+      "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+      "split": "held-out",
+      "catalogSize": 12,
+      "queryCount": 14,
+      "repetitions": 10,
+      "environment": {
+        "node": "v24.21.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "baselineReference": "docs/skill-search-rollout-baseline.json",
+      "comparisonKind": "historical aggregate; not paired trials",
+      "metrics": [
+        {
+          "limit": 1,
+          "baseline": {
+            "selectionAccuracy": 0.7,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.8,
+            "shortlistHitRate": 0.8
+          },
+          "current": {
+            "selectionAccuracy": 0.7,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.8,
+            "shortlistHitRate": 0.8
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "shortlistHitRate": 0.0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04"
+          ],
+          "latencyMs": {
+            "p50": 0.01345800000001418,
+            "p95": 0.022832999999991443
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 3,
+          "baseline": {
+            "selectionAccuracy": 0.8,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.8,
+            "shortlistHitRate": 0.8
+          },
+          "current": {
+            "selectionAccuracy": 0.8,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.8,
+            "shortlistHitRate": 0.8
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "shortlistHitRate": 0.0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04"
+          ],
+          "latencyMs": {
+            "p50": 0.011750000000006366,
+            "p95": 0.021166999999991276
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 5,
+          "baseline": {
+            "selectionAccuracy": 0.8,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.8,
+            "shortlistHitRate": 0.8
+          },
+          "current": {
+            "selectionAccuracy": 0.8,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.8,
+            "shortlistHitRate": 0.8
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "shortlistHitRate": 0.0
+          },
+          "shortlistMissCaseIds": [
+            "h03",
+            "h04"
+          ],
+          "latencyMs": {
+            "p50": 0.011540999999965607,
+            "p95": 0.01808299999999008
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        }
+      ]
+    },
+    {
+      "report": "v1-tuning.json",
+      "reportSha256": "9ae4cebc4abd4b94e09715036e3200afc36bab319f2079fa6d59bfc27dfc9a3a",
+      "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+      "split": "tuning",
+      "catalogSize": 12,
+      "queryCount": 12,
+      "repetitions": 10,
+      "environment": {
+        "node": "v24.21.0",
+        "platform": "darwin",
+        "arch": "arm64"
+      },
+      "baselineReference": "docs/skill-search-rollout-baseline.json",
+      "comparisonKind": "historical aggregate; not paired trials",
+      "metrics": [
+        {
+          "limit": 1,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.875,
+            "shortlistHitRate": 0.875
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.875,
+            "shortlistHitRate": 0.875
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "shortlistHitRate": 0.0
+          },
+          "shortlistMissCaseIds": [
+            "t04"
+          ],
+          "latencyMs": {
+            "p50": 0.011750000000006366,
+            "p95": 0.019249999999999545
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 3,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.875,
+            "shortlistHitRate": 0.875
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.875,
+            "shortlistHitRate": 0.875
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "shortlistHitRate": 0.0
+          },
+          "shortlistMissCaseIds": [
+            "t04"
+          ],
+          "latencyMs": {
+            "p50": 0.011415999999996984,
+            "p95": 0.01933400000001484
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        {
+          "limit": 5,
+          "baseline": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.875,
+            "shortlistHitRate": 0.875
+          },
+          "current": {
+            "selectionAccuracy": 0.875,
+            "noMatchAccuracy": 0.75,
+            "shortlistRecall": 0.875,
+            "shortlistHitRate": 0.875
+          },
+          "deltaPercentagePoints": {
+            "selectionAccuracy": 0.0,
+            "noMatchAccuracy": 0.0,
+            "shortlistRecall": 0.0,
+            "shortlistHitRate": 0.0
+          },
+          "shortlistMissCaseIds": [
+            "t04"
+          ],
+          "latencyMs": {
+            "p50": 0.011291999999968994,
+            "p95": 0.016040999999972883
+          },
+          "knownApiCostUsd": 0,
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        }
+      ]
+    }
+  ]
+}

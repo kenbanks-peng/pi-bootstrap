@@ -1,0 +1,22 @@
+{
+  "authorizePaid": true,
+  "model": "jev-1.13.0",
+  "modelVersion": "jev-1.13.0",
+  "maxRequests": 36,
+  "maxUsd": 0.036000000000000004,
+  "requestCostCeilingUsd": 0.001,
+  "pricingDate": "2026-10-14",
+  "pricingSource": "https://docs.typesafe.ai/models \u2014 $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget.",
+  "reranking": {
+    "timeout_ms": 1000,
+    "cache_max_entries": 128,
+    "cache_ttl_ms": 300000,
+    "max_candidates": 32,
+    "max_query_bytes": 2048,
+    "max_name_bytes": 256,
+    "max_description_bytes": 512,
+    "max_payload_bytes": 32768,
+    "min_probability": 0.55,
+    "min_margin": 0.1
+  }
+}

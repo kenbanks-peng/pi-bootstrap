@@ -1,0 +1,4001 @@
+{
+  "measuredAt": "2026-10-15T01:34:05.777Z",
+  "sourceSha256": {
+    "src/bootstrap-skills.ts": "6583026084fb653cb17c25783d0c415c265462dc47f599d8c633816af5ae7f40",
+    "src/bootstrap-skills-retrieval.ts": "db05692bca83bd71b6a8e22b8efb662f1f41b6a767aa27efb29a2e0679758c74",
+    "src/bootstrap-skills-jev.ts": "f5e3fdba519b82e944bf5381d7da771ca3116b41bfb3b79eff58cbe59a1cd1f9",
+    "src/bootstrap-skills-reranking-runtime.ts": "8d20b54bde29a564671bf2632d407b0e098289f8e82d5efd36e76e384aa43ba5",
+    "src/bootstrap-skills-reranking-config.ts": "e57ef337c1f58b502ebedd7351e7e2e35da1bbc2a3006443c6521acc2e51117c",
+    "src/bootstrap-skills-reranking.ts": "a7bdd979704bf0ac43026be5dbe58e555828144ee1be94649f4301b1fa77bde1",
+    "src/bootstrap-skills-observation.ts": "94de57726ee4c129adb137ec934667f614a9a75731c46c95dd49a89087ded9f0",
+    "test/skill-search-evaluation/harness.ts": "18bdccb783b5e68e2a693dc23fb818212313c529ac3acda6db65f3cdd200a205",
+    "test/skill-search-evaluation/production.ts": "3c8e6c45eb01dd0242dd659bbc174d3bbe8c11292079ad8a55314be9ebd4f3c3",
+    "test/skill-search-evaluation/live.ts": "e39bfe25ac997a594f2c004cbd1620e6ce618a5998fc17cafbf981af2a7ea134",
+    "test/skill-search-evaluation/comparison.ts": "6298e06bfbcd587e2b45ff65f9ab316dd703cb832b8fc104f29dc911e3352766",
+    "test/skill-search-evaluation/fixtures.ts": "83a4241df7f8b8f9e593f029641b2ad25bfd7a40215a2fbae0fd00e9880465f7",
+    "test/skill-search-evaluation/scale-fixtures.ts": "83515d4cfd06cde3b53783c6128347dffc8aa17e40f4e24b04417ba16344fdb3"
+  },
+  "dependencyVersions": {
+    "@earendil-works/pi-coding-agent": "1.0.0",
+    "@types/node": "24.19.1",
+    "@typesafe-ai/sdk": "0.6.0",
+    "smol-toml": "1.9.0",
+    "tsx": "4.23.15",
+    "typebox": "1.3.34",
+    "typescript": "5.9.3"
+  },
+  "keyword": {
+    "schemaVersion": 2,
+    "fixtureVersion": "skill-search-synthetic-v1",
+    "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+    "split": "held-out",
+    "repetitions": 1,
+    "shortlistLimit": 20,
+    "resultLimits": [
+      1,
+      3,
+      5
+    ],
+    "queryCount": 14,
+    "catalogSize": 12,
+    "manifest": {
+      "mode": "keyword",
+      "implementationVersion": "448709fae6af4c97e53bae1b41c3878455f94321",
+      "modelVersion": null,
+      "sdkVersion": null,
+      "configuration": {
+        "shortlistLimit": 20,
+        "resultLimits": "1,3,5",
+        "scoreThreshold": 0
+      }
+    },
+    "environment": {
+      "node": "v24.21.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "metrics": [
+      {
+        "limit": 1,
+        "positiveTrials": 10,
+        "noMatchTrials": 4,
+        "requiredTrials": 0,
+        "allRequiredAccuracy": null,
+        "requiredShortlistRecall": null,
+        "selectionAccuracy": 0.7,
+        "noMatchAccuracy": 0.75,
+        "shortlistRecall": 0.8,
+        "shortlistHitRate": 0.8,
+        "shortlistKindTrials": {
+          "keyword": 14,
+          "semantic": 0,
+          "unknown": 0
+        },
+        "shortlistMissTrials": 2,
+        "shortlistMissCaseIds": [
+          "h03",
+          "h04"
+        ],
+        "decisions": {
+          "keyword": 14,
+          "matches": 0,
+          "no-match": 0,
+          "fallback": 0,
+          "unknown": 0
+        },
+        "fallbackReasons": {
+          "unavailable": 0,
+          "bounds": 0,
+          "timeout": 0,
+          "provider": 0,
+          "invalid-response": 0,
+          "uncertain": 0
+        },
+        "usage": {
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          },
+          "inputTokens": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          },
+          "outputTokens": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        "cache": {
+          "disabled": {
+            "trials": 14,
+            "latencyMs": {
+              "p50": 0.021083000000032825,
+              "p95": 0.5919169999999667
+            }
+          },
+          "miss": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "hit": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "bypass": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unknown": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          }
+        },
+        "latencyMs": {
+          "p50": 0.021083000000032825,
+          "p95": 0.5919169999999667
+        },
+        "knownApiCostUsd": 0,
+        "unknownCostTrials": 0
+      },
+      {
+        "limit": 3,
+        "positiveTrials": 10,
+        "noMatchTrials": 4,
+        "requiredTrials": 0,
+        "allRequiredAccuracy": null,
+        "requiredShortlistRecall": null,
+        "selectionAccuracy": 0.8,
+        "noMatchAccuracy": 0.75,
+        "shortlistRecall": 0.8,
+        "shortlistHitRate": 0.8,
+        "shortlistKindTrials": {
+          "keyword": 14,
+          "semantic": 0,
+          "unknown": 0
+        },
+        "shortlistMissTrials": 2,
+        "shortlistMissCaseIds": [
+          "h03",
+          "h04"
+        ],
+        "decisions": {
+          "keyword": 14,
+          "matches": 0,
+          "no-match": 0,
+          "fallback": 0,
+          "unknown": 0
+        },
+        "fallbackReasons": {
+          "unavailable": 0,
+          "bounds": 0,
+          "timeout": 0,
+          "provider": 0,
+          "invalid-response": 0,
+          "uncertain": 0
+        },
+        "usage": {
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          },
+          "inputTokens": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          },
+          "outputTokens": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        "cache": {
+          "disabled": {
+            "trials": 14,
+            "latencyMs": {
+              "p50": 0.01650000000000773,
+              "p95": 0.03612500000002683
+            }
+          },
+          "miss": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "hit": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "bypass": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unknown": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          }
+        },
+        "latencyMs": {
+          "p50": 0.01650000000000773,
+          "p95": 0.03612500000002683
+        },
+        "knownApiCostUsd": 0,
+        "unknownCostTrials": 0
+      },
+      {
+        "limit": 5,
+        "positiveTrials": 10,
+        "noMatchTrials": 4,
+        "requiredTrials": 0,
+        "allRequiredAccuracy": null,
+        "requiredShortlistRecall": null,
+        "selectionAccuracy": 0.8,
+        "noMatchAccuracy": 0.75,
+        "shortlistRecall": 0.8,
+        "shortlistHitRate": 0.8,
+        "shortlistKindTrials": {
+          "keyword": 14,
+          "semantic": 0,
+          "unknown": 0
+        },
+        "shortlistMissTrials": 2,
+        "shortlistMissCaseIds": [
+          "h03",
+          "h04"
+        ],
+        "decisions": {
+          "keyword": 14,
+          "matches": 0,
+          "no-match": 0,
+          "fallback": 0,
+          "unknown": 0
+        },
+        "fallbackReasons": {
+          "unavailable": 0,
+          "bounds": 0,
+          "timeout": 0,
+          "provider": 0,
+          "invalid-response": 0,
+          "uncertain": 0
+        },
+        "usage": {
+          "apiCalls": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          },
+          "inputTokens": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          },
+          "outputTokens": {
+            "knownTotal": 0,
+            "unknownTrials": 0
+          }
+        },
+        "cache": {
+          "disabled": {
+            "trials": 14,
+            "latencyMs": {
+              "p50": 0.012999999999976808,
+              "p95": 0.021457999999995536
+            }
+          },
+          "miss": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "hit": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "bypass": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "unknown": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          }
+        },
+        "latencyMs": {
+          "p50": 0.012999999999976808,
+          "p95": 0.021457999999995536
+        },
+        "knownApiCostUsd": 0,
+        "unknownCostTrials": 0
+      }
+    ],
+    "rows": [
+      {
+        "caseId": "h01",
+        "category": "exact",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          9
+        ],
+        "shortlist": [
+          9,
+          0
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.5919169999999667,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            9,
+            0
+          ]
+        }
+      },
+      {
+        "caseId": "h01",
+        "category": "exact",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          9,
+          0
+        ],
+        "shortlist": [
+          9,
+          0
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.027417000000014013,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            9,
+            0
+          ]
+        }
+      },
+      {
+        "caseId": "h01",
+        "category": "exact",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          9,
+          0
+        ],
+        "shortlist": [
+          9,
+          0
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.021457999999995536,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            9,
+            0
+          ]
+        }
+      },
+      {
+        "caseId": "h02",
+        "category": "exact",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          4
+        ],
+        "shortlist": [
+          4
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.02520899999996118,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            4
+          ]
+        }
+      },
+      {
+        "caseId": "h02",
+        "category": "exact",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          4
+        ],
+        "shortlist": [
+          4
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.03612500000002683,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            4
+          ]
+        }
+      },
+      {
+        "caseId": "h02",
+        "category": "exact",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          4
+        ],
+        "shortlist": [
+          4
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.0206670000000031,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            4
+          ]
+        }
+      },
+      {
+        "caseId": "h03",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 0,
+        "shortlistHit": false,
+        "latencyMs": 0.022749999999973625,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h03",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 0,
+        "shortlistHit": false,
+        "latencyMs": 0.01650000000000773,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h03",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 0,
+        "shortlistHit": false,
+        "latencyMs": 0.01587499999999409,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h04",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          6
+        ],
+        "shortlist": [
+          6,
+          2
+        ],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 0,
+        "shortlistHit": false,
+        "latencyMs": 0.026791000000002896,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            6,
+            2
+          ]
+        }
+      },
+      {
+        "caseId": "h04",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          6,
+          2
+        ],
+        "shortlist": [
+          6,
+          2
+        ],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 0,
+        "shortlistHit": false,
+        "latencyMs": 0.02512500000000273,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            6,
+            2
+          ]
+        }
+      },
+      {
+        "caseId": "h04",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          6,
+          2
+        ],
+        "shortlist": [
+          6,
+          2
+        ],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 0,
+        "shortlistHit": false,
+        "latencyMs": 0.021083999999973457,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            6,
+            2
+          ]
+        }
+      },
+      {
+        "caseId": "h05",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          10
+        ],
+        "shortlist": [
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.02266700000001265,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h05",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          10
+        ],
+        "shortlist": [
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.01858399999997573,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h05",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          10
+        ],
+        "shortlist": [
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.015166000000021995,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h06",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3,
+          8,
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.02149999999994634,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            3,
+            8,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h06",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          3,
+          8,
+          10
+        ],
+        "shortlist": [
+          3,
+          8,
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.024290999999948326,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            3,
+            8,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h06",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          3,
+          8,
+          10
+        ],
+        "shortlist": [
+          3,
+          8,
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.016665999999986525,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            3,
+            8,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h07",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          0
+        ],
+        "shortlist": [
+          0,
+          9,
+          5,
+          6
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.015500000000031378,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            0,
+            9,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "caseId": "h07",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          0,
+          9,
+          5
+        ],
+        "shortlist": [
+          0,
+          9,
+          5,
+          6
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.01304099999998698,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            0,
+            9,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "caseId": "h07",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          0,
+          9,
+          5,
+          6
+        ],
+        "shortlist": [
+          0,
+          9,
+          5,
+          6
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.012999999999976808,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            0,
+            9,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "caseId": "h08",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 1,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.021083000000032825,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h08",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 3,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.016791999999952623,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h08",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 5,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.011542000000019925,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h09",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          0,
+          2,
+          4,
+          9,
+          10
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.02329200000002629,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h09",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          11,
+          1,
+          3
+        ],
+        "shortlist": [
+          11,
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          0,
+          2,
+          4,
+          9,
+          10
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.016999999999995907,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h09",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          11,
+          1,
+          3,
+          5,
+          6
+        ],
+        "shortlist": [
+          11,
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          0,
+          2,
+          4,
+          9,
+          10
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.015374999999949068,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h10",
+        "category": "disabled",
+        "trial": 0,
+        "limit": 1,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.012916000000018357,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h10",
+        "category": "disabled",
+        "trial": 0,
+        "limit": 3,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.011874999999974989,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h10",
+        "category": "disabled",
+        "trial": 0,
+        "limit": 5,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.010832999999990989,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h11",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 1,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.011750000000006366,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h11",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 3,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.011167000000000371,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h11",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 5,
+        "matches": [],
+        "shortlist": [],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.010374999999953616,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h12",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.015959000000009382,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            3
+          ]
+        }
+      },
+      {
+        "caseId": "h12",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.011957999999992808,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            3
+          ]
+        }
+      },
+      {
+        "caseId": "h12",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.011374999999986812,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            3
+          ]
+        }
+      },
+      {
+        "caseId": "h13",
+        "category": "exact",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.012457999999980984,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            11
+          ]
+        }
+      },
+      {
+        "caseId": "h13",
+        "category": "exact",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.010249999999984993,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            11
+          ]
+        }
+      },
+      {
+        "caseId": "h13",
+        "category": "exact",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.01029199999999264,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            11
+          ]
+        }
+      },
+      {
+        "caseId": "h14",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          8
+        ],
+        "shortlist": [
+          8,
+          9
+        ],
+        "selectionHit": false,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.013750000000015916,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            8,
+            9
+          ]
+        }
+      },
+      {
+        "caseId": "h14",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          8,
+          9
+        ],
+        "shortlist": [
+          8,
+          9
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.01241600000003018,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            8,
+            9
+          ]
+        }
+      },
+      {
+        "caseId": "h14",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          8,
+          9
+        ],
+        "shortlist": [
+          8,
+          9
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.011124999999992724,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "disabled"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "unavailable",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            8,
+            9
+          ]
+        }
+      }
+    ]
+  },
+  "semantic": {
+    "schemaVersion": 2,
+    "fixtureVersion": "skill-search-synthetic-v1",
+    "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+    "split": "held-out",
+    "repetitions": 1,
+    "shortlistLimit": 32,
+    "resultLimits": [
+      1,
+      3,
+      5
+    ],
+    "queryCount": 14,
+    "catalogSize": 12,
+    "manifest": {
+      "mode": "semantic",
+      "implementationVersion": "448709fae6af4c97e53bae1b41c3878455f94321",
+      "modelVersion": "jev-1.13.0",
+      "sdkVersion": "0.6.0",
+      "configuration": {
+        "enabled": true,
+        "experimentalFit": false,
+        "minFitProbability": 0.75,
+        "model": "jev-1.13.0",
+        "timeoutMs": 1000,
+        "cacheMaxEntries": 128,
+        "cacheTtlMs": 300000,
+        "maxCandidates": 32,
+        "maxQueryBytes": 2048,
+        "maxNameBytes": 256,
+        "maxDescriptionBytes": 512,
+        "maxPayloadBytes": 32768,
+        "minProbability": 0.55,
+        "minMargin": 0.1,
+        "shortlistLimit": 32,
+        "maxRequests": 42,
+        "costBasis": "unknown; SDK 0.6.0 exposes tokens, not billed USD",
+        "execution": "live",
+        "authorizedMaxUsd": 0.042,
+        "requestCostCeilingUsd": 0.001,
+        "pricingDate": "2026-10-14",
+        "pricingSource": "https://docs.typesafe.ai/models — $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget."
+      }
+    },
+    "environment": {
+      "node": "v24.21.0",
+      "platform": "darwin",
+      "arch": "arm64"
+    },
+    "metrics": [
+      {
+        "limit": 1,
+        "positiveTrials": 10,
+        "noMatchTrials": 4,
+        "requiredTrials": 0,
+        "allRequiredAccuracy": null,
+        "requiredShortlistRecall": null,
+        "selectionAccuracy": 1,
+        "noMatchAccuracy": 0.5,
+        "shortlistRecall": 1,
+        "shortlistHitRate": 1,
+        "shortlistKindTrials": {
+          "keyword": 2,
+          "semantic": 12,
+          "unknown": 0
+        },
+        "shortlistMissTrials": 0,
+        "shortlistMissCaseIds": [],
+        "decisions": {
+          "keyword": 2,
+          "matches": 10,
+          "no-match": 1,
+          "fallback": 1,
+          "unknown": 0
+        },
+        "fallbackReasons": {
+          "unavailable": 0,
+          "bounds": 0,
+          "timeout": 0,
+          "provider": 0,
+          "invalid-response": 0,
+          "uncertain": 1
+        },
+        "usage": {
+          "apiCalls": {
+            "knownTotal": 12,
+            "unknownTrials": 0
+          },
+          "inputTokens": {
+            "knownTotal": 10394,
+            "unknownTrials": 0
+          },
+          "outputTokens": {
+            "knownTotal": 1488,
+            "unknownTrials": 0
+          }
+        },
+        "cache": {
+          "disabled": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "miss": {
+            "trials": 12,
+            "latencyMs": {
+              "p50": 84.76766600000002,
+              "p95": 179.560542
+            }
+          },
+          "hit": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "bypass": {
+            "trials": 2,
+            "latencyMs": {
+              "p50": 0.019291000000009717,
+              "p95": 0.044125000000008185
+            }
+          },
+          "unknown": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          }
+        },
+        "latencyMs": {
+          "p50": 83.91220900000008,
+          "p95": 179.560542
+        },
+        "knownApiCostUsd": 0,
+        "unknownCostTrials": 12
+      },
+      {
+        "limit": 3,
+        "positiveTrials": 10,
+        "noMatchTrials": 4,
+        "requiredTrials": 0,
+        "allRequiredAccuracy": null,
+        "requiredShortlistRecall": null,
+        "selectionAccuracy": 1,
+        "noMatchAccuracy": 0.5,
+        "shortlistRecall": 1,
+        "shortlistHitRate": 1,
+        "shortlistKindTrials": {
+          "keyword": 2,
+          "semantic": 12,
+          "unknown": 0
+        },
+        "shortlistMissTrials": 0,
+        "shortlistMissCaseIds": [],
+        "decisions": {
+          "keyword": 2,
+          "matches": 10,
+          "no-match": 1,
+          "fallback": 1,
+          "unknown": 0
+        },
+        "fallbackReasons": {
+          "unavailable": 0,
+          "bounds": 0,
+          "timeout": 0,
+          "provider": 0,
+          "invalid-response": 0,
+          "uncertain": 1
+        },
+        "usage": {
+          "apiCalls": {
+            "knownTotal": 1,
+            "unknownTrials": 0
+          },
+          "inputTokens": {
+            "knownTotal": 871,
+            "unknownTrials": 0
+          },
+          "outputTokens": {
+            "knownTotal": 124,
+            "unknownTrials": 0
+          }
+        },
+        "cache": {
+          "disabled": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "miss": {
+            "trials": 1,
+            "latencyMs": {
+              "p50": 81.03666599999997,
+              "p95": 81.03666599999997
+            }
+          },
+          "hit": {
+            "trials": 11,
+            "latencyMs": {
+              "p50": 0.40620899999998983,
+              "p95": 0.546291999999994
+            }
+          },
+          "bypass": {
+            "trials": 2,
+            "latencyMs": {
+              "p50": 0.018374999999991815,
+              "p95": 0.02250000000003638
+            }
+          },
+          "unknown": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          }
+        },
+        "latencyMs": {
+          "p50": 0.3402920000000904,
+          "p95": 81.03666599999997
+        },
+        "knownApiCostUsd": 0,
+        "unknownCostTrials": 1
+      },
+      {
+        "limit": 5,
+        "positiveTrials": 10,
+        "noMatchTrials": 4,
+        "requiredTrials": 0,
+        "allRequiredAccuracy": null,
+        "requiredShortlistRecall": null,
+        "selectionAccuracy": 1,
+        "noMatchAccuracy": 0.5,
+        "shortlistRecall": 1,
+        "shortlistHitRate": 1,
+        "shortlistKindTrials": {
+          "keyword": 2,
+          "semantic": 12,
+          "unknown": 0
+        },
+        "shortlistMissTrials": 0,
+        "shortlistMissCaseIds": [],
+        "decisions": {
+          "keyword": 2,
+          "matches": 10,
+          "no-match": 1,
+          "fallback": 1,
+          "unknown": 0
+        },
+        "fallbackReasons": {
+          "unavailable": 0,
+          "bounds": 0,
+          "timeout": 0,
+          "provider": 0,
+          "invalid-response": 0,
+          "uncertain": 1
+        },
+        "usage": {
+          "apiCalls": {
+            "knownTotal": 1,
+            "unknownTrials": 0
+          },
+          "inputTokens": {
+            "knownTotal": 871,
+            "unknownTrials": 0
+          },
+          "outputTokens": {
+            "knownTotal": 124,
+            "unknownTrials": 0
+          }
+        },
+        "cache": {
+          "disabled": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          },
+          "miss": {
+            "trials": 1,
+            "latencyMs": {
+              "p50": 78.46108400000003,
+              "p95": 78.46108400000003
+            }
+          },
+          "hit": {
+            "trials": 11,
+            "latencyMs": {
+              "p50": 0.3467080000000351,
+              "p95": 0.44158299999992323
+            }
+          },
+          "bypass": {
+            "trials": 2,
+            "latencyMs": {
+              "p50": 0.016041000000029726,
+              "p95": 0.017291999999997643
+            }
+          },
+          "unknown": {
+            "trials": 0,
+            "latencyMs": {
+              "p50": null,
+              "p95": null
+            }
+          }
+        },
+        "latencyMs": {
+          "p50": 0.2955000000001746,
+          "p95": 78.46108400000003
+        },
+        "knownApiCostUsd": 0,
+        "unknownCostTrials": 1
+      }
+    ],
+    "rows": [
+      {
+        "caseId": "h01",
+        "category": "exact",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          9
+        ],
+        "shortlist": [
+          9,
+          0
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.044125000000008185,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "bypass"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            9,
+            0
+          ]
+        }
+      },
+      {
+        "caseId": "h01",
+        "category": "exact",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          9,
+          0
+        ],
+        "shortlist": [
+          9,
+          0
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.02250000000003638,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "bypass"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            9,
+            0
+          ]
+        }
+      },
+      {
+        "caseId": "h01",
+        "category": "exact",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          9,
+          0
+        ],
+        "shortlist": [
+          9,
+          0
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.017291999999997643,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "bypass"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            9,
+            0
+          ]
+        }
+      },
+      {
+        "caseId": "h02",
+        "category": "exact",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          4
+        ],
+        "shortlist": [
+          4
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.019291000000009717,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "bypass"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            4
+          ]
+        }
+      },
+      {
+        "caseId": "h02",
+        "category": "exact",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          4
+        ],
+        "shortlist": [
+          4
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.018374999999991815,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "bypass"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            4
+          ]
+        }
+      },
+      {
+        "caseId": "h02",
+        "category": "exact",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          4
+        ],
+        "shortlist": [
+          4
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.016041000000029726,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "bypass"
+        },
+        "observation": {
+          "decision": "keyword",
+          "reason": "exact",
+          "shortlistKind": "keyword",
+          "keywordResults": [
+            4
+          ]
+        }
+      },
+      {
+        "caseId": "h03",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          5
+        ],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 179.560542,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 865,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h03",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          5
+        ],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.2130419999999731,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h03",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          5
+        ],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.17520899999999529,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h04",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          6,
+          2,
+          0,
+          1,
+          3,
+          4,
+          5,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 84.76766600000002,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 868,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            6,
+            2
+          ]
+        }
+      },
+      {
+        "caseId": "h04",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          6,
+          2,
+          0,
+          1,
+          3,
+          4,
+          5,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.18279200000006313,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            6,
+            2
+          ]
+        }
+      },
+      {
+        "caseId": "h04",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          6,
+          2,
+          0,
+          1,
+          3,
+          4,
+          5,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.1614159999999174,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            6,
+            2
+          ]
+        }
+      },
+      {
+        "caseId": "h05",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          10
+        ],
+        "shortlist": [
+          10,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 100.13491699999997,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 864,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h05",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          10
+        ],
+        "shortlist": [
+          10,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.27120800000000145,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h05",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          10
+        ],
+        "shortlist": [
+          10,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.17337499999996453,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h06",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          8
+        ],
+        "shortlist": [
+          3,
+          8,
+          10,
+          2,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          9,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 78.94779199999994,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 866,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            3,
+            8,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h06",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          8,
+          3
+        ],
+        "shortlist": [
+          3,
+          8,
+          10,
+          2,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          9,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.28375000000005457,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            3,
+            8,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h06",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          8,
+          3
+        ],
+        "shortlist": [
+          3,
+          8,
+          10,
+          2,
+          0,
+          1,
+          4,
+          5,
+          6,
+          7,
+          9,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.17470800000000963,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            3,
+            8,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h07",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          9
+        ],
+        "shortlist": [
+          0,
+          9,
+          5,
+          6,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 94.2755840000001,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 864,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            0,
+            9,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "caseId": "h07",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          9,
+          0
+        ],
+        "shortlist": [
+          0,
+          9,
+          5,
+          6,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.4713329999999587,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            0,
+            9,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "caseId": "h07",
+        "category": "ambiguous",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          9,
+          0
+        ],
+        "shortlist": [
+          0,
+          9,
+          5,
+          6,
+          1,
+          2,
+          3,
+          4,
+          7,
+          8,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.3932079999999587,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            0,
+            9,
+            5,
+            6
+          ]
+        }
+      },
+      {
+        "caseId": "h08",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 1,
+        "matches": [],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 88.6445,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 864,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "no-match",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h08",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 3,
+        "matches": [],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.46775000000002365,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "no-match",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h08",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 5,
+        "matches": [],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.35237499999993815,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "no-match",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h09",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          0,
+          2,
+          4,
+          9,
+          10
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 83.91220900000008,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 870,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h09",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          0,
+          2,
+          4,
+          9,
+          10
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.546291999999994,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h09",
+        "category": "no-match",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          1,
+          3,
+          5,
+          6,
+          7,
+          8,
+          0,
+          2,
+          4,
+          9,
+          10
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.44158299999992323,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            11,
+            1,
+            3,
+            5,
+            6,
+            7,
+            8,
+            0,
+            2,
+            4,
+            9,
+            10
+          ]
+        }
+      },
+      {
+        "caseId": "h10",
+        "category": "disabled",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          7
+        ],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 101.66533399999992,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 864,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h10",
+        "category": "disabled",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          7
+        ],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.40620899999998983,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h10",
+        "category": "disabled",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          7
+        ],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": false,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 0.3606250000000273,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h11",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 1,
+        "matches": [],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 91.08437499999991,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 871,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "fallback",
+          "reason": "uncertain",
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h11",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 3,
+        "matches": [],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 81.03666599999997,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 871,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "fallback",
+          "reason": "uncertain",
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h11",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 5,
+        "matches": [],
+        "shortlist": [
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": null,
+        "noMatchHit": true,
+        "shortlistRecall": null,
+        "shortlistHit": null,
+        "latencyMs": 78.46108400000003,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 871,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "fallback",
+          "reason": "uncertain",
+          "shortlistKind": "semantic",
+          "keywordResults": []
+        }
+      },
+      {
+        "caseId": "h12",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3,
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 82.78716699999995,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 865,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            3
+          ]
+        }
+      },
+      {
+        "caseId": "h12",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3,
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.49441700000011224,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            3
+          ]
+        }
+      },
+      {
+        "caseId": "h12",
+        "category": "duplicate",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          3
+        ],
+        "shortlist": [
+          3,
+          0,
+          1,
+          2,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.3467080000000351,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            3
+          ]
+        }
+      },
+      {
+        "caseId": "h13",
+        "category": "exact",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 80.63512499999979,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 869,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            11
+          ]
+        }
+      },
+      {
+        "caseId": "h13",
+        "category": "exact",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.3402920000000904,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            11
+          ]
+        }
+      },
+      {
+        "caseId": "h13",
+        "category": "exact",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          11
+        ],
+        "shortlist": [
+          11,
+          0,
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7,
+          8,
+          9,
+          10
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.2955000000001746,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            11
+          ]
+        }
+      },
+      {
+        "caseId": "h14",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 1,
+        "matches": [
+          9
+        ],
+        "shortlist": [
+          8,
+          2,
+          9,
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          7,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 74.01420899999994,
+        "apiCostUsd": null,
+        "telemetry": {
+          "apiCalls": 1,
+          "inputTokens": 864,
+          "outputTokens": 124,
+          "cache": "miss"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            8,
+            9
+          ]
+        }
+      },
+      {
+        "caseId": "h14",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 3,
+        "matches": [
+          9,
+          8
+        ],
+        "shortlist": [
+          8,
+          2,
+          9,
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          7,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.5082079999999678,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            8,
+            9
+          ]
+        }
+      },
+      {
+        "caseId": "h14",
+        "category": "paraphrase",
+        "trial": 0,
+        "limit": 5,
+        "matches": [
+          9,
+          8
+        ],
+        "shortlist": [
+          8,
+          2,
+          9,
+          0,
+          1,
+          3,
+          4,
+          5,
+          6,
+          7,
+          10,
+          11
+        ],
+        "selectionHit": true,
+        "noMatchHit": null,
+        "shortlistRecall": 1,
+        "shortlistHit": true,
+        "latencyMs": 0.42754199999990306,
+        "apiCostUsd": 0,
+        "telemetry": {
+          "apiCalls": 0,
+          "inputTokens": 0,
+          "outputTokens": 0,
+          "cache": "hit"
+        },
+        "observation": {
+          "decision": "matches",
+          "reason": null,
+          "shortlistKind": "semantic",
+          "keywordResults": [
+            8,
+            9
+          ]
+        }
+      }
+    ]
+  },
+  "comparison": {
+    "schemaVersion": 1,
+    "fixtureSha256": "6d29996666363a384d937389fdbf97a8ee18ce8ca0e816cd83a9fa7ed2328093",
+    "split": "held-out",
+    "baseline": {
+      "mode": "keyword",
+      "implementationVersion": "448709fae6af4c97e53bae1b41c3878455f94321",
+      "modelVersion": null,
+      "sdkVersion": null,
+      "configuration": {
+        "shortlistLimit": 20,
+        "resultLimits": "1,3,5",
+        "scoreThreshold": 0
+      }
+    },
+    "semantic": {
+      "mode": "semantic",
+      "implementationVersion": "448709fae6af4c97e53bae1b41c3878455f94321",
+      "modelVersion": "jev-1.13.0",
+      "sdkVersion": "0.6.0",
+      "configuration": {
+        "enabled": true,
+        "experimentalFit": false,
+        "minFitProbability": 0.75,
+        "model": "jev-1.13.0",
+        "timeoutMs": 1000,
+        "cacheMaxEntries": 128,
+        "cacheTtlMs": 300000,
+        "maxCandidates": 32,
+        "maxQueryBytes": 2048,
+        "maxNameBytes": 256,
+        "maxDescriptionBytes": 512,
+        "maxPayloadBytes": 32768,
+        "minProbability": 0.55,
+        "minMargin": 0.1,
+        "shortlistLimit": 32,
+        "maxRequests": 42,
+        "costBasis": "unknown; SDK 0.6.0 exposes tokens, not billed USD",
+        "execution": "live",
+        "authorizedMaxUsd": 0.042,
+        "requestCostCeilingUsd": 0.001,
+        "pricingDate": "2026-10-14",
+        "pricingSource": "https://docs.typesafe.ai/models — $0.042/M input tokens; output free. Conservative operator per-call assumption $0.001 covers 23809 input tokens; synthetic bounded catalog substantially smaller. Combined 78-call authorization $0.078 within user $0.10 budget."
+      }
+    },
+    "metrics": [
+      {
+        "limit": 1,
+        "pairedTrials": 14,
+        "uniqueQueries": 14,
+        "selectionRegressions": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "selectionGains": {
+          "trials": 3,
+          "caseIds": [
+            "h03",
+            "h04",
+            "h14"
+          ]
+        },
+        "noMatchRegressions": {
+          "trials": 1,
+          "caseIds": [
+            "h10"
+          ]
+        },
+        "noMatchGains": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "allRequiredRegressions": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "allRequiredGains": {
+          "trials": 0,
+          "caseIds": []
+        }
+      },
+      {
+        "limit": 3,
+        "pairedTrials": 14,
+        "uniqueQueries": 14,
+        "selectionRegressions": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "selectionGains": {
+          "trials": 2,
+          "caseIds": [
+            "h03",
+            "h04"
+          ]
+        },
+        "noMatchRegressions": {
+          "trials": 1,
+          "caseIds": [
+            "h10"
+          ]
+        },
+        "noMatchGains": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "allRequiredRegressions": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "allRequiredGains": {
+          "trials": 0,
+          "caseIds": []
+        }
+      },
+      {
+        "limit": 5,
+        "pairedTrials": 14,
+        "uniqueQueries": 14,
+        "selectionRegressions": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "selectionGains": {
+          "trials": 2,
+          "caseIds": [
+            "h03",
+            "h04"
+          ]
+        },
+        "noMatchRegressions": {
+          "trials": 1,
+          "caseIds": [
+            "h10"
+          ]
+        },
+        "noMatchGains": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "allRequiredRegressions": {
+          "trials": 0,
+          "caseIds": []
+        },
+        "allRequiredGains": {
+          "trials": 0,
+          "caseIds": []
+        }
+      }
+    ]
+  }
+}
