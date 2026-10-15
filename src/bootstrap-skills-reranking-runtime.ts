@@ -42,7 +42,11 @@ export function decideReranking(value: unknown, request: SkillRerankingRequest, 
   probabilities.sort((a, b) => b.probability - a.probability || a.order - b.order);
   if (probabilities[0].probability < config.minProbability || probabilities[0].probability - probabilities[1].probability < config.minMargin) return { kind: "fallback", reason: "uncertain" };
   if (probabilities[0].id === null) return { kind: "no-match" };
-  return { kind: "matches", ids: probabilities.filter(entry => entry.id !== null && entry.probability >= config.minProbability).map(entry => entry.id!) };
+  // Search inclusion is distinct from confidence in the winning decision. Choice
+  // mass is relative, not independent applicability: retain candidates ahead of
+  // no-match, conservatively excluding its ties (and zero-support alternatives).
+  const noMatchProbability = probabilities.find(entry => entry.id === null)!.probability;
+  return { kind: "matches", ids: probabilities.filter(entry => entry.id !== null && entry.probability > noMatchProbability).map(entry => entry.id!) };
 }
 
 type Success = Exclude<SkillRerankingDecision, { kind: "fallback" }>;

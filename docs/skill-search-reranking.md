@@ -165,11 +165,22 @@ Decision rules:
 - If the accepted top alternative is no-match, return `{ matches: [], total: 0 }`
   and the existing no-matching-skills text. This is an intentional semantic empty
   result, even if the keyword baseline was nonempty.
-- If the accepted top alternative is a candidate, omit no-match and return
-  candidate alternatives whose probability is at least `min_probability`, ordered
-  as above and sliced to `limit`. `total` counts these qualifying candidates before
-  slicing, not the catalog or shortlist size. The margin gates the top decision,
-  not each subsequent candidate. Thresholds may therefore yield fewer than `limit`.
+- This is explicit ranked **search**, not automatic single-skill suggestion.
+  `min_probability` and `min_margin` gate only the top decision; defaults remain
+  `0.55` and `0.10`. Do not lower them merely to allow multiple results.
+- If the accepted top alternative is a candidate, include candidate alternatives
+  with probability **strictly greater than no-match**, ordered as above and sliced
+  to `limit`. Exclude ties with no-match and zero-support candidates. `total`
+  counts qualifying candidates before slicing, not the catalog or shortlist size;
+  the requested limit never changes inclusion or the top-decision gate.
+  For example, `[0.60, 0.25, 0.10, no_match: 0.05]` returns three candidates at
+  defaults (or the first one with `limit=1`, still `total=3`).
+- Inclusion is a relative ranking policy, **not an independent applicability/fit
+  check**. Even a small positive probability can qualify when no-match is lower;
+  a confident winner does not certify the remaining results. Conversely, a
+  useful secondary skill may be excluded when no-match outranks it. Independent
+  per-candidate fit checks and measured quality evaluation remain separate work;
+  mocked distributions establish policy mechanics, not relevance quality.
 - A low-probability or ambiguous distribution is `uncertain`, not an explicit
   no-match. Use the unchanged keyword baseline. Likewise, timeout, unavailable
   provider/config/credentials, malformed response/IDs, SDK errors, unsupported

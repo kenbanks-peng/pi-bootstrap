@@ -146,13 +146,48 @@ test("explicit no-match differs from uncertain, malformed and provider failures;
   }
 });
 
-test("synonyms independent of result limit and limits/total preserved after semantic selection", async t => {
-  const h = await harness(t, { rerank: async () => distribution(0.6, 0.4, 0) }, "enabled=true\nmodel='model'\nmin_probability=0.3");
-  h.start([skill("alpha"), skill("beta")]);
-  const result = await h.search("no-overlap", 1);
-  assert.equal(result.details.total, 2);
-  assert.equal(result.details.matches.length, 1);
+test("default confidence gates allow ranked search results with limits 1/3/5 and default 5", async t => {
+  let calls = 0;
+  const h = await harness(t, { rerank: async payload => {
+    calls++;
+    assert.equal(payload.candidates.length, 5, "limit must not shrink the transmitted shortlist");
+    return distribution(0.60, 0.16, 0.10, 0.07, 0.05, 0.02);
+  } });
+  h.start(["alpha", "beta", "gamma", "delta", "epsilon"].map(name => skill(name)));
+  const rankedNames = ["alpha", "beta", "delta", "epsilon", "gamma"];
+  for (const limit of [1, 3, 5, undefined]) {
+    const result = await h.search("no-overlap", limit);
+    assert.equal(result.details.total, 5);
+    assert.deepEqual(result.details.matches.map((match: SkillMetadata) => match.name), rankedNames.slice(0, limit ?? 5));
+    assert.equal(result.details.matches[0].filePath, "/private/alpha/SKILL.md");
+  }
+  assert.equal(calls, 1, "successful ranked decisions cache independently of limit");
   assert.equal(h.setups(), 1);
+});
+
+test("inclusion compares relative mass with no-match, not the top confidence floor or independent fit", () => {
+  const expanded: SkillRerankingRequest = { ...request, candidates: [
+    ...request.candidates, { id: "c2", name: "gamma", description: "topic" },
+  ] };
+  assert.deepEqual(decideReranking(distribution(0.60, 0.25, 0.10, 0.05), expanded, config),
+    { kind: "matches", ids: ["c0", "c1", "c2"] });
+  // Low mass is not independent fit evidence, but is ranked ahead of no-match.
+  assert.deepEqual(decideReranking(distribution(0.80, 0.19, 0.009, 0.001), expanded, config),
+    { kind: "matches", ids: ["c0", "c1", "c2"] });
+  assert.deepEqual(decideReranking(distribution(0.60, 0.20, 0, 0.20), expanded, config),
+    { kind: "matches", ids: ["c0"] });
+  assert.deepEqual(decideReranking(distribution(1, 0, 0, 0), expanded, config),
+    { kind: "matches", ids: ["c0"] });
+  assert.deepEqual(decideReranking(distribution(0.40, 0.30, 0.20, 0.10), expanded, config),
+    { kind: "fallback", reason: "uncertain" });
+  assert.deepEqual(decideReranking(distribution(0.20, 0.10, 0.10, 0.60), expanded, config),
+    { kind: "no-match" });
+  // Provider entry order must not change candidate tie order.
+  const tied = distribution(0.60, 0.15, 0.15, 0.10);
+  tied.probabilities.reverse();
+  assert.deepEqual(decideReranking(tied, expanded, config), { kind: "matches", ids: ["c0", "c1", "c2"] });
+  assert.deepEqual(decideReranking(distribution(0.5, 0.5, 0, 0), expanded, config),
+    { kind: "fallback", reason: "uncertain" });
 });
 
 test("bounds bypass returns baseline without adapter setup", async t => {

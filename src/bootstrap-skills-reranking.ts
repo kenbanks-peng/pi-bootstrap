@@ -14,7 +14,9 @@ export interface SkillRerankingConfig {
   readonly maxNameBytes: number;
   readonly maxDescriptionBytes: number;
   readonly maxPayloadBytes: number;
+  /** Confidence gate for the top alternative, not a per-result inclusion floor. */
   readonly minProbability: number;
+  /** Required separation of the top two alternatives, including no-match. */
   readonly minMargin: number;
 }
 
