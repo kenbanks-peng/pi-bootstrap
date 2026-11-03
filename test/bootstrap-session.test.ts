@@ -41,11 +41,11 @@ function ui(values: Array<string | undefined> = []) {
 }
 
 test("portable default paths, agent override and renamed project scope", () => {
-  assert.equal(getBootstrapDirectory("/home/someone", ""), "/home/someone/.config/pi/agent/extensions/pi-bootstrap");
-  assert.equal(getBootstrapDirectory("/home/someone", "/custom/pi"), "/custom/pi/extensions/pi-bootstrap");
-  assert.equal(getBootstrapDirectory(), join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".config", "pi", "agent"), "extensions", "pi-bootstrap"));
+  assert.equal(getBootstrapDirectory("/home/someone", ""), "/home/someone/.config/pi/agent/pi-bootstrap");
+  assert.equal(getBootstrapDirectory("/home/someone", "/custom/pi"), "/custom/pi/pi-bootstrap");
+  assert.equal(getBootstrapDirectory(), join(process.env.PI_CODING_AGENT_DIR || join(homedir(), ".config", "pi", "agent"), "pi-bootstrap"));
   assert.deepEqual(createBootstrapRepository("/workspace/product", "/home/someone", "").directories, {
-    globalDirectory: "/home/someone/.config/pi/agent/extensions/pi-bootstrap",
+    globalDirectory: "/home/someone/.config/pi/agent/pi-bootstrap",
     projectDirectory: "/workspace/product/.agents/bootstrap",
   });
 });

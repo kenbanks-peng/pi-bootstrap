@@ -17,7 +17,7 @@ configuration (`src/bootstrap-protocol.ts`). Add an optional
 `[skill_search.reranking]` table to the **global Bootstrap config only**, at
 `<globalDirectory>/config.toml`. Use the global directory already resolved by
 Bootstrap, not a new hard-coded Pi home. The extension's current fallback is
-`~/.config/pi/agent/extensions/pi-bootstrap`; a supplied agent directory overrides
+`~/.config/pi/agent/pi-bootstrap`; a supplied agent directory overrides
 it. This is extension configuration, not Pi `settings.json` or `models.json`.
 
 Project config cannot opt in or override reranking settings. This deliberate

@@ -2,8 +2,8 @@
 
 ## Configuration layout
 
-The global root is `$PI_CODING_AGENT_DIR/extensions/pi-bootstrap` when that
-variable is nonempty, otherwise `~/.config/pi/agent/extensions/pi-bootstrap`
+The global root is `$PI_CODING_AGENT_DIR/pi-bootstrap` when that
+variable is nonempty, otherwise `~/.config/pi/agent/pi-bootstrap`
 using Node's `homedir()`. Request actions live in its `commands/` directory.
 The project root is the current Pi working directory (`ctx.cwd`), not a Git-root
 search. Project configuration lives in `<cwd>/.agents/bootstrap/`.
