@@ -6,7 +6,10 @@ import { createBootstrapRepository, registerBootstrapSession } from "./src/boots
 import { registerToolGuidance } from "./src/bootstrap-guidance.ts";
 import { registerLazySkills, type SkillPromptTransform } from "./src/bootstrap-skills.ts";
 
+import { registerSnippets } from "./src/bootstrap-snippets.ts";
+
 export default function bootstrap(pi: ExtensionAPI) {
+  registerSnippets(pi);
   registerToolGuidance(pi);
   const snapshot = registerBootstrapSession(pi);
   const transformSkills = registerLazySkills(pi);

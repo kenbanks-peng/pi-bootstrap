@@ -1,5 +1,13 @@
 # Changelog
 
+## 2.1.0
+
+### Added
+
+- One-message prompt snippets, selectable with **Alt+S** or **/snippets**, with previews and an active-snippet indicator. Selections reset after sending or starting a session.
+- Manage global and project snippets with `/bootstrap list|add|edit|delete ... snippet`. Markdown frontmatter controls name, description, prepend/append placement, and order.
+- Six default snippets installed globally once; edits and deletions persist. Snippets reload when the menu opens or a message is sent and modify the user message, not the system prompt.
+
 ## 2.0.0
 
 ### Breaking changes

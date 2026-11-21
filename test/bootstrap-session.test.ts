@@ -19,6 +19,7 @@ function harness(repositoryFor?: Parameters<typeof registerBootstrapSession>[1])
       const previous = handlers.get(name);
       handlers.set(name, previous ? async (...args: any[]) => { await previous(...args); return handler(...args); } : handler);
     },
+    registerShortcut: () => {},
     registerTool: (spec: any) => tools.set(spec.name, spec),
     registerCommand: (name: string, spec: any) => commands.set(name, spec),
     sendMessage: (message: any) => messages.push(message),
@@ -55,9 +56,9 @@ test("full extension registers both existing transformation and session capabili
   h.handlers.clear();
   h.commands.clear();
   bootstrap(h.pi as never);
-  assert.deepEqual([...h.handlers.keys()], ["session_shutdown", "session_start", "before_agent_start", "context_with_system"]);
+  assert.deepEqual([...h.handlers.keys()], ["session_start", "input", "session_shutdown", "before_agent_start", "context_with_system"]);
   assert.deepEqual([...h.tools.keys()], ["getToolGuidance", "skill_search"]);
-  assert.deepEqual([...h.commands.keys()], ["bootstrap"]);
+  assert.deepEqual([...h.commands.keys()], ["snippets", "bootstrap"]);
   assert.match(h.commands.get("bootstrap")!.description, /config.toml/);
   assert.deepEqual(h.messages, []);
 });

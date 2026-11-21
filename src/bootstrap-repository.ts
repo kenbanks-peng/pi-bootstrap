@@ -1,3 +1,4 @@
+import { validateSnippet } from "./bootstrap-snippet-model.js";
 import { randomUUID } from "node:crypto";
 import { mkdir, readdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
@@ -13,7 +14,7 @@ export interface BootstrapSnapshot {
 }
 
 export type BootstrapScope = "global" | "project";
-export type BootstrapSourceType = "memory" | "command";
+export type BootstrapSourceType = "memory" | "command" | "snippet";
 
 export interface BootstrapRepositoryDirectories {
   globalDirectory: string;
@@ -29,6 +30,7 @@ export class BootstrapRepository {
   constructor(readonly directories: BootstrapRepositoryDirectories) {}
 
   async create(scope: BootstrapScope, type: BootstrapSourceType, content: string): Promise<string> {
+    if (type === "snippet") validateSnippet(content);
     const directory = this.sourceDirectoryFor(scope, type);
     await mkdir(directory, { recursive: true });
 
@@ -57,6 +59,7 @@ export class BootstrapRepository {
   }
 
   async edit(scope: BootstrapScope, source: BootstrapSource, content: string): Promise<void> {
+    if (source.type === "snippet") validateSnippet(content);
     await this.read(scope, source);
     await writeFile(this.pathFor(scope, source.id, source.type), content, "utf8");
   }
@@ -73,10 +76,10 @@ export class BootstrapRepository {
   }
 
   async list(scope: BootstrapScope): Promise<BootstrapSource[]> {
-    const sources = await Promise.all((["memory", "command"] as const).map(async (type) => {
+    const sources = await Promise.all((["memory", "command", "snippet"] as const).map(async (type) => {
       try {
         const entries = await readdir(this.sourceDirectoryFor(scope, type), { withFileTypes: true });
-        const suffix = type === "memory" ? ".md" : ".toml";
+        const suffix = type === "command" ? ".toml" : ".md";
         return entries.filter((entry) => entry.isFile() && entry.name.endsWith(suffix))
           .map((entry) => ({ id: entry.name.slice(0, -suffix.length), type }))
           .filter((source) => /^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(source.id));
@@ -138,11 +141,11 @@ export class BootstrapRepository {
 
   private pathFor(scope: BootstrapScope, id: string, type: BootstrapSourceType): string {
     this.validateId(id);
-    return join(this.sourceDirectoryFor(scope, type), `${id}${type === "memory" ? ".md" : ".toml"}`);
+    return join(this.sourceDirectoryFor(scope, type), `${id}${type === "command" ? ".toml" : ".md"}`);
   }
 
   private sourceDirectoryFor(scope: BootstrapScope, type: BootstrapSourceType): string {
-    return join(this.directoryFor(scope), type === "memory" ? "memories" : "commands");
+    return join(this.directoryFor(scope), type === "memory" ? "memories" : type === "snippet" ? "snippets" : "commands");
   }
 
   private validateId(id: string): void {

@@ -16,6 +16,46 @@ On first use, if the global `config.toml` is missing, the extension installs:
 
 These files go in the agent directory under `pi-bootstrap`. Existing files are not overwritten. An existing configuration does not receive these defaults.
 
+## Snippets
+
+Toggle one-message prompt instructions with **Alt+S** or **/snippets**.
+Use arrows to navigate, Space to toggle, Tab to preview, Enter to apply,
+and Esc to cancel. Active snippets appear above the editor and reset after
+sending or starting a session. Files reload when the menu opens or a message is sent.
+
+Manage snippets alongside memories and commands:
+
+```text
+/bootstrap list [global|project] snippet
+/bootstrap add [global|project] snippet
+/bootstrap edit <id> snippet
+/bootstrap delete <id> snippet
+```
+
+Add defaults to project scope. Add/edit opens Markdown including frontmatter:
+
+```markdown
+---
+name: Concise
+description: Keep answers short
+placement: append
+order: 10
+---
+Respond concisely.
+```
+
+Files use `snippet-<8 UUID characters>.md`. Global files live in the agent's
+`pi-bootstrap/snippets/` (respects `PI_CODING_AGENT_DIR`); project files live in
+`.agents/bootstrap/snippets/`. Six defaults install globally once; edits and
+deletions persist. No config rule is required, and snippets are not injected
+into the system prompt.
+
+Selected prepend snippets, your message, then append snippets are joined with
+blank lines. Within each group global snippets precede project snippets; each
+scope sorts by order then name. Matching names do not override one another.
+Name defaults to filename, description to empty, placement to append, and order
+to 9999. Disable standalone pi-snippets before using this integration.
+
 ## Skill search
 
 Keyword search remains the default. The [opt-in semantic reranking contract](docs/skill-search-reranking.md)

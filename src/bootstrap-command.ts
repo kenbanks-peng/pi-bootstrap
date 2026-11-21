@@ -1,4 +1,5 @@
 
+import { snippetTemplate } from "./bootstrap-snippet-model.js";
 import { BootstrapRepository, scopeLabel, type BootstrapScope, type BootstrapSource, type BootstrapSourceType } from "./bootstrap-repository.js";
 
 export interface BootstrapCommandUI {
@@ -7,8 +8,8 @@ export interface BootstrapCommandUI {
   notify(message: string, level?: "info" | "warning" | "error"): void;
 }
 
-const api = "/bootstrap list [global|project] [memory|command]\n/bootstrap add [global|project] [memory|command]\n/bootstrap edit <id> [memory|command]\n/bootstrap delete <id> [memory|command]";
-const usage = "Usage: /bootstrap list [global|project] [memory|command] | add [global|project] [memory|command] | edit <id> [memory|command] | delete <id> [memory|command]";
+const api = "/bootstrap list [global|project] [memory|command|snippet]\n/bootstrap add [global|project] [memory|command|snippet]\n/bootstrap edit <id> [memory|command|snippet]\n/bootstrap delete <id> [memory|command|snippet]";
+const usage = "Usage: /bootstrap list [global|project] [memory|command|snippet] | add [global|project] [memory|command|snippet] | edit <id> [memory|command|snippet] | delete <id> [memory|command|snippet]";
 const commandTemplate = [
   'description = "Working tree status"',
   '# Keep exactly one action: argv, expression, replacement, or refer.',
@@ -69,7 +70,7 @@ async function listBootstraps(arguments_: string[], bootstraps: BootstrapReposit
 async function addBootstrap(arguments_: string[], bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {
   requireInteractiveUI(ui, "Adding");
   const { scope = "project", type = "memory" } = parseScopeAndType(arguments_, true);
-  const content = await ui.editor(`Add ${scopeLabel(scope)} ${type} Bootstrap`, type === "command" ? commandTemplate : "");
+  const content = await ui.editor(`Add ${scopeLabel(scope)} ${type} Bootstrap`, type === "command" ? commandTemplate : type === "snippet" ? snippetTemplate : "");
   if (content === undefined) {
     ui.notify(`${scopeLabel(scope)} ${type} Bootstrap addition cancelled.`);
     return;
@@ -111,7 +112,7 @@ function parseScopeAndType(arguments_: string[], allowEmpty: boolean): { scope?:
     if (value === "global" || value === "project") {
       if (scope !== undefined) throw new Error(usage);
       scope = value;
-    } else if (value === "memory" || value === "command") {
+    } else if (value === "memory" || value === "command" || value === "snippet") {
       if (type !== undefined) throw new Error(usage);
       type = value;
     } else {
@@ -126,7 +127,7 @@ function requireInteractiveUI(ui: BootstrapCommandUI, operation: string): void {
 }
 
 async function sourceForId(id: string, typeArgument: string | undefined, bootstraps: BootstrapRepository): Promise<BootstrapSource & { scope: BootstrapScope }> {
-  if (typeArgument !== undefined && typeArgument !== "memory" && typeArgument !== "command") throw new Error(usage);
+  if (typeArgument !== undefined && typeArgument !== "memory" && typeArgument !== "command" && typeArgument !== "snippet") throw new Error(usage);
   const requestedType = typeArgument as BootstrapSourceType | undefined;
   const sources = (await Promise.all(
     (["global", "project"] as const).map(async (scope) => (await bootstraps.list(scope))
@@ -135,7 +136,7 @@ async function sourceForId(id: string, typeArgument: string | undefined, bootstr
   )).flat();
 
   if (sources.length === 0) throw new Error(`Bootstrap "${id}" does not exist.`);
-  if (sources.length > 1) throw new Error(`Bootstrap "${id}" is ambiguous. Specify memory or command, or remove the duplicate.`);
+  if (sources.length > 1) throw new Error(`Bootstrap "${id}" is ambiguous. Specify memory, command, or snippet, or remove the duplicate.`);
   return sources[0]!;
 }
 

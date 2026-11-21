@@ -9,6 +9,7 @@ function fixture(initial: ToolInfo[]) {
   bootstrap({
     on() {},
     registerCommand() {},
+    registerShortcut() {},
     registerTool(tool: Parameters<ExtensionAPI["registerTool"]>[0]) {
       if (tool.name === "getToolGuidance") registered = tool;
     },
