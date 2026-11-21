@@ -87,6 +87,8 @@ export function registerBootstrapSession(
     handler: async (args, ctx) => {
       await runBootstrapCommand(args, repositoryFor(ctx.cwd), {
         hasUI: ctx.hasUI,
+        input: (title, placeholder) => ctx.ui.input(title, placeholder),
+        select: (title, options) => ctx.ui.select(title, options),
         editor: ctx.ui.editor.bind(ctx.ui),
         notify: ctx.ui.notify.bind(ctx.ui),
       });

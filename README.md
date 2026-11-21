@@ -32,17 +32,10 @@ Manage snippets alongside memories and commands:
 /bootstrap delete <id> snippet
 ```
 
-Add defaults to project scope. Add/edit opens Markdown with frontmatter:
-
-```markdown
----
-name: Concise
-description: Keep responses short
-placement: append
-order: 10
----
-Respond concisely.
-```
+Add defaults to project scope. Add/edit asks for a short name, lets you select
+prepend or append, then opens an editor for the snippet text only. New snippets
+sort last in their placement group; editing preserves order unless placement changes.
+Metadata is stored automatically.
 
 Files use `snippet-<8 UUID characters>.md`. Global files live in the agent's
 `pi-bootstrap/snippets/` (respects `PI_CODING_AGENT_DIR`); project files live in

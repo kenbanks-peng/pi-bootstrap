@@ -1,9 +1,12 @@
 
-import { snippetTemplate } from "./bootstrap-snippet-model.js";
+import { parseSnippet, serializeSnippet, type Snippet } from "./bootstrap-snippet-model.js";
+import { loadSnippets } from "./bootstrap-snippet-storage.js";
 import { BootstrapRepository, scopeLabel, type BootstrapScope, type BootstrapSource, type BootstrapSourceType } from "./bootstrap-repository.js";
 
 export interface BootstrapCommandUI {
   hasUI: boolean;
+  input?(title: string, placeholder?: string): Promise<string | undefined>;
+  select?(title: string, options: string[]): Promise<string | undefined>;
   editor(title: string, initialValue: string): Promise<string | undefined>;
   notify(message: string, level?: "info" | "warning" | "error"): void;
 }
@@ -70,7 +73,9 @@ async function listBootstraps(arguments_: string[], bootstraps: BootstrapReposit
 async function addBootstrap(arguments_: string[], bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {
   requireInteractiveUI(ui, "Adding");
   const { scope = "project", type = "memory" } = parseScopeAndType(arguments_, true);
-  const content = await ui.editor(`Add ${scopeLabel(scope)} ${type} Bootstrap`, type === "command" ? commandTemplate : type === "snippet" ? snippetTemplate : "");
+  const content = type === "snippet"
+    ? await editSnippet(ui, bootstraps)
+    : await ui.editor(`Add ${scopeLabel(scope)} ${type} Bootstrap`, type === "command" ? commandTemplate : "");
   if (content === undefined) {
     ui.notify(`${scopeLabel(scope)} ${type} Bootstrap addition cancelled.`);
     return;
@@ -86,7 +91,9 @@ async function editBootstrap(arguments_: string[], bootstraps: BootstrapReposito
   if (id === undefined || arguments_.length > 2) throw new Error(usage);
   const source = await sourceForId(id, typeArgument, bootstraps);
   const content = await bootstraps.read(source.scope, source);
-  const updatedContent = await ui.editor(`Edit ${scopeLabel(source.scope)} ${source.type} Bootstrap`, content);
+  const updatedContent = source.type === "snippet"
+    ? await editSnippet(ui, bootstraps, parseSnippet(source.id + ".md", content) ?? undefined)
+    : await ui.editor(`Edit ${scopeLabel(source.scope)} ${source.type} Bootstrap`, content);
   if (updatedContent === undefined) {
     ui.notify(`${scopeLabel(source.scope)} ${source.type} Bootstrap edit cancelled.`);
     return;
@@ -94,6 +101,23 @@ async function editBootstrap(arguments_: string[], bootstraps: BootstrapReposito
 
   await bootstraps.edit(source.scope, source, updatedContent);
   ui.notify(`Edited ${scopeLabel(source.scope)} ${source.type} Bootstrap "${id}".`);
+}
+
+async function editSnippet(ui: BootstrapCommandUI, repository: BootstrapRepository, existing?: Snippet): Promise<string | undefined> {
+  if (!ui.input || !ui.select) throw new Error("Snippet editing requires input and selection UI.");
+  const name = await ui.input("Snippet name", existing?.name);
+  if (name === undefined) return;
+  if (!name.trim()) throw new Error("Snippet name must be nonempty.");
+  const placements = existing?.placement === "append" ? ["append", "prepend"] : ["prepend", "append"];
+  const placement = await ui.select("Snippet placement — before or after your message", placements);
+  if (placement === undefined) return;
+  if (placement !== "prepend" && placement !== "append") throw new Error("Invalid snippet placement.");
+  const body = await ui.editor("Snippet text", existing?.body ?? "");
+  if (body === undefined) return;
+  if (!body.trim()) throw new Error("Snippet text must be nonempty.");
+  const order = existing?.placement === placement ? existing.order
+    : Math.max(0, ...(await loadSnippets(repository)).filter(s => s.placement === placement).map(s => s.order)) + 1;
+  return serializeSnippet({ name: name.trim(), placement, order, body, description: existing?.description ?? "" });
 }
 
 async function deleteBootstrap(arguments_: string[], bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {

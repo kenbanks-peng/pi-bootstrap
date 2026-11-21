@@ -81,7 +81,7 @@ export function registerSnippets(pi: ExtensionAPI, repositoryFor = createBootstr
 			const buildPreviewRows = (snippet: Snippet, width: number): string[] => {
 				const rows: string[] = [];
 				rows.push(truncateToWidth(theme.bold(snippet.name), width));
-				rows.push(truncateToWidth(theme.fg("dim", `${snippet.placement} · order ${snippet.order} · ${snippet.scope} · ${snippet.id}`), width));
+				rows.push(truncateToWidth(theme.fg("dim", `${snippet.placement} · ${snippet.scope} · ${snippet.id}`), width));
 				rows.push(theme.fg("dim", "─".repeat(Math.min(width, 40))));
 				for (const line of snippet.body.split("\n")) {
 					for (const wrapped of wrapTextWithAnsi(line, width)) {

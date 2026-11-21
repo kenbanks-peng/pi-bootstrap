@@ -96,22 +96,58 @@ test("placement, order and name sorting span scopes; duplicate names remain inde
 test("/bootstrap snippet add/list/edit/delete and cancellation", async t => {
   const f = await fixture(t);
   const notifications: string[] = [];
-  const values: Array<string | undefined> = [content("New"), content("Edited"), undefined, " "];
-  const ui = { hasUI: true, editor: async (_title: string, initial: string) => {
-    assert.ok(initial.startsWith("---")); return values.shift();
+  const values: Array<string | undefined> = ["New body", "Edited body", undefined, " "];
+  const names = ["New", "Edited", "Cancelled", "Empty"];
+  const ui = { hasUI: true,
+    input: async () => names.shift(),
+    select: async (_title: string, options: string[]) => { assert.deepEqual(new Set(options), new Set(["prepend", "append"])); return "append"; },
+    editor: async (_title: string, initial: string) => {
+    assert.doesNotMatch(initial, /---|placement:|order:/); return values.shift();
   }, notify: (message: string) => { notifications.push(message); } };
   await runBootstrapCommand("add snippet", f.repository, ui);
   const [source] = (await f.repository.list("project")).filter(s => s.type === "snippet");
   await runBootstrapCommand("list snippet", f.repository, ui);
   assert.match(notifications.at(-1)!, /New/);
   await runBootstrapCommand(`edit ${source.id} snippet`, f.repository, ui);
-  assert.equal(await f.repository.read("project", source), content("Edited"));
+  const edited = parseSnippet(source.id, await f.repository.read("project", source))!;
+  assert.equal(edited.name, "Edited");
+  assert.equal(edited.body, "Edited body");
+  assert.equal(edited.order, 1);
   await runBootstrapCommand("add global snippet", f.repository, ui);
   assert.match(notifications.at(-1)!, /cancelled/);
   await runBootstrapCommand("add global snippet", f.repository, ui);
   assert.match(notifications.at(-1)!, /nonempty/);
   await runBootstrapCommand(`delete ${source.id} snippet`, f.repository, ui);
   assert.equal((await loadSnippets(f.repository)).length, 0);
+});
+
+test("snippet prompts cancel without writes and assign order across scopes", async t => {
+  const f = await fixture(t);
+  await f.repository.create("project", "snippet", content("Existing", "append", 20));
+  const notifications: string[] = [];
+  const ui = {
+    hasUI: true,
+    input: async (): Promise<string | undefined> => 'Say "yes": please',
+    select: async (): Promise<string | undefined> => "append",
+    editor: async (): Promise<string | undefined> => "Text only",
+    notify: (message: string) => { notifications.push(message); },
+  };
+  await runBootstrapCommand("add global snippet", f.repository, ui);
+  const [source] = await f.repository.list("global");
+  const saved = parseSnippet(source.id, await f.repository.read("global", source))!;
+  assert.equal(saved.name, 'Say "yes": please');
+  assert.equal(saved.order, 21);
+  assert.equal(saved.description, "");
+  assert.equal(saved.body, "Text only");
+  for (const stage of ["input", "select", "editor"] as const) {
+    await runBootstrapCommand("add global snippet", f.repository, { ...ui, [stage]: async () => undefined });
+    assert.match(notifications.at(-1)!, /cancelled/);
+    assert.equal((await f.repository.list("global")).length, 1);
+  }
+  await runBootstrapCommand(`edit ${source.id} snippet`, f.repository, { ...ui, select: async () => "prepend" });
+  const moved = parseSnippet(source.id, await f.repository.read("global", source))!;
+  assert.equal(moved.placement, "prepend");
+  assert.equal(moved.order, 1);
 });
 
 test("menu preview/cancel, widget, live reload, transformation and reset", async t => {
