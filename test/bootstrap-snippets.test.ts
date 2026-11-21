@@ -8,15 +8,22 @@ import { parseSnippet, snippetTemplate } from "../src/bootstrap-snippet-model.ts
 import { registerSnippets } from "../src/bootstrap-snippets.ts";
 import { runBootstrapCommand } from "../src/bootstrap-command.ts";
 
-const content = (name: string) => name;
+const content = (name: string, placement = "append", order = 9999) =>
+  `---\nname: ${name}\ndescription: Description for ${name}\nplacement: ${placement}\norder: ${order}\n---\n${name}`;
 
-test("snippet parsing accepts plain Markdown and rejects empty bodies", () => {
+test("snippet parsing matches prompt-snippets frontmatter and strips metadata", () => {
   assert.equal(parseSnippet("x.md", " \n\t"), null);
-  assert.deepEqual(parseSnippet("x.md", "  # Title\nBody\n"), {
-    id: "x.md", name: "Title", body: "# Title\nBody",
+  assert.equal(parseSnippet("x.md", "# Plain Markdown"), null);
+  assert.equal(parseSnippet("x.md", "---\nname: Empty\n---\n "), null);
+  assert.deepEqual(parseSnippet("x.md", content("Title", "prepend", 5)), {
+    id: "x.md", name: "Title", description: "Description for Title",
+    placement: "prepend", order: 5, body: "Title",
   });
-  const markdown = "---\nname: Literal text\n---\nBody";
-  assert.equal(parseSnippet("x.md", markdown)!.body, markdown);
+  assert.deepEqual(parseSnippet("fallback.MD", "---\r\nname: ''\r\norder: invalid\r\nplacement: other\r\n---\r\n Body \r\n"), {
+    id: "fallback.MD", name: "fallback", description: "",
+    placement: "append", order: 9999, body: "Body",
+  });
+  assert.equal(parseSnippet("x.md", "---\nname: 'Quoted'\n---\nBody")!.name, "Quoted");
 });
 
 test("snippet CRUD uses UUID IDs, validates writes, lists scopes and never injects snippets", async t => {
@@ -42,7 +49,7 @@ test("defaults seed missing folders with stable UUID filenames and preserve none
   assert.ok(!(await readdir(f.global)).includes(".snippet-defaults-installed"));
   for (const source of sources) {
     assert.match(source.id, /^snippet-[a-f0-9]{8}$/);
-    assert.doesNotMatch(await f.repository.read("global", source), /^---/);
+    assert.ok(parseSnippet(source.id + ".md", await f.repository.read("global", source)));
   }
   await f.repository.edit("global", sources[0], content("Custom"));
   await f.repository.delete("global", sources[1]);
@@ -74,14 +81,16 @@ test("defaults leave any nonempty snippets folder untouched", async t => {
   assert.deepEqual(await readdir(directory), ["notes.txt"]);
 });
 
-test("scope ordering precedes alphabetical ordering and duplicate names remain independent", async t => {
+test("placement, order and name sorting span scopes; duplicate names remain independent", async t => {
   const f = await fixture(t);
   await f.repository.create("global", "snippet", content("Same"));
   await f.repository.create("project", "snippet", content("Same"));
   await f.repository.create("project", "snippet", content("Before"));
+  await f.repository.create("project", "snippet", content("First", "prepend", 50));
+  await f.repository.create("global", "snippet", content("Second", "append", 1));
   const snippets = await loadSnippets(f.repository);
-  assert.deepEqual(snippets.map(s => [s.name, s.scope]), [["Same", "global"], ["Before", "project"], ["Same", "project"]]);
-  assert.equal(new Set(snippets.map(s => s.id)).size, 3);
+  assert.deepEqual(snippets.map(s => [s.name, s.scope]), [["First", "project"], ["Second", "global"], ["Before", "project"], ["Same", "global"], ["Same", "project"]]);
+  assert.equal(new Set(snippets.map(s => s.id)).size, 5);
 });
 
 test("/bootstrap snippet add/list/edit/delete and cancellation", async t => {
@@ -89,7 +98,7 @@ test("/bootstrap snippet add/list/edit/delete and cancellation", async t => {
   const notifications: string[] = [];
   const values: Array<string | undefined> = [content("New"), content("Edited"), undefined, " "];
   const ui = { hasUI: true, editor: async (_title: string, initial: string) => {
-    assert.ok(!initial.includes("---")); return values.shift();
+    assert.ok(initial.startsWith("---")); return values.shift();
   }, notify: (message: string) => { notifications.push(message); } };
   await runBootstrapCommand("add snippet", f.repository, ui);
   const [source] = (await f.repository.list("project")).filter(s => s.type === "snippet");
@@ -110,7 +119,7 @@ test("menu preview/cancel, widget, live reload, transformation and reset", async
   await installSnippetDefaults(f.repository);
   for (const s of (await f.repository.list("global")).filter(s => s.type === "snippet"))
     await f.repository.delete("global", s);
-  const before = await f.repository.create("global", "snippet", content("Before"));
+  const before = await f.repository.create("global", "snippet", content("Before", "prepend"));
   await f.repository.create("project", "snippet", content("After"));
   const handlers = new Map<string, any>(), commands = new Map<string, any>(), shortcuts = new Map<string, any>();
   registerSnippets({ on: (name: string, fn: any) => handlers.set(name, fn),
@@ -124,18 +133,23 @@ test("menu preview/cancel, widget, live reload, transformation and reset", async
     theme, notify: () => {}, setWidget: (_: string, lines: string[] | undefined) => { widget = lines; },
     custom: async (factory: any) => new Promise(resolve => {
       const component = factory({ terminal: { rows: 20 }, requestRender() {} }, theme, {}, resolve);
-      for (const key of keys) { component.render(60); component.handleInput(key); }
+      const rows = component.render(120).join("\n");
+      assert.match(rows, /Before|Updated/);
+      assert.match(rows, /Description for/);
+      assert.match(rows, /\[global\]/);
+      assert.doesNotMatch(rows, /\[ \] ---/);
+      for (const key of keys) { component.render(120); component.handleInput(key); }
     }),
   } };
   await handlers.get("session_start")({}, ctx);
   await commands.get("snippets").handler("", ctx);
-  assert.equal(widget!.length, 1);
+  assert.equal(widget!.length, 2);
   // Cancelling edits in the menu keeps the prior selection; preview returns to the list.
   keys = [" ", "\t", "\u001b", "\u001b"];
   await shortcuts.get("alt+s").handler(ctx);
-  assert.equal(widget!.length, 1);
-  await f.repository.edit("global", { id: before, type: "snippet" }, content("Updated"));
-  assert.deepEqual(await handlers.get("input")({ text: "Message" }, ctx), { action: "transform", text: "Message\n\nUpdated\n\nAfter" });
+  assert.equal(widget!.length, 2);
+  await f.repository.edit("global", { id: before, type: "snippet" }, content("Updated", "prepend"));
+  assert.deepEqual(await handlers.get("input")({ text: "Message" }, ctx), { action: "transform", text: "Updated\n\nMessage\n\nAfter" });
   assert.equal(widget, undefined);
   assert.equal(await handlers.get("input")({ text: "Again" }, ctx), undefined);
   keys = [" ", "\r"];
