@@ -1,6 +1,5 @@
 ---
 name: Orchestrator mode
-description: Pure high-level orchestrator session
 placement: prepend
 order: 30
 ---

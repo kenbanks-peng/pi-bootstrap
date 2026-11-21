@@ -9,18 +9,18 @@ import { registerSnippets } from "../src/bootstrap-snippets.ts";
 import { runBootstrapCommand } from "../src/bootstrap-command.ts";
 
 const content = (name: string, placement = "append", order = 9999) =>
-  `---\nname: ${name}\ndescription: Description for ${name}\nplacement: ${placement}\norder: ${order}\n---\n${name}`;
+  `---\nname: ${name}\nplacement: ${placement}\norder: ${order}\n---\n${name}`;
 
 test("snippet parsing matches prompt-snippets frontmatter and strips metadata", () => {
   assert.equal(parseSnippet("x.md", " \n\t"), null);
   assert.equal(parseSnippet("x.md", "# Plain Markdown"), null);
   assert.equal(parseSnippet("x.md", "---\nname: Empty\n---\n "), null);
   assert.deepEqual(parseSnippet("x.md", content("Title", "prepend", 5)), {
-    id: "x.md", name: "Title", description: "Description for Title",
+    id: "x.md", name: "Title",
     placement: "prepend", order: 5, body: "Title",
   });
   assert.deepEqual(parseSnippet("fallback.MD", "---\r\nname: ''\r\norder: invalid\r\nplacement: other\r\n---\r\n Body \r\n"), {
-    id: "fallback.MD", name: "fallback", description: "",
+    id: "fallback.MD", name: "fallback",
     placement: "append", order: 9999, body: "Body",
   });
   assert.equal(parseSnippet("x.md", "---\nname: 'Quoted'\n---\nBody")!.name, "Quoted");
@@ -49,7 +49,9 @@ test("defaults seed missing folders with stable UUID filenames and preserve none
   assert.ok(!(await readdir(f.global)).includes(".snippet-defaults-installed"));
   for (const source of sources) {
     assert.match(source.id, /^snippet-[a-f0-9]{8}$/);
-    assert.ok(parseSnippet(source.id + ".md", await f.repository.read("global", source)));
+    const raw = await f.repository.read("global", source);
+    assert.ok(parseSnippet(source.id + ".md", raw));
+    assert.doesNotMatch(raw, /^description:/m);
   }
   await f.repository.edit("global", sources[0], content("Custom"));
   await f.repository.delete("global", sources[1]);
@@ -137,7 +139,7 @@ test("snippet prompts cancel without writes and assign order across scopes", asy
   const saved = parseSnippet(source.id, await f.repository.read("global", source))!;
   assert.equal(saved.name, 'Say "yes": please');
   assert.equal(saved.order, 21);
-  assert.equal(saved.description, "");
+  assert.doesNotMatch(await f.repository.read("global", source), /description:/);
   assert.equal(saved.body, "Text only");
   for (const stage of ["input", "select", "editor"] as const) {
     await runBootstrapCommand("add global snippet", f.repository, { ...ui, [stage]: async () => undefined });
@@ -171,7 +173,7 @@ test("menu preview/cancel, widget, live reload, transformation and reset", async
       const component = factory({ terminal: { rows: 20 }, requestRender() {} }, theme, {}, resolve);
       const rows = component.render(120).join("\n");
       assert.match(rows, /Before|Updated/);
-      assert.match(rows, /Description for/);
+      assert.doesNotMatch(rows, /Description for/);
       assert.match(rows, /\[global\]/);
       assert.doesNotMatch(rows, /\[ \] ---/);
       for (const key of keys) { component.render(120); component.handleInput(key); }

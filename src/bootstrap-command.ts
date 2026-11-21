@@ -117,7 +117,7 @@ async function editSnippet(ui: BootstrapCommandUI, repository: BootstrapReposito
   if (!body.trim()) throw new Error("Snippet text must be nonempty.");
   const order = existing?.placement === placement ? existing.order
     : Math.max(0, ...(await loadSnippets(repository)).filter(s => s.placement === placement).map(s => s.order)) + 1;
-  return serializeSnippet({ name: name.trim(), placement, order, body, description: existing?.description ?? "" });
+  return serializeSnippet({ name: name.trim(), placement, order, body });
 }
 
 async function deleteBootstrap(arguments_: string[], bootstraps: BootstrapRepository, ui: BootstrapCommandUI): Promise<void> {

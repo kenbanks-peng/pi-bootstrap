@@ -1,7 +1,6 @@
 export interface Snippet {
   id: string;
   name: string;
-  description: string;
   placement: "prepend" | "append";
   order: number;
   body: string;
@@ -30,20 +29,18 @@ export function parseSnippet(filename: string, raw: string): Snippet | null {
   return {
     id: filename,
     name: meta.name || filename.replace(/\.md$/i, ""),
-    description: meta.description ?? "",
     placement: meta.placement === "prepend" ? "prepend" : "append",
     order: Number.isFinite(order) ? order : 9999,
     body,
   };
 }
 
-export const snippetTemplate = "---\nname: New snippet\ndescription: \nplacement: append\norder: 9999\n---\nWrite the instruction here.\n";
+export const snippetTemplate = "---\nname: New snippet\nplacement: append\norder: 9999\n---\nWrite the instruction here.\n";
 
 export function serializeSnippet(snippet: Omit<Snippet, "id">): string {
   return [
     "---",
     `name: ${JSON.stringify(snippet.name)}`,
-    ...(snippet.description ? [`description: ${JSON.stringify(snippet.description)}`] : []),
     `placement: ${snippet.placement}`,
     `order: ${snippet.order}`,
     "---",

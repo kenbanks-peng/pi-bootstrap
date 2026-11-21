@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Changed
+
+- Remove snippet descriptions; names alone identify snippets in the menu.
+
 ## 2.1.0
 
 ### Added

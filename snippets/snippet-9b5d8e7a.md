@@ -1,6 +1,5 @@
 ---
 name: Delegate exploration
-description: Keep context lean. Subagents explore, you verify critical parts
 placement: append
 order: 30
 ---

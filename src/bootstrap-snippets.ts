@@ -63,8 +63,7 @@ export function registerSnippets(pi: ExtensionAPI, repositoryFor = createBootstr
 			const itemRow = (snippet: Snippet, idx: number, width: number): string => {
 				const pointer = idx === cursor ? theme.fg("accent", "> ") : "  ";
 				const checkbox = working.has(snippet.id) ? theme.fg("success", "[x]") : theme.fg("dim", "[ ]");
-				const desc = snippet.description ? theme.fg("dim", ` — ${snippet.description}`) : "";
-				return truncateToWidth(`${pointer}${checkbox} ${theme.bold(snippet.name)} ${theme.fg("dim", `[${snippet.scope}]`)}${desc}`, width);
+				return truncateToWidth(`${pointer}${checkbox} ${theme.bold(snippet.name)} ${theme.fg("dim", `[${snippet.scope}]`)}`, width);
 			};
 
 			/** List rows with the item index each row corresponds to (null for headers/blanks). */

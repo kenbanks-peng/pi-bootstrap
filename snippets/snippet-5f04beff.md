@@ -1,6 +1,5 @@
 ---
 name: Verify, don't assume
-description: Do not assume — verify
 placement: append
 order: 20
 ---

@@ -46,7 +46,7 @@ into the system prompt.
 
 Selected snippet bodies are prepended or appended to your message, separated by
 blank lines. Each placement group sorts by order, then name, across both scopes.
-The menu displays names and descriptions; frontmatter is never injected.
+The menu displays snippet names; frontmatter is never injected.
 Disable standalone pi-snippets before using this integration.
 
 ## Skill search

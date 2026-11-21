@@ -1,6 +1,5 @@
 ---
 name: Session kickoff
-description: Get oriented, report back before starting work
 placement: prepend
 order: 10
 ---
