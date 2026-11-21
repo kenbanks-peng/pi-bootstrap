@@ -1,4 +1,4 @@
-import { readdir, readFile, mkdir, writeFile, access } from "node:fs/promises";
+import { readdir, readFile, mkdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BootstrapRepository, BootstrapScope } from "./bootstrap-repository.js";
@@ -23,20 +23,18 @@ export async function loadSnippets(repository: BootstrapRepository): Promise<Sco
 }
 
 export async function installSnippetDefaults(repository: BootstrapRepository): Promise<void> {
-  const root = repository.directories.globalDirectory;
-  const marker = join(root, ".snippet-defaults-installed");
-  try { await access(marker); return; } catch (error) {
+  const directory = join(repository.directories.globalDirectory, "snippets");
+  try { if ((await readdir(directory)).length > 0) return; } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
   }
   const bundled = fileURLToPath(new URL("../snippets/", import.meta.url));
-  await mkdir(join(root, "snippets"), { recursive: true });
+  await mkdir(directory, { recursive: true });
   for (const file of await readdir(bundled)) {
     if (!file.endsWith(".md")) continue;
     try {
-      await writeFile(join(root, "snippets", file), await readFile(join(bundled, file)), { flag: "wx" });
+      await writeFile(join(directory, file), await readFile(join(bundled, file)), { flag: "wx" });
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
     }
   }
-  await writeFile(marker, "");
 }

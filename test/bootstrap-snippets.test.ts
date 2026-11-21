@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { mkdir, readdir, writeFile } from "node:fs/promises";
+import { join } from "node:path";
 import { fixture } from "./session-fixture.ts";
 import { loadSnippets, installSnippetDefaults } from "../src/bootstrap-snippet-storage.ts";
 import { parseSnippet, snippetTemplate } from "../src/bootstrap-snippet-model.ts";
@@ -33,11 +35,12 @@ test("snippet CRUD uses UUID IDs, validates writes, lists scopes and never injec
   assert.deepEqual(await loadSnippets(f.repository), []);
 });
 
-test("defaults seed once with stable UUID filenames and preserve edits and deletions", async t => {
+test("defaults seed missing folders with stable UUID filenames and preserve nonempty folders", async t => {
   const f = await fixture(t);
   await Promise.all([installSnippetDefaults(f.repository), installSnippetDefaults(f.repository)]);
   const sources = (await f.repository.list("global")).filter(s => s.type === "snippet");
   assert.equal(sources.length, 6);
+  assert.ok(!(await readdir(f.global)).includes(".snippet-defaults-installed"));
   for (const source of sources) assert.match(source.id, /^snippet-[a-f0-9]{8}$/);
   await f.repository.edit("global", sources[0], content("Custom"));
   await f.repository.delete("global", sources[1]);
@@ -45,6 +48,28 @@ test("defaults seed once with stable UUID filenames and preserve edits and delet
   assert.equal((await loadSnippets(f.repository)).length, 5);
   assert.equal(await f.repository.read("global", sources[0]), content("Custom"));
   assert.equal((await f.repository.list("project")).filter(s => s.type === "snippet").length, 0);
+});
+
+test("defaults seed empty folders again after all snippets are deleted", async t => {
+  const f = await fixture(t);
+  const directory = join(f.global, "snippets");
+  await mkdir(directory);
+  await installSnippetDefaults(f.repository);
+  const sources = (await f.repository.list("global")).filter(s => s.type === "snippet");
+  assert.equal(sources.length, 6);
+  for (const source of sources) await f.repository.delete("global", source);
+  assert.deepEqual(await readdir(directory), []);
+  await installSnippetDefaults(f.repository);
+  assert.equal((await loadSnippets(f.repository)).length, 6);
+});
+
+test("defaults leave any nonempty snippets folder untouched", async t => {
+  const f = await fixture(t);
+  const directory = join(f.global, "snippets");
+  await mkdir(directory);
+  await writeFile(join(directory, "notes.txt"), "Keep");
+  await installSnippetDefaults(f.repository);
+  assert.deepEqual(await readdir(directory), ["notes.txt"]);
 });
 
 test("scope ordering precedes numeric ordering and duplicate names remain independent", async t => {

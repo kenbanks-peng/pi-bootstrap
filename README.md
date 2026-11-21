@@ -46,8 +46,9 @@ Respond concisely.
 
 Files use `snippet-<8 UUID characters>.md`. Global files live in the agent's
 `pi-bootstrap/snippets/` (respects `PI_CODING_AGENT_DIR`); project files live in
-`.agents/bootstrap/snippets/`. Six defaults install globally once; edits and
-deletions persist. No config rule is required, and snippets are not injected
+`.agents/bootstrap/snippets/`. Six defaults install when the global snippets
+folder is missing or empty. Nonempty folders are left untouched.
+No config rule is required, and snippets are not injected
 into the system prompt.
 
 Selected prepend snippets, your message, then append snippets are joined with
