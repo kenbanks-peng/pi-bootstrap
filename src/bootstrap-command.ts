@@ -168,7 +168,12 @@ function formatBootstrapList(scope: BootstrapScope, bootstraps: Array<{ source: 
   const label = `${scope}:`;
   return bootstraps.length === 0
     ? `${label} none`
-    : `${label}\n${bootstraps.map(({ source, content }) => `- ${source.type}: ${content} [${source.id}]`).join("\n")}`;
+    : `${label}\n${bootstraps.map(({ source, content }) => {
+      const snippet = source.type === "snippet" ? parseSnippet(source.id, content) : null;
+      return snippet
+        ? `- ${snippet.name}: ${snippet.body} [${source.id}]`
+        : `- ${source.type}: ${content} [${source.id}]`;
+    }).join("\n")}`;
 }
 
 function errorMessage(error: unknown): string {

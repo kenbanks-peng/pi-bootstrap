@@ -107,7 +107,7 @@ test("/bootstrap snippet add/list/edit/delete and cancellation", async t => {
   await runBootstrapCommand("add snippet", f.repository, ui);
   const [source] = (await f.repository.list("project")).filter(s => s.type === "snippet");
   await runBootstrapCommand("list snippet", f.repository, ui);
-  assert.match(notifications.at(-1)!, /New/);
+  assert.equal(notifications.at(-1), `global: none\n\nproject:\n- New: New body [${source.id}]`);
   await runBootstrapCommand(`edit ${source.id} snippet`, f.repository, ui);
   const edited = parseSnippet(source.id, await f.repository.read("project", source))!;
   assert.equal(edited.name, "Edited");
