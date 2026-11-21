@@ -12,23 +12,13 @@ export function registerSnippets(pi: ExtensionAPI, repositoryFor = createBootstr
 	function updateWidget(ctx: ExtensionContext) {
 		if (!ctx.hasUI || ctx.mode !== "tui") return;
 		const active = snippets.filter((s) => enabled.has(s.id));
-		const prepends = active.filter((s) => s.placement === "prepend");
-		const appends = active.filter((s) => s.placement === "append");
-
-		if (prepends.length === 0 && appends.length === 0) {
+		if (active.length === 0) {
 			ctx.ui.setWidget(WIDGET_ID, undefined);
 			return;
 		}
-
-		const theme = ctx.ui.theme;
-		const lines: string[] = [];
-		if (prepends.length > 0) {
-			lines.push(theme.fg("accent", `↑ prepend: ${prepends.map((s) => s.name).join(" · ")}`));
-		}
-		if (appends.length > 0) {
-			lines.push(theme.fg("warning", `↓ append: ${appends.map((s) => s.name).join(" · ")}`));
-		}
-		ctx.ui.setWidget(WIDGET_ID, lines);
+		ctx.ui.setWidget(WIDGET_ID, [
+			ctx.ui.theme.fg("warning", `↓ snippets: ${active.map((s) => s.name).join(" · ")}`),
+		]);
 	}
 
 	async function openMenu(ctx: ExtensionContext) {
@@ -51,9 +41,7 @@ export function registerSnippets(pi: ExtensionAPI, repositoryFor = createBootstr
 		const working = new Set(enabled);
 
 		const confirmed = await ctx.ui.custom<boolean>((tui, theme, _keybindings, done) => {
-			const prepends = snippets.filter((s) => s.placement === "prepend");
-			const appends = snippets.filter((s) => s.placement === "append");
-			const items = [...prepends, ...appends];
+			const items = snippets;
 
 			let mode: "list" | "preview" = "list";
 			let cursor = 0;
@@ -63,25 +51,20 @@ export function registerSnippets(pi: ExtensionAPI, repositoryFor = createBootstr
 			const itemRow = (snippet: Snippet, idx: number, width: number): string => {
 				const pointer = idx === cursor ? theme.fg("accent", "> ") : "  ";
 				const checkbox = working.has(snippet.id) ? theme.fg("success", "[x]") : theme.fg("dim", "[ ]");
-				const desc = snippet.description ? theme.fg("dim", ` — ${snippet.description}`) : "";
-				return truncateToWidth(`${pointer}${checkbox} ${theme.bold(snippet.name)} ${theme.fg("dim", `[${snippet.scope}]`)}${desc}`, width);
+				return truncateToWidth(`${pointer}${checkbox} ${theme.bold(snippet.name)} ${theme.fg("dim", `[${snippet.scope}]`)}`, width);
 			};
 
 			/** List rows with the item index each row corresponds to (null for headers/blanks). */
 			const buildListRows = (width: number): { text: string; itemIndex: number | null }[] => {
 				const rows: { text: string; itemIndex: number | null }[] = [];
-				rows.push({ text: theme.fg("dim", "↑ PREPEND — added before your message"), itemIndex: null });
-				prepends.forEach((s, i) => rows.push({ text: itemRow(s, i, width), itemIndex: i }));
-				rows.push({ text: "", itemIndex: null });
-				rows.push({ text: theme.fg("dim", "↓ APPEND — added after your message"), itemIndex: null });
-				appends.forEach((s, i) => rows.push({ text: itemRow(s, prepends.length + i, width), itemIndex: prepends.length + i }));
+				items.forEach((s, i) => rows.push({ text: itemRow(s, i, width), itemIndex: i }));
 				return rows;
 			};
 
 			const buildPreviewRows = (snippet: Snippet, width: number): string[] => {
 				const rows: string[] = [];
 				rows.push(truncateToWidth(theme.bold(snippet.name), width));
-				rows.push(truncateToWidth(theme.fg("dim", `${snippet.placement} · order ${snippet.order} · ${snippet.scope} · ${snippet.id}`), width));
+				rows.push(truncateToWidth(theme.fg("dim", `${snippet.scope} · ${snippet.id}`), width));
 				rows.push(theme.fg("dim", "─".repeat(Math.min(width, 40))));
 				for (const line of snippet.body.split("\n")) {
 					for (const wrapped of wrapTextWithAnsi(line, width)) {
@@ -225,11 +208,9 @@ export function registerSnippets(pi: ExtensionAPI, repositoryFor = createBootstr
 
 		if (active.length === 0) return; // all toggled snippets vanished from disk
 
-		const prependBodies = active.filter((s) => s.placement === "prepend").map((s) => s.body);
-		const appendBodies = active.filter((s) => s.placement === "append").map((s) => s.body);
 		return {
 			action: "transform",
-			text: [...prependBodies, event.text, ...appendBodies].join("\n\n"),
+			text: [event.text, ...active.map((s) => s.body)].join("\n\n"),
 		};
 	});
 

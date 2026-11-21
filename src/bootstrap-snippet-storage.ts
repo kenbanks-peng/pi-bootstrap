@@ -16,10 +16,10 @@ export async function loadSnippets(repository: BootstrapRepository): Promise<Sco
         if (snippet) snippets.push({ ...snippet, id: scope + ":" + source.id, scope });
       } catch { /* Skip files removed or made unreadable during scanning. */ }
     }
-    snippets.sort((a, b) => a.order - b.order || a.name.localeCompare(b.name));
+    snippets.sort((a, b) => a.name.localeCompare(b.name) || a.id.localeCompare(b.id));
     result.push(...snippets);
   }
-  return [...result.filter(s => s.placement === "prepend"), ...result.filter(s => s.placement === "append")];
+  return result;
 }
 
 export async function installSnippetDefaults(repository: BootstrapRepository): Promise<void> {

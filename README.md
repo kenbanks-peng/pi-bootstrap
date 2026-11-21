@@ -32,15 +32,9 @@ Manage snippets alongside memories and commands:
 /bootstrap delete <id> snippet
 ```
 
-Add defaults to project scope. Add/edit opens Markdown including frontmatter:
+Add defaults to project scope. Add/edit opens plain Markdown:
 
 ```markdown
----
-name: Concise
-description: Keep answers short
-placement: append
-order: 10
----
 Respond concisely.
 ```
 
@@ -51,11 +45,10 @@ folder is missing or empty. Nonempty folders are left untouched.
 No config rule is required, and snippets are not injected
 into the system prompt.
 
-Selected prepend snippets, your message, then append snippets are joined with
-blank lines. Within each group global snippets precede project snippets; each
-scope sorts by order then name. Matching names do not override one another.
-Name defaults to filename, description to empty, placement to append, and order
-to 9999. Disable standalone pi-snippets before using this integration.
+Selected snippets are appended to your message, separated by blank lines.
+Global snippets precede project snippets; each scope sorts by its first line,
+which also serves as the display name. No frontmatter is used.
+Disable standalone pi-snippets before using this integration.
 
 ## Skill search
 
